@@ -38,7 +38,7 @@ Schedule::call(function () {
 
 Schedule::call(function () {
     Artisan::call('app:expire-realtime-hotspot-users');
-})->everyMinute();
+})->name('expire-realtime-hotspot-users')->everyMinute()->withoutOverlapping();
 
 Schedule::call(function () {
     $days = (int) MainSiteData::getValue('log_retention_days', 30);

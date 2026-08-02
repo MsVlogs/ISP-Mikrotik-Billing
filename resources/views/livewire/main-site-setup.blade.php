@@ -122,7 +122,7 @@
         <div class="row g-4">
             <!-- Sidebar navigation panel -->
             <div class="col-md-3">
-                <div class="card border-0 shadow-sm p-3 sticky-top glass-card" style="top: 20px; ">
+                <div class="card border-0 shadow-sm p-3 sticky-top z-1 glass-card" style="top: 20px; ">
                     <div class="nav flex-column nav-pills gap-1" id="v-pills-tab" role="tablist" aria-orientation="vertical">
                         <button class="nav-link text-start py-2.5 px-3 d-flex align-items-center gap-3 w-100" 
                                 :class="activeTab === 'identity' ? 'active shadow' : 'text-body hover-bg'"
