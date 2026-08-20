@@ -55,17 +55,11 @@ use App\Livewire\SMSSetup;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use App\Http\Middleware\EnsureBillingPort;
+use App\Http\Middleware\EnsurePortalPort;
 
 // Extract domain host from APP_URL for consistent subdomain routing
 $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: config('app.url');
-
-// Catch-all redirect for external domains or direct IP requests (NAT Redirection for Expired Users)
-$currentHost = request()->getHost();
-if ($currentHost && !in_array($currentHost, [$baseDomain, 'portal.'.$baseDomain, 'billing.'.$baseDomain])) {
-    Route::any('{any}', function () {
-        return redirect()->away(config('app.url') . '/warning');
-    })->where('any', '.*');
-}
 
 // Main domain
 Route::domain($baseDomain)->group(function () {
@@ -93,7 +87,7 @@ Route::domain($baseDomain)->group(function () {
             return redirect('/');
         }
 
-        return redirect()->away('https://portal.'.$host);
+        return redirect()->to('http://'.$host.':8082/');
     });
 
     Route::get('/billing', function () {
@@ -102,7 +96,7 @@ Route::domain($baseDomain)->group(function () {
             return redirect('/');
         }
 
-        return redirect()->away('https://billing.'.$host);
+        return redirect()->to('http://'.$host.':8081/');
     });
 });
 
@@ -114,7 +108,7 @@ Route::middleware([
 ])->group(function () use ($baseDomain) {
 
     // billing domain
-    Route::domain('billing.'.$baseDomain)->group(function () {
+    Route::middleware(EnsureBillingPort::class)->group(function () {
         Route::get('/system/db-backup/download/{filename}', function ($filename) {
             if (str_contains($filename, '/') || str_contains($filename, '\\')) {
                 abort(403, 'Invalid filename.');
@@ -253,7 +247,7 @@ Route::middleware([
 
 
 // portal domain routes
-Route::domain('portal.'.$baseDomain)->group(function () {
+Route::middleware(EnsurePortalPort::class)->group(function () {
     // Authenticated portal payment initiation routes
     Route::middleware(['auth:ppp'])->group(function () {
         Route::get('/payment/bkash/initiate', [BkashPaymentController::class, 'initiate'])->name('payment.bkash.initiate');
@@ -271,3 +265,15 @@ Route::domain('portal.'.$baseDomain)->group(function () {
     Route::get('/recharge/voucher', [PortalVoucherController::class, 'showRechargeForm'])->name('portal.voucher.recharge');
     Route::post('/recharge/voucher', [PortalVoucherController::class, 'redeem'])->name('portal.voucher.redeem');
 });
+
+// Final fallback: redirect unknown external hosts/IP requests without shadowing application routes.
+Route::any('{any}', function () use ($baseDomain) {
+    $host = request()->getHost();
+    $allowedHosts = [$baseDomain, 'bill.xlinkbd.net', 'portal.'.$baseDomain, 'billing.'.$baseDomain];
+
+    if (in_array($host, $allowedHosts, true)) {
+        abort(404);
+    }
+
+    return redirect()->away(config('app.url') . '/warning');
+})->where('any', '.*');

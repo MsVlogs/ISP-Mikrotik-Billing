@@ -273,7 +273,7 @@
                     <div class="log-item {{ str_contains(strtolower($log['topics']), 'hotspot') ? 'hotspot' : '' }}">
                         <div class="d-flex justify-content-between x-small text-muted mb-1">
                             <span>{{ $log['topics'] }}</span>
-                            <span>{{ Carbon\Carbon::parse($log['time'])->format('H:i:s') }}</span>
+                            <span>{{ $log['time'] ?? '—' }}</span>
                         </div>
                         <div class="small">{{ $log['message'] }}</div>
                     </div>
