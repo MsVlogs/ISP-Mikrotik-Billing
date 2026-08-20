@@ -84,7 +84,7 @@ class ResellerTest extends TestCase
 
         $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
         $response = $this->actingAs($user)
-            ->withHeaders(['Host' => 'billing.'.$baseDomain])
+            ->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8081'])
             ->get(route('dashboard'));
 
         $response->assertRedirect(route('reseller.dashboard'));
@@ -471,7 +471,7 @@ class ResellerTest extends TestCase
 
         $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
         $response = $this->actingAs($admin)
-            ->withHeaders(['Host' => 'billing.'.$baseDomain])
+            ->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8081'])
             ->get(route('dashboard'));
 
         $response->assertStatus(200);
@@ -558,7 +558,7 @@ class ResellerTest extends TestCase
 
         // Query with filter = reseller and reseller_id = reseller1->id
         $response = $this->actingAs($admin)
-            ->withHeaders(['Host' => 'billing.'.$baseDomain])
+            ->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8081'])
             ->get(route('customers.data', ['filter' => 'reseller', 'reseller_id' => $reseller1->id]));
 
         $response->assertStatus(200);
@@ -637,7 +637,7 @@ class ResellerTest extends TestCase
 
         // Log in as Reseller 1 and call their customers data route
         $response = $this->actingAs($user1)
-            ->withHeaders(['Host' => 'billing.'.$baseDomain])
+            ->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8081'])
             ->get(route('reseller.customers.data', ['filter' => 'all']));
 
         $response->assertStatus(200);
@@ -786,7 +786,7 @@ class ResellerTest extends TestCase
 
         // 1. Check default month (current month)
         $response = $this->actingAs($admin)
-            ->withHeaders(['Host' => 'billing.'.$baseDomain])
+            ->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8081'])
             ->get(route('admin.resellers.index'));
 
         $response->assertStatus(200);
@@ -796,7 +796,7 @@ class ResellerTest extends TestCase
 
         // 2. Check all time
         $response = $this->actingAs($admin)
-            ->withHeaders(['Host' => 'billing.'.$baseDomain])
+            ->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8081'])
             ->get(route('admin.resellers.index', ['month' => 'all']));
 
         $response->assertStatus(200);
@@ -807,7 +807,7 @@ class ResellerTest extends TestCase
         // 3. Check specific month (last month)
         $lastMonth = now()->subMonth();
         $response = $this->actingAs($admin)
-            ->withHeaders(['Host' => 'billing.'.$baseDomain])
+            ->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8081'])
             ->get(route('admin.resellers.index', ['month' => $lastMonth->month, 'year' => $lastMonth->year]));
 
         $response->assertStatus(200);
