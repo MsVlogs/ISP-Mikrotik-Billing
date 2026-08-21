@@ -36,7 +36,7 @@ class MikrotikLoginMessages extends Component
     {
         $text = strtolower(trim($topics.' '.$message));
 
-        if (preg_match('/auth(?:entication)?[^\n]*(?:fail|invalid|denied|reject)/i', $text)) {
+        if (str_contains($text, 'invalid credentials') || preg_match('/auth(?:entication)?[^\n]*(?:fail|invalid|denied|reject)/i', $text)) {
             return 'auth_failed';
         }
 

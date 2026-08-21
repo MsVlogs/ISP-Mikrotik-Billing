@@ -31,11 +31,6 @@ class TrafficMonitor extends Component
         $this->monitoring = false;
     }
 
-    public bool $monitoring = false;
-
-    public function startMonitoring(): void { $this->monitoring = true; $this->poll(); }
-
-    public function stopMonitoring(): void { $this->monitoring = false; }
 
     public function mount(): void
     {
