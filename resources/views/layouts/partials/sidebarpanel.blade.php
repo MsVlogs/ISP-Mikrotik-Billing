@@ -255,6 +255,17 @@
                 </a>
             </li>
             <li class="nav-item">
+                <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
+                    <div class="col-auto navbar-vertical-label">{{ __('Network Monitoring') }}</div>
+                    <div class="col ps-0"><hr class="mb-0 navbar-vertical-divider" /></div>
+                </div>
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-map') }}"><div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-diagram-3"></i></span><span class="nav-link-text ps-1">{{ __('Network Map') }}</span></div></a>
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('traffic-monitor') }}"><div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-activity"></i></span><span class="nav-link-text ps-1">{{ __('Traffic Monitor') }}</span></div></a>
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('high-usage-monitor') }}"><div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-bar-chart-line"></i></span><span class="nav-link-text ps-1">{{ __('High Usage Monitor') }}</span></div></a>
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('device-watcher') }}"><div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-eye"></i></span><span class="nav-link-text ps-1">{{ __('Device Watcher') }}</span></div></a>
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-login-messages') }}"><div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-bell"></i></span><span class="nav-link-text ps-1">{{ __('Logs & Alerts') }}</span></div></a>
+            </li>
+            <li class="nav-item">
                 <!-- label-->
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
                     <div class="col-auto navbar-vertical-label">{{ __('Customers') }}</div>

@@ -19,6 +19,12 @@ class TrafficMonitor extends Component
 
     public float $txSpeed = 0;
 
+    public bool $monitoring = false;
+
+    public function startMonitoring(): void { $this->monitoring = true; $this->poll(); }
+
+    public function stopMonitoring(): void { $this->monitoring = false; }
+
     public function mount(): void
     {
         if (! hasAccess(['Super Admin'], ['mikrotik-setup'])) {
@@ -70,7 +76,7 @@ class TrafficMonitor extends Component
 
     public function poll(): void
     {
-        if (! $this->selectedRouter || ! $this->selectedInterface) {
+        if (! $this->monitoring || ! $this->selectedRouter || ! $this->selectedInterface) {
             return;
         }
 
