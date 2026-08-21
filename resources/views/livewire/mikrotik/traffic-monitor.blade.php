@@ -57,7 +57,7 @@
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-activity me-1"></i>{{ __('Real-time Traffic Graph') }} @if($selectedInterface) - <strong>{{ $selectedInterface }}</strong> @endif</span>
-                    <span wire:loading wire:target="poll" class="spinner-grow spinner-grow-sm text-success" role="status"></span>
+                    <div class="btn-group"><button class="btn btn-sm btn-primary" wire:click="startMonitoring" @disabled($monitoring)>▶ Start</button><button class="btn btn-sm btn-outline-secondary" wire:click="stopMonitoring" @disabled(!$monitoring)>■ Stop</button></div>
                 </div>
                 <div class="card-body">
                     @if(!$selectedRouter || !$selectedInterface)
@@ -168,12 +168,12 @@
                                      let evt = Array.isArray(detail) ? detail[0] : detail;
                                      let rxBytes = evt.rx || 0;
                                      let txBytes = evt.tx || 0;
-                                     let rxMbps = rxBytes / 1048576;
-                                     let txMbps = txBytes / 1048576;
+                                     let rxMbps = rxBytes / 1000000;
+                                     let txMbps = txBytes / 1000000;
 
                                      const formatLabel = (bytes) => {
-                                         if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' Mbps';
-                                         if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' Kbps';
+                                         if (bytes >= 1000000) return (bytes / 1000000).toFixed(2) + ' Mbps';
+                                         if (bytes >= 1000) return (bytes / 1000).toFixed(2) + ' Kbps';
                                          return bytes.toFixed(0) + ' bps';
                                      };
 

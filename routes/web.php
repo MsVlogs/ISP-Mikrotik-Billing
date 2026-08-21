@@ -38,6 +38,10 @@ use App\Livewire\Mikrotik\QueueSetup;
 use App\Livewire\Mikrotik\RadiusSetup;
 use App\Livewire\Mikrotik\RouterLogViewer;
 use App\Livewire\Mikrotik\TrafficMonitor;
+use App\Livewire\NetworkMap;
+use App\Livewire\HighUsageMonitor;
+use App\Livewire\DeviceWatcher;
+use App\Livewire\MikrotikLoginMessages;
 use App\Livewire\Mikrotik\VpnSetup;
 use App\Livewire\Mikrotik\WalledGardenSetup;
 use App\Livewire\MikrotikSync;
@@ -137,6 +141,13 @@ Route::middleware([
         Route::get('/admin-roles', ManageRole::class)->name('admin-roles');
         Route::get('/support-tickets', ManageTickets::class)->name('admin-tickets');
         Route::get('/mikrotik', MikrotikSync::class)->name('mikrotik-sync');
+
+        // Network Monitoring suite
+        Route::get('/network-map', NetworkMap::class)->name('network-map');
+        Route::get('/traffic-monitor', TrafficMonitor::class)->name('traffic-monitor');
+        Route::get('/high-usage-monitor', HighUsageMonitor::class)->name('high-usage-monitor');
+        Route::get('/device-watcher', DeviceWatcher::class)->name('device-watcher');
+        Route::get('/mikrotik-login-messages', MikrotikLoginMessages::class)->name('mikrotik-login-messages');
 
         // Mikrotik Setup Routes
         Route::prefix('mikrotik-setup')->group(function () {
