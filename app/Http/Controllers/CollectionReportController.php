@@ -29,8 +29,15 @@ class CollectionReportController extends Controller
         //     abort(403);
         // }
         if ($request->ajax()) {
-            $from = $request->fromDate ?? Carbon::now()->startOfMonth()->format('Y-m-d');
-            $to = $request->toDate ?? Carbon::now()->endOfMonth()->format('Y-m-d');
+            // Dashboard month/year deep-link support. Explicit from/to dates still win.
+            if ($request->filled('month') && $request->filled('year')) {
+                $selected = Carbon::createFromDate((int) $request->year, (int) $request->month, 1);
+                $from = $selected->copy()->startOfMonth()->format('Y-m-d');
+                $to = $selected->copy()->endOfMonth()->format('Y-m-d');
+            } else {
+                $from = $request->fromDate ?? Carbon::now()->startOfMonth()->format('Y-m-d');
+                $to = $request->toDate ?? Carbon::now()->endOfMonth()->format('Y-m-d');
+            }
             $customer = $request->collector;
 
             // Build query

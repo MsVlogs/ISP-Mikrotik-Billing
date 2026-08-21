@@ -791,7 +791,18 @@
                                 height: 350, type: "line", stacked: false,
                                 events: {
                                     dataPointSelection: function(event, chartContext, config) {
-                                        dashboardNavigate(collectionUrl);
+                                        const month = (config.dataPointIndex ?? -1) + 1;
+                                        if (month < 1 || month > 12) return;
+                                        // Columns represent previous/current year; the revenue-difference line
+                                        // is based on the current-year comparison and therefore follows current year.
+                                        const seriesIndex = config.seriesIndex ?? 1;
+                                        const year = seriesIndex === 0
+                                            ? {{ now()->subYear()->year }}
+                                            : {{ now()->year }};
+                                        const url = new URL(collectionUrl, window.location.origin);
+                                        url.searchParams.set('month', month);
+                                        url.searchParams.set('year', year);
+                                        dashboardNavigate(url.toString());
                                     }
                                 }
                             },
