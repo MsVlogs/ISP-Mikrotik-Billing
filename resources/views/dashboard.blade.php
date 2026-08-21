@@ -622,7 +622,7 @@
                                 fontFamily: 'inherit', animations: { enabled: true, easing: 'easeinout', speed: 600 },
                                 events: {
                                     dataPointSelection: function(event, chartContext, config) {
-                                        const urls = [billingUrl, billingUrl, billingUrl, collectionUrl, collectionUrl, billingUrl, billingUrl, billingUrl];
+                                        const urls = [billingUrl, billingUrl, billingUrl, customersUrl + '?dashboard_status=active', customersUrl + '?dashboard_status=recent', '{{ url('/mikrotik-setup/hotspot') }}', '{{ url('/mikrotik-setup/hotspot') }}', billingUrl];
                                         dashboardNavigate(urls[config.dataPointIndex] || billingUrl);
                                     }
                                 }
