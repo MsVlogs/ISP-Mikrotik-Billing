@@ -35,7 +35,7 @@ class PortalPanelProvider extends PanelProvider
             ->path('portal')
             ->favicon(site_image(siteUrlSettings('site_favicon'), 'images/favicon.png'))
             ->brandLogo(site_image(siteUrlSettings('site_logo'), 'images/favicon.png'))
-            ->brandName(siteUrlSettings('site_name') ?? 'Code Pagol')
+            ->brandName(siteUrlSettings('portal_name') ?? siteUrlSettings('site_name') ?? 'Sweet Billing')
             ->brandLogoHeight('3.5rem')
             ->login(Login::class)
             ->registration((siteUrlSettings('portal_registration_enabled') ?? 1) ? Register::class : null)
@@ -67,6 +67,10 @@ class PortalPanelProvider extends PanelProvider
             ->renderHook(
                 \Filament\View\PanelsRenderHook::HEAD_END,
                 fn (): string => view('components.portal-dynamic-theme')->render(),
+            )
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::HEAD_END,
+                fn (): string => view('components.portal-shell-style')->render(),
             )
             ->renderHook(
                 \Filament\View\PanelsRenderHook::BODY_END,

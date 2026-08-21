@@ -16,6 +16,8 @@ class BillDetails extends Page
 
     protected static ?string $navigationLabel = 'Bill Details';
 
+    protected static string|NITENUM|NULL $NAVIGATIONGROUP = 'Billing & Finance';
+
     protected static ?string $title = 'Bill Details';
 
     protected static ?int $navigationSort = 3;
