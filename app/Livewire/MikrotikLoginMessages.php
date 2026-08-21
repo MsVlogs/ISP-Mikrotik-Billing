@@ -14,6 +14,7 @@ class MikrotikLoginMessages extends Component
 
     public string $router = '';
     public string $search = '';
+    public string $event = '';
 
     public function sync(): void
     {
@@ -60,6 +61,12 @@ class MikrotikLoginMessages extends Component
             ->when($this->search, fn ($query) => $query->where('message', 'like', '%'.$this->search.'%'))
             ->latest()
             ->paginate(50);
+
+        if ($this->event) {
+            $logs->setCollection($logs->getCollection()->filter(
+                fn ($log) => self::classifyEvent($log->message ?? '', $log->topics ?? '') === $this->event
+            )->values());
+        }
 
         foreach ($logs->items() as $log) {
             $log->setAttribute('event_type', self::classifyEvent($log->message ?? '', $log->topics ?? ''));
