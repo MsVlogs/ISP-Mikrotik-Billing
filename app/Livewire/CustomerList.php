@@ -122,6 +122,11 @@ class CustomerList extends Component
                 $data->where('status', $request->filter);
                 break;
 
+            case 'recent':
+                $data->whereMonth('created_at', Carbon::now()->month)
+                    ->whereYear('created_at', Carbon::now()->year);
+                break;
+
             default:
                 $data->whereNotIn('status', $statusFilter);
         }

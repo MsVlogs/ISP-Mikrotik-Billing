@@ -490,6 +490,12 @@
                     };
                     bindDashboardInteractions();
 
+                    // Chart navigation: every analytical data point opens the relevant live module.
+                    const dashboardNavigate = (url) => { if (url) window.location.href = url; };
+                    const customersUrl = @json(route('customers.index'));
+                    const collectionUrl = @json(route('collection-report.index'));
+                    const billingUrl = @json(url('/billing'));
+
                     // for destroying existing charts
                     if (window.chart1) chart1.destroy();
                     if (window.chart2) chart2.destroy();
@@ -505,10 +511,6 @@
                         const customerSeries = customersData.map((value, index) => index === 0 ? 100 : Math.min(100, (Number(value) / customerTotal) * 100));
                         const customers = {
                             series: customerSeries,
-                            chart: {
-                                height: 360,
-                                type: 'radialBar',
-                            },
                             theme: {
                                 mode: isDark ? 'dark' : 'light'
                             },
@@ -537,7 +539,14 @@
                                     },
                                 }
                             },
-                            labels: ['{{ __("Total") }}', '{{ __("Active") }}', '{{ __("Pending") }}', '{{ __("Free") }}', '{{ __("Temporary Disable") }}', '{{ __("Inactive") }}', '{{ __("Recent") }}']
+                            labels: ['{{ __("Total") }}', '{{ __("Active") }}', '{{ __("Pending") }}', '{{ __("Free") }}', '{{ __("Temporary Disable") }}', '{{ __("Inactive") }}', '{{ __("Recent") }}'],
+                            chart: { height: 360, type: 'radialBar', events: {
+                                dataPointSelection: function(event, chartContext, config) {
+                                    const statusMap = ['all','active','pending','free','disable','inactive','recent'];
+                                    const status = statusMap[config.dataPointIndex] || 'all';
+                                    dashboardNavigate(customersUrl + (status === 'all' ? '' : '?dashboard_status=' + encodeURIComponent(status)));
+                                }
+                            } }
                         };
                         window.chart1 = new ApexCharts(customersEl, customers);
                         chart1.render();
@@ -608,6 +617,16 @@
                                 axisTicks: { show: false },
                             },
                             grid: { borderColor: 'rgba(128,128,128,0.15)', strokeDashArray: 4 },
+                            chart: {
+                                type: 'bar', height: 340, toolbar: { show: false },
+                                fontFamily: 'inherit', animations: { enabled: true, easing: 'easeinout', speed: 600 },
+                                events: {
+                                    dataPointSelection: function(event, chartContext, config) {
+                                        const urls = [billingUrl, billingUrl, billingUrl, collectionUrl, collectionUrl, billingUrl, billingUrl, billingUrl];
+                                        dashboardNavigate(urls[config.dataPointIndex] || billingUrl);
+                                    }
+                                }
+                            },
                             tooltip: {
                                 y: { formatter: val => '৳ ' + Math.abs(val).toLocaleString(undefined, {minimumFractionDigits:2}) },
                             },
@@ -684,6 +703,16 @@
                                 itemMargin: { horizontal: 6 },
                             },
                             grid: { borderColor: 'rgba(128,128,128,0.15)', strokeDashArray: 4 },
+                            chart: {
+                                type: 'bar', height: 260, toolbar: { show: false },
+                                fontFamily: 'inherit', animations: { enabled: true, easing: 'easeinout', speed: 600 },
+                                events: {
+                                    dataPointSelection: function(event, chartContext, config) {
+                                        const status = statusKeys[config.dataPointIndex] || 'active';
+                                        dashboardNavigate(customersUrl + '?dashboard_status=' + encodeURIComponent(status));
+                                    }
+                                }
+                            },
                             tooltip: {
                                 shared: true,
                                 intersect: false,
@@ -703,7 +732,6 @@
                         const revenueData = Object.values(chartData).map(item => item.revenue_difference);
 
                         const income_revenue = {
-                            chart: { height: 350, type: "line", stacked: false },
                             theme: {
                                 mode: isDark ? 'dark' : 'light'
                             },
@@ -759,6 +787,14 @@
                                     }
                                 }
                             ],
+                            chart: {
+                                height: 350, type: "line", stacked: false,
+                                events: {
+                                    dataPointSelection: function(event, chartContext, config) {
+                                        dashboardNavigate(collectionUrl);
+                                    }
+                                }
+                            },
                             tooltip: {
                                 shared: false,
                                 intersect: true,

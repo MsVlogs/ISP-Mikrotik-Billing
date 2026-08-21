@@ -460,6 +460,10 @@
                             d.filter = 'reseller';
                             d.reseller_id = checkedRadio.data('reseller-id');
                         }
+                        const dashboardStatus = new URLSearchParams(window.location.search).get('dashboard_status');
+                        if (dashboardStatus && ['all','active','pending','free','disable','inactive','recent'].includes(dashboardStatus)) {
+                            d.filter = dashboardStatus === 'active' ? 'all_active' : dashboardStatus;
+                        }
                         d.router_name = $('#router_filter').val();
                     }
                 },
