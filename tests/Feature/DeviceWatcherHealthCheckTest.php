@@ -11,16 +11,24 @@ class DeviceWatcherHealthCheckTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_online_watcher_persists_online_status(): void
+    private function createWatcher(array $overrides = []): DeviceWatcher
     {
-        $watcher = DeviceWatcher::factory()->create([
+        return DeviceWatcher::query()->create(array_merge([
+            'name' => 'Test Router',
+            'router_name' => 'Test Router',
             'host' => '127.0.0.1',
             'port' => 9,
-            'enabled' => true,
+            'interval_seconds' => 60,
             'threshold_ms' => 5000,
-        ]);
+            'enabled' => true,
+        ], $overrides));
+    }
 
-        $this->artisan(CheckDeviceWatchers::class)->assertSuccessful();
+    public function test_unreachable_watcher_persists_down_status(): void
+    {
+        $watcher = $this->createWatcher();
+
+        $this->artisan('app:check-device-watchers')->assertSuccessful();
 
         $this->assertDatabaseHas('device_watchers', [
             'id' => $watcher->id,
@@ -30,16 +38,17 @@ class DeviceWatcherHealthCheckTest extends TestCase
 
     public function test_disabled_watcher_is_not_checked(): void
     {
-        $watcher = DeviceWatcher::factory()->create([
+        $watcher = $this->createWatcher([
             'enabled' => false,
             'last_status' => 'online',
         ]);
 
-        $this->artisan(CheckDeviceWatchers::class)->assertSuccessful();
+        $this->artisan('app:check-device-watchers')->assertSuccessful();
 
         $this->assertDatabaseHas('device_watchers', [
             'id' => $watcher->id,
             'last_status' => 'online',
+            'last_checked_at' => null,
         ]);
     }
 
@@ -47,14 +56,13 @@ class DeviceWatcherHealthCheckTest extends TestCase
     {
         $checkedAt = now()->subSeconds(10);
 
-        $watcher = DeviceWatcher::factory()->create([
-            'enabled' => true,
+        $watcher = $this->createWatcher([
             'interval_seconds' => 60,
             'last_status' => 'online',
             'last_checked_at' => $checkedAt,
         ]);
 
-        $this->artisan(CheckDeviceWatchers::class)->assertSuccessful();
+        $this->artisan('app:check-device-watchers')->assertSuccessful();
 
         $this->assertEquals($checkedAt->timestamp, $watcher->fresh()->last_checked_at->timestamp);
     }
