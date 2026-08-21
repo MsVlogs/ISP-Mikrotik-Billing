@@ -52,21 +52,39 @@ class MikrotikLoginMessages extends Component
         return 'other';
     }
 
+    private function applyEventFilter($query): void
+    {
+        if (! $this->event) {
+            return;
+        }
+
+        $query->where(function ($query) {
+            if ($this->event === 'auth_failed') {
+                $query->where('message', 'like', '%authentication%fail%')
+                    ->orWhere('message', 'like', '%auth%fail%')
+                    ->orWhere('message', 'like', '%invalid%')
+                    ->orWhere('message', 'like', '%denied%');
+            } elseif ($this->event === 'logout') {
+                $query->where('message', 'like', '%logged out%')
+                    ->orWhere('message', 'like', '%logout%')
+                    ->orWhere('message', 'like', '%disconnected%');
+            } elseif ($this->event === 'login') {
+                $query->where('message', 'like', '%logged in%')
+                    ->orWhere('message', 'like', '%login%')
+                    ->orWhere('message', 'like', '%authenticated%');
+            }
+        });
+    }
+
     public function render()
     {
         $base = MikrotikLog::query()
             ->when($this->router, fn ($query) => $query->where('router_name', $this->router));
 
-        $logs = (clone $base)
-            ->when($this->search, fn ($query) => $query->where('message', 'like', '%'.$this->search.'%'))
-            ->latest()
-            ->paginate(50);
-
-        if ($this->event) {
-            $logs->setCollection($logs->getCollection()->filter(
-                fn ($log) => self::classifyEvent($log->message ?? '', $log->topics ?? '') === $this->event
-            )->values());
-        }
+        $logsQuery = (clone $base)
+            ->when($this->search, fn ($query) => $query->where('message', 'like', '%'.$this->search.'%'));
+        $this->applyEventFilter($logsQuery);
+        $logs = $logsQuery->latest()->paginate(50);
 
         foreach ($logs->items() as $log) {
             $log->setAttribute('event_type', self::classifyEvent($log->message ?? '', $log->topics ?? ''));
