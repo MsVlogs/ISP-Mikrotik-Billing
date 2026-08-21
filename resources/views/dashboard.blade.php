@@ -458,27 +458,37 @@
                         const items = Array.from(grid.children);
                         for (let i = items.length - 1; i > 0; i--) {
                             const j = Math.floor(Math.random() * (i + 1));
-                            grid.appendChild(items[j]);
-                            items.splice(j, 1);
+                            [items[i], items[j]] = [items[j], items[i]];
+                        }
+                        items.forEach(item => grid.appendChild(item));
+                    };
+
+                    const bindDashboardInteractions = () => {
+                        document.querySelectorAll('.dashboard-widget-card[data-dashboard-href]').forEach(card => {
+                            if (card.dataset.dashboardBound === '1') return;
+                            card.dataset.dashboardBound = '1';
+                            card.style.cursor = 'pointer';
+                            card.setAttribute('role', 'link');
+                            card.setAttribute('tabindex', '0');
+                            const open = () => { window.location.href = card.dataset.dashboardHref; };
+                            card.addEventListener('click', (event) => {
+                                if (!event.target.closest('a,button,input,select,textarea')) open();
+                            });
+                            card.addEventListener('keydown', (event) => {
+                                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+                            });
+                        });
+
+                        const randomizeButton = document.getElementById('dashboard-randomize');
+                        if (randomizeButton && randomizeButton.dataset.dashboardBound !== '1') {
+                            randomizeButton.dataset.dashboardBound = '1';
+                            randomizeButton.addEventListener('click', () => {
+                                randomizeDashboardGrid(document.getElementById('dashboard-kpi-grid'));
+                                randomizeDashboardGrid(document.getElementById('dashboard-reseller-grid'));
+                            });
                         }
                     };
-                    document.querySelectorAll('.dashboard-widget-card[data-dashboard-href]').forEach(card => {
-                        card.style.cursor = 'pointer';
-                        card.setAttribute('role', 'link');
-                        card.setAttribute('tabindex', '0');
-                        const open = () => { window.location.href = card.dataset.dashboardHref; };
-                        card.addEventListener('click', (event) => {
-                            if (!event.target.closest('a,button,input,select,textarea')) open();
-                        });
-                        card.addEventListener('keydown', (event) => {
-                            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
-                        });
-                    });
-
-                    document.getElementById('dashboard-randomize')?.addEventListener('click', () => {
-                        randomizeDashboardGrid(document.getElementById('dashboard-kpi-grid'));
-                        randomizeDashboardGrid(document.getElementById('dashboard-reseller-grid'));
-                    });
+                    bindDashboardInteractions();
 
                     // for destroying existing charts
                     if (window.chart1) chart1.destroy();
