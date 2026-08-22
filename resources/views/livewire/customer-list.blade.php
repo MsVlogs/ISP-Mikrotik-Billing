@@ -1,6 +1,6 @@
 <div>
-    <div class="card border-0 shadow-sm mx-sm-0 mx-md-3 my-3">
-        <div class="card-body p-2">
+    <div class="card border-0 shadow-sm mx-sm-0 mx-md-3 my-3 customer-filter-card">
+        <div class="card-body p-3">
             <div class="row align-items-center">
                 @if ($routers->count() > 1)
                     <div class="col-md-2">
@@ -80,7 +80,7 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm m-sm-0 m-md-3 p-0 overflow-hidden">
+    <div class="card border-0 shadow-sm m-sm-0 m-md-3 p-0 overflow-hidden customer-table-card">
         <div class="table-responsive bg-white px-3 pb-3" wire:ignore>
             <table class="customer-table table table-hover custom-data-table border-0 w-100" style="width:100%">
                 <thead class="bg-light">
@@ -238,6 +238,32 @@
 
 @push('styles')
     <style>
+        .customer-filter-card,
+        .customer-table-card {
+            border-radius: 14px !important;
+        }
+        .customer-filter-card .form-select {
+            min-height: 38px;
+            border-radius: 10px !important;
+        }
+        .customer-filter-card .btn-check + label {
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .customer-filter-card .btn-check:checked + label {
+            box-shadow: 0 4px 10px rgba(13,110,253,.14);
+            transform: translateY(-1px);
+        }
+        .customer-filter-card .filter-group {
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+        }
+        .customer-table-card .table-responsive {
+            border-radius: 14px;
+        }
         .custom-data-table {
             border-collapse: separate !important;
             border-spacing: 0 8px !important;
@@ -254,13 +280,28 @@
         .custom-data-table tbody tr {
             background-color: #fff !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            transition: all 0.2s;
+            transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
         }
         .custom-data-table tbody tr:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
             background-color: #f8f9ff !important;
         }
+        @media (max-width: 767.98px) {
+            .customer-filter-card,
+            .customer-table-card {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+            .customer-filter-card .ms-auto {
+                width: 100%;
+                margin-left: 0 !important;
+                border-left: 0 !important;
+                border-top: 1px solid #dee2e6;
+                padding-top: .5rem;
+            }
+        }
+
         .custom-data-table td {
             padding: 12px 10px !important;
             vertical-align: middle !important;
