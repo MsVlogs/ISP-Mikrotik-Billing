@@ -5,13 +5,15 @@ namespace App\Livewire;
 use App\Http\Controllers\MikrotikController;
 use App\Models\PPPSecrets;
 use App\Models\RouterList;
-use Illuminate\Support\Str;
 use Livewire\Component;
+use Livewire\WithPagination;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class MikrotikClients extends Component
 {
+    use WithPagination;
+
     public string $router = '';
     public string $protocol = 'PPPOE';
     public string $profile = '';
@@ -45,6 +47,13 @@ class MikrotikClients extends Component
         return view('livewire.mikrotik-clients', compact('routers', 'profiles', 'clients'))->layout('layouts.app');
     }
 
+    public function updated($property): void
+    {
+        if (in_array($property, ['router', 'protocol', 'profile', 'userType', 'search', 'perPage'], true)) {
+            $this->resetPage();
+        }
+    }
+
     public function applyFilters(): void
     {
         $this->resetPage();
@@ -55,6 +64,7 @@ class MikrotikClients extends Component
         $this->reset(['router', 'profile', 'search']);
         $this->protocol = 'PPPOE';
         $this->userType = 'Unique';
+        $this->resetPage();
     }
 
     public function toggle(int $id): void
@@ -95,10 +105,17 @@ class MikrotikClients extends Component
             ->when($this->router, fn ($q) => $q->where('router_name', $this->router))
             ->when($this->protocol, fn ($q) => $q->whereRaw('upper(service) = ?', [strtoupper($this->protocol)]))
             ->when($this->profile, fn ($q) => $q->where('profile', $this->profile))
-            ->when($this->search, fn ($q) => $q->where('username', 'like', '%'.$this->search.'%'))
+            ->when($this->search, fn ($q) => $q->where(function ($q) {
+                $s = '%'.addcslashes($this->search, '%_').'%';
+                $q->where('username', 'like', $s)->orWhere('caller_id', 'like', $s)->orWhere('router_name', 'like', $s);
+            }))
             ->orderBy('username')->get();
 
-        return $query->map(fn ($c) => [$c->username, $c->password, $c->service, $c->profile, $c->caller_id ?: 'N/A', $c->router_name, optional($c->last_logged_out)?->format('d/m/Y h:i A'), $c->status ?: 'Unknown', $c->customer?->branch ?: 'N/A'])->all();
+        return $query->map(function ($c) {
+            $logout = $c->last_logged_out;
+            $logoutTime = $logout ? (is_object($logout) && method_exists($logout, 'format') ? $logout->format('d/m/Y h:i A') : date('d/m/Y h:i A', strtotime((string) $logout))) : 'N/A';
+            return [$c->username, $c->password, $c->service, $c->profile, $c->caller_id ?: 'N/A', $c->router_name, $logoutTime, $c->status ?: 'Unknown', $c->customer?->branch ?: 'N/A'];
+        })->all();
     }
 
     protected function csvDownload(string $type)
