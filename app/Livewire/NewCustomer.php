@@ -108,6 +108,10 @@ class NewCustomer extends Component
 
     public $address = []; // Initialize as an array
 
+    public $latitude;
+
+    public $longitude;
+
     public $data = [];
 
     public $interfaceNames = []; // Make sure this is an array for Livewire updates
@@ -159,6 +163,8 @@ class NewCustomer extends Component
             'billing_type' => 'required',
             'connection_type' => 'required',
             'connectivity_type' => 'required',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'photo_url' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
 
@@ -592,6 +598,15 @@ class NewCustomer extends Component
                     $customerAddress->$customerInputType = $value;
                 }
                 $customerAddress->save();
+            }
+
+            if ($this->latitude !== null || $this->longitude !== null) {
+                CustomersAddress::create([
+                    'customer_address_unique_id' => $customer->customer_unique_id,
+                    'label_name' => 'Network Location',
+                    'latitude' => $this->latitude,
+                    'longitude' => $this->longitude,
+                ]);
             }
 
             $customerBilling = new BillingInfo;
