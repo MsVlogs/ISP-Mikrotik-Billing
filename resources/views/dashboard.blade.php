@@ -190,7 +190,7 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4 dashboard-analytics-grid">
         {{-- Unified Row for Routers and Graphs to allow dynamic "weight" adjustment --}}
         @foreach ($systemOverview as $routerName => $routerData)
             @php
@@ -228,9 +228,9 @@
                 }
             @endphp
 
-            <div class="col-12 col-md-6 col-lg-4 col-xxl-4 d-flex flex-fill">
+            <div class="col-12 col-xl-4 d-flex flex-fill">
                 {{-- Refined Router Card with Full Details --}}
-                <div class="card border-0 shadow-sm rounded-4 w-100 overflow-hidden d-flex flex-column router-overview-card" style="min-height: 460px;">
+                <div class="card border-0 shadow-sm rounded-4 w-100 overflow-hidden d-flex flex-column router-overview-card" style="min-height: 390px;">
                     <div class="px-3 py-2" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white;">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-hdd-network fs-2 text-info me-3" style="font-size: 1.5rem;"></i>
