@@ -141,6 +141,10 @@ Route::middleware([
         Route::get('/admin-roles', ManageRole::class)->name('admin-roles');
         Route::get('/support-tickets', ManageTickets::class)->name('admin-tickets');
         Route::get('/mikrotik', MikrotikSync::class)->name('mikrotik-sync');
+        Route::get('/mikrotik-server', MikrotikSync::class)->name('mikrotik-server');
+        Route::get('/mikrotik-server/backup', BackupManager::class)->name('mikrotik-server-backup');
+        Route::get('/mikrotik-server/import', MikrotikSync::class)->name('mikrotik-server-import');
+        Route::get('/mikrotik-server/bulk-import', CustomerList::class)->name('mikrotik-server-bulk-import');
 
         // Network Monitoring suite
         Route::get('/network-map', NetworkMap::class)->name('network-map');
