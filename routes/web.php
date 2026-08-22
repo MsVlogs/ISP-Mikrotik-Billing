@@ -45,6 +45,7 @@ use App\Livewire\MikrotikLoginMessages;
 use App\Livewire\Mikrotik\VpnSetup;
 use App\Livewire\Mikrotik\WalledGardenSetup;
 use App\Livewire\MikrotikSync;
+use App\Livewire\MikrotikClients;
 use App\Livewire\NewCustomer;
 use App\Livewire\NotificationListAll;
 use App\Livewire\PackageListSetup;
@@ -143,7 +144,7 @@ Route::middleware([
         Route::get('/mikrotik', MikrotikSync::class)->name('mikrotik-sync');
         Route::get('/mikrotik-server', MikrotikSync::class)->name('mikrotik-server');
         Route::get('/mikrotik-server/backup', BackupManager::class)->name('mikrotik-server-backup');
-        Route::get('/mikrotik-server/import', [ImportController::class, 'importForm'])->name('mikrotik-server-import');
+        Route::get('/mikrotik-server/import', MikrotikClients::class)->name('mikrotik-server-import');
         Route::get('/mikrotik-server/bulk-import', CustomerList::class)->name('mikrotik-server-bulk-import');
 
         // Network Monitoring suite
