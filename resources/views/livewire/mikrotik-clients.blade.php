@@ -29,7 +29,7 @@
                 <tbody>
                     @forelse($clients as $client)
                         <tr>
-                            <td class="fw-semibold">{{ $client->username }}</td><td>••••••••</td><td>{{ strtolower($client->service ?: 'pppoe') }}</td><td>{{ $client->profile ?: 'N/A' }}</td><td>{{ $client->caller_id ?: 'N/A' }}</td><td>{{ $client->router_name }}</td><td>{{ $client->last_logged_out?->format('d/m/Y h:i A') ?: 'N/A' }}</td>
+                            <td class="fw-semibold">{{ $client->username }}</td><td>••••••••</td><td>{{ strtolower($client->service ?: 'pppoe') }}</td><td>{{ $client->profile ?: 'N/A' }}</td><td>{{ $client->caller_id ?: 'N/A' }}</td><td>{{ $client->router_name }}</td><td>{{ is_object($client->last_logged_out) ? $client->last_logged_out->format('d/m/Y h:i A') : ($client->last_logged_out ? date('d/m/Y h:i A', strtotime($client->last_logged_out)) : 'N/A') }}</td>
                             <td><span class="badge bg-warning text-dark">{{ $client->status ?: 'Unique' }}</span></td><td>{{ $client->customer?->branch ?: 'N/A' }}</td>
                             <td><button wire:click="toggle({{ $client->id }})" class="btn btn-sm {{ in_array(strtolower((string)$client->status), ['disabled','inactive']) ? 'btn-secondary' : 'btn-primary' }}">{{ in_array(strtolower((string)$client->status), ['disabled','inactive']) ? 'Enable' : 'Disable' }}</button></td>
                             <td><button wire:click="exportClientList" class="btn btn-sm btn-link"><i class="bi bi-person-plus-fill"></i></button></td>
