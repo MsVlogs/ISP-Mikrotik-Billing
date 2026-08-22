@@ -16,6 +16,8 @@ class SupportTickets extends Page
 
     protected static ?string $navigationLabel = 'Support';
 
+    protected static string|NITENUM|NULL $NAVIGATIONGROUP = 'Support Center';
+
     protected static ?string $title = 'Support Tickets';
 
     protected static ?int $navigationSort = 6;
