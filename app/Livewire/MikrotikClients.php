@@ -169,7 +169,7 @@ class MikrotikClients extends Component
     {
         $query = $this->filteredSecretsQuery()->with('customer');
 
-        return $query->map(function ($c) {
+        return $query->get()->map(function ($c) {
             $logout = $c->last_logged_out;
             $logoutTime = $logout ? (is_object($logout) && method_exists($logout, 'format') ? $logout->format('d/m/Y h:i A') : date('d/m/Y h:i A', strtotime((string) $logout))) : 'N/A';
             return [$c->username, $c->password, $c->service, $c->profile, $c->caller_id ?: 'N/A', $c->router_name, $logoutTime, $c->status ?: 'Unknown', $c->customer?->branch ?: 'N/A'];
