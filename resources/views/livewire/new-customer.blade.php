@@ -160,16 +160,31 @@
                         <span class="text-success fw-bold"><i class="bi bi-geo-alt me-2"></i>{{ __('Customer Address') }}</span>
                     </x-slot>
                     <x-slot name="aside">
-                        @foreach ($addressFields as $addressField)
+                        @if ($addressFields->isEmpty())
                             <x-mikrotik.form-group
-                                label="{{ __($addressField['label']) }}"
-                                type="{{ $addressField['input_type'] }}"
-                                name="address.{{$addressField['label']}}"
-                                required="{{$addressField['required'] == 1 ? '*' : ''}}"
-                                placeholder="{{$addressField['input_type'] == 'dropdown' ? __('Select Any One') : __($addressField['label'])}}"
-                                :options="json_decode($addressField['dropdown_list'])"
+                                label="{{ __('Present Address') }}"
+                                type="textarea"
+                                name="address.Present Address"
+                                placeholder="{{ __('Present Address') }}"
                             />
-                        @endforeach
+                            <x-mikrotik.form-group
+                                label="{{ __('Zone Name') }}"
+                                type="text"
+                                name="address.Zone Name"
+                                placeholder="{{ __('Zone Name') }}"
+                            />
+                        @else
+                            @foreach ($addressFields as $addressField)
+                                <x-mikrotik.form-group
+                                    label="{{ __($addressField['label']) }}"
+                                    type="{{ $addressField['input_type'] }}"
+                                    name="address.{{$addressField['label']}}"
+                                    required="{{$addressField['required'] == 1 ? '*' : ''}}"
+                                    placeholder="{{$addressField['input_type'] == 'dropdown' ? __('Select Any One') : __($addressField['label'])}}"
+                                    :options="json_decode($addressField['dropdown_list'])"
+                                />
+                            @endforeach
+                        @endif
                     </x-slot>
                     <x-section-border/>
                 </x-mikrotik.section-form>

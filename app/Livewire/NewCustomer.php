@@ -155,12 +155,52 @@ class NewCustomer extends Component
             $this->caller_id = $secret->caller_id;
             $this->comment = $secret->comment;
             $this->connection_date = optional($secret->created_at)->format('Y-m-d') ?: now()->format('Y-m-d');
+
+            // Parse the structured MikroTik comment and prefill matching customer fields.
+            $parsedComment = $this->parseMikrotikComment($secret->comment);
+            if (! empty($parsedComment['client_name'])) {
+                $this->customer_name = $parsedComment['client_name'];
+            }
+            $this->mobile = $parsedComment['contact_number'] ?? null;
+            if (! empty($parsedComment['present_address'])) {
+                $this->address['Present Address'] = $parsedComment['present_address'];
+            }
+            if (! empty($parsedComment['zone_name'])) {
+                $this->address['Zone Name'] = $parsedComment['zone_name'];
+            }
+            if (! empty($parsedComment['joining_date']) && strtotime($parsedComment['joining_date'])) {
+                $this->connection_date = date('Y-m-d', strtotime($parsedComment['joining_date']));
+            }
             $this->profileNames = $this->profile ? [$this->profile] : [];
             $this->auto_disable = true;
             $this->auto_disable_date = now()->addDays(30)->format('Y-m-d');
         }
 
         return true;
+    }
+
+    private function parseMikrotikComment(?string $comment): array
+    {
+        $result = [];
+        foreach (preg_split('/\r?\n/', (string) $comment) as $line) {
+            if (! str_contains($line, ':')) {
+                continue;
+            }
+            [$key, $value] = array_map('trim', explode(':', $line, 2));
+            if ($key === '' || $value === '') {
+                continue;
+            }
+            $normalized = strtolower(preg_replace('/[^a-z0-9]+/', '_', $key));
+            $result[$normalized] = $value;
+        }
+
+        return [
+            'client_name' => $result['client_name'] ?? $result['name'] ?? null,
+            'contact_number' => $result['contact_number'] ?? $result['phone'] ?? $result['mobile'] ?? null,
+            'zone_name' => $result['zone_name'] ?? $result['zone'] ?? null,
+            'present_address' => $result['present_address'] ?? $result['address'] ?? null,
+            'joining_date' => $result['joining_date'] ?? $result['connection_date'] ?? null,
+        ];
     }
 
     public function rules()
