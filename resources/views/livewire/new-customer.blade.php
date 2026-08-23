@@ -274,11 +274,11 @@
                                 :required="$service == 'static' ? true : false"
                                 :groupstyle="($router_name && $service == 'static') || !$router_name ? '' : 'display: none;'"
                             />
-                            <x-mikrotik.form-group
-                                label="{{ __('Comment') }}"
-                                type="text"
-                                name="comment"
-                            />
+                            <div class="mb-3">
+                                <label for="comment" class="form-label fw-semibold">{{ __('Comments / Remarks / Special Note') }}</label>
+                                <textarea id="comment" name="comment" rows="5" class="form-control @error('comment') is-invalid @enderror" wire:model="comment" placeholder="{{ __('MikroTik PPPoE comment / remarks') }}">{{ $comment }}</textarea>
+                                @error('comment') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
                             <x-mikrotik.form-group
                                 checkboxLabel="{{ __('Auto Temporary Disable Feature') }}"
                                 type="checkbox"
