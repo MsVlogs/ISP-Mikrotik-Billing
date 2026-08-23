@@ -33,7 +33,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle"></i> {{ __("Tip: Select a PPPoE interface to monitor a specific user's live traffic.") }}</small>
+                        <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle"></i> {{ __('Tip: Select a PPPoE interface to monitor a specific user\'s live traffic.') }}</small>
                     </div>
                     @endif
 
@@ -43,9 +43,13 @@
                             <span class="text-success"><i class="bi bi-arrow-down-circle-fill me-1"></i>{{ __('Download') }}</span>
                             <strong class="text-success fs-5" id="rx-label">0 Mbps</strong>
                         </div>
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between mb-2">
                             <span class="text-primary"><i class="bi bi-arrow-up-circle-fill me-1"></i>{{ __('Upload') }}</span>
                             <strong class="text-primary fs-5" id="tx-label">0 Mbps</strong>
+                        </div>
+                        <div class="small text-muted border-top pt-2 mt-2">
+                            <div class="d-flex justify-content-between"><span>{{ __('Peak Download') }}</span><strong id="peak-rx-label">0 Mbps</strong></div>
+                            <div class="d-flex justify-content-between"><span>{{ __('Peak Upload') }}</span><strong id="peak-tx-label">0 Mbps</strong></div>
                         </div>
                     </div>
                     @endif
@@ -65,10 +69,8 @@
                             <div><i class="bi bi-info-circle fs-3 d-block text-center mb-2"></i>{{ __('Please select a router and interface to begin monitoring traffic.') }}</div>
                         </div>
                     @else
-                        <!-- Hidden div to trigger polling every 2 seconds -->
                         <div wire:poll.2000ms="poll" class="d-none"></div>
-                        <!-- ApexChart container -->
-                        <div wire:ignore 
+                        <div wire:ignore
                              x-data="{
                                  chart: null,
                                  dataRx: [],
@@ -77,12 +79,11 @@
                                  initialPoints: 60,
                                  initChart() {
                                      if (this.chart) this.chart.destroy();
-                                     
                                      this.dataRx = [];
                                      this.dataTx = [];
                                      let now = new Date().getTime();
                                      for(let i = this.initialPoints; i > 0; i--) {
-                                         let ts = now - (i * 2000); // Backfill initial 2 mins
+                                         let ts = now - (i * 2000);
                                          this.dataRx.push([ts, 0]);
                                          this.dataTx.push([ts, 0]);
                                      }
@@ -92,71 +93,23 @@
                                              { name: '{{ __('Download') }}', data: this.dataRx },
                                              { name: '{{ __('Upload') }}', data: this.dataTx }
                                          ],
-                                         chart: {
-                                             type: 'area',
-                                             height: 350,
-                                             animations: { 
-                                                 enabled: true, 
-                                                 easing: 'linear', 
-                                                 dynamicAnimation: { speed: 2000 } 
-                                              },
-                                             toolbar: { show: false },
-                                             zoom: { enabled: false }
-                                         },
-                                         theme: {
-                                             mode: isDark ? 'dark' : 'light'
-                                         },
-                                         colors: ['#198754', '#0d6efd'],
-                                         dataLabels: { enabled: false },
-                                         stroke: { curve: 'smooth', width: 2 },
+                                         chart: { type: 'area', height: 350, animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 2000 } }, toolbar: { show: false }, zoom: { enabled: false } },
+                                         theme: { mode: isDark ? 'dark' : 'light' },
+                                         colors: ['#198754', '#0d6efd'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 },
                                          fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
-                                         xaxis: {
-                                             type: 'datetime',
-                                             labels: { 
-                                                 show: true,
-                                                 datetimeUTC: false,
-                                                 format: 'HH:mm:ss',
-                                                 style: { colors: '#94a3b8' }
-                                             },
-                                             axisBorder: { show: true, color: 'rgba(128,128,128,0.15)' },
-                                             axisTicks: { show: true, color: 'rgba(128,128,128,0.15)' }
-                                         },
-                                         yaxis: { 
-                                             labels: { 
-                                                 formatter: function (value) { 
-                                                     if (value >= 1) return value.toFixed(1) + ' Mbps';
-                                                     return (value * 1024).toFixed(0) + ' Kbps';
-                                                  } 
-                                             },
-                                             min: 0,
-                                             max: function(max) { return max < 0.2 ? 0.5 : (max < 1 ? 1 : (max < 5 ? 5 : max + 2)); }
-                                         },
+                                         xaxis: { type: 'datetime', labels: { show: true, datetimeUTC: false, format: 'HH:mm:ss', style: { colors: '#94a3b8' } }, axisBorder: { show: true, color: 'rgba(128,128,128,0.15)' }, axisTicks: { show: true, color: 'rgba(128,128,128,0.15)' } },
+                                         yaxis: { labels: { formatter: function (value) { if (value >= 1) return value.toFixed(1) + ' Mbps'; return (value * 1024).toFixed(0) + ' Kbps'; } }, min: 0, max: function(max) { return max < 0.2 ? 0.5 : (max < 1 ? 1 : (max < 5 ? 5 : max + 2)); } },
                                          legend: { position: 'top', horizontalAlign: 'left' },
-                                         tooltip: {
-                                             x: { format: 'HH:mm:ss' },
-                                             y: { 
-                                                 formatter: function (val) { 
-                                                     if (val >= 1) return val.toFixed(2) + ' Mbps';
-                                                     return (val * 1024).toFixed(1) + ' Kbps';
-                                                  } 
-                                             }
-                                         }
+                                         tooltip: { x: { format: 'HH:mm:ss' }, y: { formatter: function (val) { if (val >= 1) return val.toFixed(2) + ' Mbps'; return (val * 1024).toFixed(1) + ' Kbps'; } } }
                                      };
-  
                                      this.chart = new window.ApexCharts(this.$refs.chartContainer, options);
                                      this.chart.render();
-
-                                     // Live theme observer
                                      if (window.adminTrafficThemeObserver) window.adminTrafficThemeObserver.disconnect();
                                      window.adminTrafficThemeObserver = new MutationObserver((mutations) => {
                                          mutations.forEach((mutation) => {
                                              if (mutation.attributeName === 'data-bs-theme' || mutation.attributeName === 'class') {
                                                  const activeDark = document.documentElement.getAttribute('data-bs-theme') === 'dark' || document.documentElement.classList.contains('dark');
-                                                 if (this.chart) {
-                                                     this.chart.updateOptions({
-                                                         theme: { mode: activeDark ? 'dark' : 'light' }
-                                                     });
-                                                 }
+                                                 if (this.chart) this.chart.updateOptions({ theme: { mode: activeDark ? 'dark' : 'light' } });
                                              }
                                          });
                                      });
@@ -164,46 +117,35 @@
                                  },
                                  updateTraffic(detail) {
                                      if (!this.chart) return;
-                                     
                                      let evt = Array.isArray(detail) ? detail[0] : detail;
-                                     let rxBytes = evt.rx || 0;
-                                     let txBytes = evt.tx || 0;
-                                     let rxMbps = rxBytes / 1000000;
-                                     let txMbps = txBytes / 1000000;
-
-                                     const formatLabel = (bytes) => {
-                                         if (bytes >= 1000000) return (bytes / 1000000).toFixed(2) + ' Mbps';
-                                         if (bytes >= 1000) return (bytes / 1000).toFixed(2) + ' Kbps';
-                                         return bytes.toFixed(0) + ' bps';
+                                     let rxBits = evt.rx || 0;
+                                     let txBits = evt.tx || 0;
+                                     let rxMbps = rxBits / 1000000;
+                                     let txMbps = txBits / 1000000;
+                                     const formatRate = (bits) => {
+                                         if (bits >= 1000000) return (bits / 1000000).toFixed(2) + ' Mbps';
+                                         if (bits >= 1000) return (bits / 1000).toFixed(2) + ' Kbps';
+                                         return bits.toFixed(0) + ' bps';
                                      };
-
                                      let rxLabel = document.getElementById('rx-label');
                                      let txLabel = document.getElementById('tx-label');
-                                     if (rxLabel) rxLabel.innerText = formatLabel(rxBytes);
-                                     if (txLabel) txLabel.innerText = formatLabel(txBytes);
-
+                                     let peakRxLabel = document.getElementById('peak-rx-label');
+                                     let peakTxLabel = document.getElementById('peak-tx-label');
+                                     if (rxLabel) rxLabel.innerText = formatRate(rxBits);
+                                     if (txLabel) txLabel.innerText = formatRate(txBits);
+                                     if (peakRxLabel) peakRxLabel.innerText = formatRate(evt.peakRx || 0);
+                                     if (peakTxLabel) peakTxLabel.innerText = formatRate(evt.peakTx || 0);
                                      let now = new Date().getTime();
-                                     
                                      this.dataRx.push([now, rxMbps]);
                                      if (this.dataRx.length > this.maxPoints) this.dataRx.shift();
-
                                      this.dataTx.push([now, txMbps]);
                                      if (this.dataTx.length > this.maxPoints) this.dataTx.shift();
-
-                                     this.chart.updateSeries([
-                                         { data: this.dataRx },
-                                         { data: this.dataTx }
-                                     ]);
+                                     this.chart.updateSeries([{ data: this.dataRx }, { data: this.dataTx }]);
                                  }
                              }"
-                             x-init="
-                                 $nextTick(() => {
-                                     if (window.ApexCharts) initChart();
-                                 });
-                             "
+                             x-init="$nextTick(() => { if (window.ApexCharts) initChart(); });"
                              @traffic-updated.window="updateTraffic($event.detail)"
-                             @reset-chart.window="setTimeout(() => { initChart(); }, 100)"
-                        >
+                             @reset-chart.window="setTimeout(() => { initChart(); }, 100)">
                             <div x-ref="chartContainer" style="width: 100%; height: 350px;"></div>
                         </div>
                     @endif

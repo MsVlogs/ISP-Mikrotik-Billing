@@ -14,6 +14,8 @@ class PayBill extends Page
 
     protected static ?string $navigationLabel = 'Pay Bill';
 
+    protected static string|NITENUM|NULL $NAVIGATIONGROUP = 'Billing & Finance';
+
     protected static ?string $title = 'Pay Bill';
 
     protected static ?int $navigationSort = 4;

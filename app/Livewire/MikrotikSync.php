@@ -369,16 +369,27 @@ class MikrotikSync extends Component
 
     public function delete($id)
     {
-        $router = RouterList::find($id);  // Check if router exists
+        $router = RouterList::find($id);
+
+        if (! $router) {
+            flash()->error('Router not found!');
+            return;
+        }
+
         try {
-            if ($router) {
+            DB::transaction(function () use ($router) {
+                // Keep PPP secrets/customer records intact when their router is removed.
+                // router_name is nullable and the FK does not currently cascade on delete.
+                PPPSecrets::where('router_name', $router->router_name)
+                    ->update(['router_name' => null]);
+
                 $router->delete();
-                flash()->success('Router deleted successfully!');
-            } else {
-                flash()->error('Router not found!');
-            }
+            });
+
+            flash()->success('Router deleted successfully!');
         } catch (\Exception $e) {
-            flash()->error('Error deleting router: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to delete router. Please try again.');
         }
     }
 }

@@ -1,12 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        {{ __('Dashboard') }}
+        <div class="d-flex align-items-center justify-content-between w-100 gap-2">
+            <span>{{ __('Dashboard') }}</span>
+            <button type="button" id="dashboard-randomize" class="btn btn-sm btn-outline-primary"><i class="bi bi-shuffle me-1"></i>{{ __('Randomize Dashboard') }}</button>
+        </div>
     </x-slot>
 
     {{-- Modern Stat Cards Row --}}
-    <div class="row g-3 mb-4">
+    <div id="dashboard-kpi-grid" class="row g-3 mb-4 dashboard-widget-grid">
         <!-- Card 1: Active Users -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('customers.index') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border-radius: 12px; transition: transform 0.3s ease;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-sm-center">
@@ -30,7 +33,7 @@
         </div>
 
         <!-- Card 2: Today PPPoE Collection -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('collection-report.index') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff; border-radius: 12px; transition: transform 0.3s ease;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-sm-center">
@@ -54,7 +57,7 @@
         </div>
 
         <!-- Card 3: Today Hotspot Sales -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('mikrotik-hotspot-setup') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border-radius: 12px; transition: transform 0.3s ease;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-sm-center">
@@ -78,7 +81,7 @@
         </div>
 
         <!-- Card 4: Total Revenue YTD -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('collection-report.index') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; border-radius: 12px; transition: transform 0.3s ease;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-sm-center">
@@ -103,9 +106,9 @@
     </div>
 
     {{-- Reseller Overview Stat Cards Row --}}
-    <div class="row g-3 mb-4">
+    <div id="dashboard-reseller-grid" class="row g-3 mb-4 dashboard-widget-grid">
         <!-- Card 1: Total Resellers -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('admin.resellers.index') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #1e293b, #334155); color: #fff; border-radius: 12px;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-center">
@@ -126,7 +129,7 @@
         </div>
 
         <!-- Card 2: Reseller Customers -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('customers.index') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; border-radius: 12px;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-center">
@@ -147,7 +150,7 @@
         </div>
 
         <!-- Card 3: Total Reseller Balance -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('admin.resellers.index') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #0d9488, #14b8a6); color: #fff; border-radius: 12px;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-center">
@@ -167,7 +170,7 @@
         </div>
 
         <!-- Card 4: Total Reseller Commission -->
-        <div class="col-12 col-sm-6 col-xl-3">
+        <div class="col-12 col-sm-6 col-xl-3 dashboard-widget-card" data-dashboard-href="{{ route('admin.resellers.index') }}">
             <div class="card border-0 shadow-sm overflow-hidden h-100" style="background: linear-gradient(135deg, #db2777, #ec4899); color: #fff; border-radius: 12px;">
                 <div class="card-body position-relative z-1">
                     <div class="d-flex justify-content-between align-items-center">
@@ -187,7 +190,7 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4 dashboard-analytics-grid">
         {{-- Unified Row for Routers and Graphs to allow dynamic "weight" adjustment --}}
         @foreach ($systemOverview as $routerName => $routerData)
             @php
@@ -225,9 +228,9 @@
                 }
             @endphp
 
-            <div class="col-12 col-md-6 col-lg-4 col-xxl-4 d-flex flex-fill">
+            <div class="col-12 col-xl-4 d-flex flex-fill">
                 {{-- Refined Router Card with Full Details --}}
-                <div class="card border-0 shadow-sm rounded-4 w-100 overflow-hidden d-flex flex-column router-overview-card" style="min-height: 460px;">
+                <div class="card border-0 shadow-sm rounded-4 w-100 overflow-hidden d-flex flex-column router-overview-card" style="min-height: 390px;">
                     <div class="px-3 py-2" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white;">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-hdd-network fs-2 text-info me-3" style="font-size: 1.5rem;"></i>
@@ -449,6 +452,50 @@
                 requestAnimationFrame(() => {
                     const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
 
+                    // Randomize dashboard widget order without changing any underlying data.
+                    const randomizeDashboardGrid = (grid) => {
+                        if (!grid) return;
+                        const items = Array.from(grid.children);
+                        for (let i = items.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [items[i], items[j]] = [items[j], items[i]];
+                        }
+                        items.forEach(item => grid.appendChild(item));
+                    };
+
+                    const bindDashboardInteractions = () => {
+                        document.querySelectorAll('.dashboard-widget-card[data-dashboard-href]').forEach(card => {
+                            if (card.dataset.dashboardBound === '1') return;
+                            card.dataset.dashboardBound = '1';
+                            card.style.cursor = 'pointer';
+                            card.setAttribute('role', 'link');
+                            card.setAttribute('tabindex', '0');
+                            const open = () => { window.location.href = card.dataset.dashboardHref; };
+                            card.addEventListener('click', (event) => {
+                                if (!event.target.closest('a,button,input,select,textarea')) open();
+                            });
+                            card.addEventListener('keydown', (event) => {
+                                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+                            });
+                        });
+
+                        const randomizeButton = document.getElementById('dashboard-randomize');
+                        if (randomizeButton && randomizeButton.dataset.dashboardBound !== '1') {
+                            randomizeButton.dataset.dashboardBound = '1';
+                            randomizeButton.addEventListener('click', () => {
+                                randomizeDashboardGrid(document.getElementById('dashboard-kpi-grid'));
+                                randomizeDashboardGrid(document.getElementById('dashboard-reseller-grid'));
+                            });
+                        }
+                    };
+                    bindDashboardInteractions();
+
+                    // Chart navigation: every analytical data point opens the relevant live module.
+                    const dashboardNavigate = (url) => { if (url) window.location.href = url; };
+                    const customersUrl = @json(route('customers.index'));
+                    const collectionUrl = @json(route('collection-report.index'));
+                    const billingUrl = @json(url('/billing'));
+
                     // for destroying existing charts
                     if (window.chart1) chart1.destroy();
                     if (window.chart2) chart2.destroy();
@@ -458,13 +505,12 @@
                     // ✅ 1st chart: customers
                     const customersEl = document.querySelector("#customers");
                     if (customersEl) {
-                        const customersData = @json(array_values($customersData));
+                        const customerCounts = @json($customersData);
+                        const customersData = [customerCounts.total || 0, customerCounts.active || 0, customerCounts.pending || 0, customerCounts.free || 0, customerCounts.temporary_disable || 0, customerCounts.inactive || 0, customerCounts.recent || 0];
+                        const customerTotal = Math.max(Number(customerCounts.total || 0), 1);
+                        const customerSeries = customersData.map((value, index) => index === 0 ? 100 : Math.min(100, (Number(value) / customerTotal) * 100));
                         const customers = {
-                            series: customersData,
-                            chart: {
-                                height: 360,
-                                type: 'radialBar',
-                            },
+                            series: customerSeries,
                             theme: {
                                 mode: isDark ? 'dark' : 'light'
                             },
@@ -488,12 +534,19 @@
                                         offsetX: -8,
                                         fontSize: '16px',
                                         formatter: function (seriesName, opts) {
-                                            return seriesName + ":  " + opts.w.globals.series[opts.seriesIndex]
+                                            return seriesName + ":  " + customersData[opts.seriesIndex]
                                         },
                                     },
                                 }
                             },
-                            labels: ['{{ __("Total") }}', '{{ __("Active") }}', '{{ __("Pending") }}', '{{ __("Free") }}', '{{ __("Temporary Disable") }}', '{{ __("Inactive") }}', '{{ __("Recent") }}']
+                            labels: ['{{ __("Total") }}', '{{ __("Active") }}', '{{ __("Pending") }}', '{{ __("Free") }}', '{{ __("Temporary Disable") }}', '{{ __("Inactive") }}', '{{ __("Recent") }}'],
+                            chart: { height: 360, type: 'radialBar', events: {
+                                dataPointSelection: function(event, chartContext, config) {
+                                    const statusMap = ['all','active','pending','free','disable','inactive','recent'];
+                                    const status = statusMap[config.dataPointIndex] || 'all';
+                                    dashboardNavigate(customersUrl + (status === 'all' ? '' : '?dashboard_status=' + encodeURIComponent(status)));
+                                }
+                            } }
                         };
                         window.chart1 = new ApexCharts(customersEl, customers);
                         chart1.render();
@@ -564,6 +617,16 @@
                                 axisTicks: { show: false },
                             },
                             grid: { borderColor: 'rgba(128,128,128,0.15)', strokeDashArray: 4 },
+                            chart: {
+                                type: 'bar', height: 340, toolbar: { show: false },
+                                fontFamily: 'inherit', animations: { enabled: true, easing: 'easeinout', speed: 600 },
+                                events: {
+                                    dataPointSelection: function(event, chartContext, config) {
+                                        const urls = [billingUrl, billingUrl, billingUrl, customersUrl + '?dashboard_status=active', customersUrl + '?dashboard_status=recent', '{{ url('/mikrotik-setup/hotspot') }}', '{{ url('/mikrotik-setup/hotspot') }}', billingUrl];
+                                        dashboardNavigate(urls[config.dataPointIndex] || billingUrl);
+                                    }
+                                }
+                            },
                             tooltip: {
                                 y: { formatter: val => '৳ ' + Math.abs(val).toLocaleString(undefined, {minimumFractionDigits:2}) },
                             },
@@ -640,6 +703,16 @@
                                 itemMargin: { horizontal: 6 },
                             },
                             grid: { borderColor: 'rgba(128,128,128,0.15)', strokeDashArray: 4 },
+                            chart: {
+                                type: 'bar', height: 260, toolbar: { show: false },
+                                fontFamily: 'inherit', animations: { enabled: true, easing: 'easeinout', speed: 600 },
+                                events: {
+                                    dataPointSelection: function(event, chartContext, config) {
+                                        const status = statusKeys[config.dataPointIndex] || 'active';
+                                        dashboardNavigate(customersUrl + '?dashboard_status=' + encodeURIComponent(status));
+                                    }
+                                }
+                            },
                             tooltip: {
                                 shared: true,
                                 intersect: false,
@@ -659,7 +732,6 @@
                         const revenueData = Object.values(chartData).map(item => item.revenue_difference);
 
                         const income_revenue = {
-                            chart: { height: 350, type: "line", stacked: false },
                             theme: {
                                 mode: isDark ? 'dark' : 'light'
                             },
@@ -715,6 +787,25 @@
                                     }
                                 }
                             ],
+                            chart: {
+                                height: 350, type: "line", stacked: false,
+                                events: {
+                                    dataPointSelection: function(event, chartContext, config) {
+                                        const month = (config.dataPointIndex ?? -1) + 1;
+                                        if (month < 1 || month > 12) return;
+                                        // Columns represent previous/current year; the revenue-difference line
+                                        // is based on the current-year comparison and therefore follows current year.
+                                        const seriesIndex = config.seriesIndex ?? 1;
+                                        const year = seriesIndex === 0
+                                            ? {{ now()->subYear()->year }}
+                                            : {{ now()->year }};
+                                        const url = new URL(collectionUrl, window.location.origin);
+                                        url.searchParams.set('month', month);
+                                        url.searchParams.set('year', year);
+                                        dashboardNavigate(url.toString());
+                                    }
+                                }
+                            },
                             tooltip: {
                                 shared: false,
                                 intersect: true,

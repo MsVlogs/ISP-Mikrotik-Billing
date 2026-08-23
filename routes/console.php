@@ -41,6 +41,10 @@ Schedule::call(function () {
 })->name('expire-realtime-hotspot-users')->everyMinute()->withoutOverlapping();
 
 Schedule::call(function () {
+    Artisan::call('app:check-device-watchers');
+})->name('check-device-watchers')->everyMinute()->withoutOverlapping();
+
+Schedule::call(function () {
     $days = (int) MainSiteData::getValue('log_retention_days', 30);
     app(MikrotikController::class)->pruneOldLogs($days);
 })->dailyAt('04:00');

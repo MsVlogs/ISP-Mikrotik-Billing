@@ -140,6 +140,15 @@
                             </div>
                         @endif
                     </x-slot>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <x-mikrotik.form-group label="Latitude" type="text" name="latitude" placeholder="23.8103" />
+                        </div>
+                        <div class="col-md-6">
+                            <x-mikrotik.form-group label="Longitude" type="text" name="longitude" placeholder="90.4125" />
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-2">Enter GPS coordinates to show this customer on Network Monitoring.</small>
                     <x-section-border/>
                 </x-mikrotik.section-form>
             </div>

@@ -37,7 +37,7 @@
         'theme_font_family'        => siteUrlSettings('theme_font_family')        ?? 'Outfit',
         'theme_nav_style'          => siteUrlSettings('theme_nav_style')          ?? 'sidebar',
         'theme_widget_style'       => siteUrlSettings('theme_widget_style')       ?? 'glass',
-        'theme_mode'               => siteUrlSettings('theme_mode')               ?? 'dark',
+        'theme_mode'               => siteUrlSettings('portal_theme_mode')       ?? siteUrlSettings('theme_mode') ?? 'light',
         'theme_transparency'       => siteUrlSettings('theme_transparency')       ?? '0.5',
         'theme_blur'               => siteUrlSettings('theme_blur')               ?? '16px',
         'theme_animations'         => siteUrlSettings('theme_animations')         ?? '1.0',

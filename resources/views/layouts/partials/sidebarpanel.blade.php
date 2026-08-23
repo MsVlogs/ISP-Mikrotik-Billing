@@ -183,6 +183,17 @@
                     </div>
                 </a>
 
+                <!-- Mikrotik Server Dropdown -->
+                <a class="nav-link dropdown-indicator collapsed" href="#mikrotikServer" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="mikrotikServer">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-hdd-network"></i></span><span class="nav-link-text ps-1">{{ __('Mikrotik Server') }}</span></div>
+                </a>
+                <ul class="nav collapse" id="mikrotikServer">
+                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-server') }}"><div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Server') }}</span></div></a></li>
+                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-server-backup') }}"><div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Server Backup') }}</span></div></a></li>
+                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-server-import') }}"><div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Import From Mikrotik') }}</span></div></a></li>
+                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-server-bulk-import') }}"><div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Bulk Clients Import') }}</span></div></a></li>
+                </ul>
+
                 <!-- Mikrotik Setup Dropdown -->
                 <a class="nav-link dropdown-indicator collapsed" href="#mikrotikSetup" role="button"
                     data-bs-toggle="collapse" aria-expanded="false" aria-controls="mikrotikSetup">
