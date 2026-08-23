@@ -94,7 +94,7 @@ class MikrotikClients extends Component
         return response()->streamDownload(function () use ($sheet) { (new Xlsx($sheet))->save('php://output'); }, $file);
     }
 
-    public function exportToClientList(int $id): void
+    public function exportToClientList(int $id)
     {
         abort_unless(hasAccess(['Super Admin'], ['all-customer']), 403);
 
@@ -104,34 +104,7 @@ class MikrotikClients extends Component
             return;
         }
 
-        $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
-        $last = CustomersInfo::withTrashed()->orderBy('id', 'desc')->value('customer_unique_id');
-        $counter = $last && preg_match('/(\d+)$/', (string) $last, $m) ? (int) $m[1] : 99;
-        DB::transaction(function () use ($secret, $prefix, &$counter) {
-            do {
-                    $counter++;
-                    $uniqueId = $prefix.$counter;
-                } while (CustomersInfo::withTrashed()->where('customer_unique_id', $uniqueId)->exists());
-
-                CustomersInfo::create([
-                    'customer_unique_id' => $uniqueId,
-                    'ppp_user_id' => $secret->id,
-                    'customer_name' => $secret->username,
-                    'status' => 'pending',
-                    'connection_date' => Carbon::now(),
-                ]);
-
-                BillingInfo::create([
-                    'customer_bill_unique_id' => $uniqueId,
-                    'billing_type' => 'prepaid',
-                    'auto_disable_date' => Carbon::now(),
-                ]);
-
-                OfficialInfo::create(['customer_office_unique_id' => $uniqueId]);
-        });
-
-        $this->dispatch('customer-list-updated');
-        flash()->success("{$secret->username} added to Client List successfully.");
+        return redirect()->route('customers.create', ['mikrotik_client' => $secret->id]);
     }
 
     public function exportCsv()

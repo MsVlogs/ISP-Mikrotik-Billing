@@ -96,6 +96,8 @@ class NewCustomer extends Component
 
     public $router_name = '';
 
+    public bool $importingMikrotikClient = false;
+
     public $auto_disable_month = 0;
 
     public $step = 1;
@@ -136,6 +138,27 @@ class NewCustomer extends Component
         }
 
         $this->connected_by = auth()->id();
+
+        $mikrotikClientId = request()->integer('mikrotik_client');
+        if ($mikrotikClientId) {
+            $secret = PPPSecrets::findOrFail($mikrotikClientId);
+            abort_unless($secret->service === null || strtolower((string) $secret->service) === 'pppoe', 422, 'Only PPPoE users can be imported from MikroTik.');
+
+            $this->importingMikrotikClient = true;
+            $this->customer_name = $secret->username;
+            $this->router_name = $secret->router_name ?? '';
+            $this->service = strtolower((string) ($secret->service ?: 'pppoe'));
+            $this->profile = $secret->profile;
+            $this->username = $secret->username;
+            $this->password = $secret->password;
+            $this->ppp_remote_ip = $secret->ppp_remote_ip;
+            $this->caller_id = $secret->caller_id;
+            $this->comment = $secret->comment;
+            $this->connection_date = optional($secret->created_at)->format('Y-m-d') ?: now()->format('Y-m-d');
+            $this->profileNames = $this->profile ? [$this->profile] : [];
+            $this->auto_disable = true;
+            $this->auto_disable_date = now()->addDays(30)->format('Y-m-d');
+        }
 
         return true;
     }
@@ -430,6 +453,12 @@ class NewCustomer extends Component
         try {
             $this->calculateTotal('package_name');
             $this->validate();
+
+            if ($this->importingMikrotikClient) {
+                // Importing an existing MikroTik PPP secret: never write it back to the router.
+                $this->createUser();
+                return;
+            }
 
             if ($this->service == 'pppoe') {
                 try {

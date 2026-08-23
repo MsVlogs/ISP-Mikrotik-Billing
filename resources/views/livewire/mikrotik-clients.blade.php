@@ -33,7 +33,7 @@
                             <td><span class="badge bg-warning text-dark">{{ $client->status ?: 'Unique' }}</span></td><td>{{ $client->customer?->branch ?: 'N/A' }}</td>
                             <td><button wire:click="toggle({{ $client->id }})" class="btn btn-sm {{ in_array(strtolower((string)$client->status), ['disabled','inactive']) ? 'btn-secondary' : 'btn-primary' }}">{{ in_array(strtolower((string)$client->status), ['disabled','inactive']) ? 'Enable' : 'Disable' }}</button></td>
                             <td class="text-nowrap">
-                                <button wire:click="exportToClientList({{ $client->id }})" class="btn btn-sm btn-info text-white" title="Export To Client List"><i class="bi bi-person-plus-fill"></i></button>
+                                <a href="{{ route('customers.create', ['mikrotik_client' => $client->id]) }}" target="_blank" rel="noopener" class="btn btn-sm btn-info text-white" title="Export To Client List"><i class="bi bi-person-plus-fill"></i></a>
                                 <button wire:click="exportCsv" class="btn btn-sm btn-link" title="Export CSV"><i class="bi bi-filetype-csv"></i></button>
                             </td>
                         </tr>
