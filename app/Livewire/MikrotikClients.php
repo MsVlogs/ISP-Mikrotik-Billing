@@ -94,25 +94,21 @@ class MikrotikClients extends Component
         return response()->streamDownload(function () use ($sheet) { (new Xlsx($sheet))->save('php://output'); }, $file);
     }
 
-    public function exportToClientList(): void
+    public function exportToClientList(int $id): void
     {
         abort_unless(hasAccess(['Super Admin'], ['all-customer']), 403);
 
-        $secrets = $this->filteredSecretsQuery()->with('customer')->get();
+        $secret = PPPSecrets::with('customer')->findOrFail($id);
+        if ($secret->customer) {
+            flash()->info("{$secret->username} is already in Client List.");
+            return;
+        }
+
         $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
         $last = CustomersInfo::orderBy('id', 'desc')->value('customer_unique_id');
         $counter = $last && preg_match('/(\d+)$/', (string) $last, $m) ? (int) $m[1] : 99;
-        $created = 0;
-        $skipped = 0;
-
-        DB::transaction(function () use ($secrets, $prefix, &$counter, &$created, &$skipped) {
-            foreach ($secrets as $secret) {
-                if ($secret->customer) {
-                    $skipped++;
-                    continue;
-                }
-
-                do {
+        DB::transaction(function () use ($secret, $prefix, &$counter) {
+            do {
                     $counter++;
                     $uniqueId = $prefix.$counter;
                 } while (CustomersInfo::where('customer_unique_id', $uniqueId)->exists());
@@ -132,12 +128,10 @@ class MikrotikClients extends Component
                 ]);
 
                 OfficialInfo::create(['customer_office_unique_id' => $uniqueId]);
-                $created++;
-            }
         });
 
         $this->dispatch('customer-list-updated');
-        flash()->success("Added {$created} new clients to Client List. {$skipped} existing clients skipped.");
+        flash()->success("{$secret->username} added to Client List successfully.");
     }
 
     public function exportCsv()
