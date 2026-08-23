@@ -105,13 +105,13 @@ class MikrotikClients extends Component
         }
 
         $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
-        $last = CustomersInfo::orderBy('id', 'desc')->value('customer_unique_id');
+        $last = CustomersInfo::withTrashed()->orderBy('id', 'desc')->value('customer_unique_id');
         $counter = $last && preg_match('/(\d+)$/', (string) $last, $m) ? (int) $m[1] : 99;
         DB::transaction(function () use ($secret, $prefix, &$counter) {
             do {
                     $counter++;
                     $uniqueId = $prefix.$counter;
-                } while (CustomersInfo::where('customer_unique_id', $uniqueId)->exists());
+                } while (CustomersInfo::withTrashed()->where('customer_unique_id', $uniqueId)->exists());
 
                 CustomersInfo::create([
                     'customer_unique_id' => $uniqueId,
