@@ -35,6 +35,9 @@ class MikrotikClients extends Component
             ->whereNotNull('profile')->where('profile', '!=', '')->distinct()->orderBy('profile')->pluck('profile');
 
         $clients = PPPSecrets::query()->with('customer')
+            // Manual Client List export: once a PPP secret is exported and linked,
+            // remove it from this pending MikroTik import/sync list. Never delete the PPP secret.
+            ->whereDoesntHave('customer')
             ->when($this->router, fn ($q) => $q->where('router_name', $this->router))
             ->when($this->protocol, fn ($q) => $q->whereRaw('upper(service) = ?', [strtoupper($this->protocol)]))
             ->when($this->profile, fn ($q) => $q->where('profile', $this->profile))
