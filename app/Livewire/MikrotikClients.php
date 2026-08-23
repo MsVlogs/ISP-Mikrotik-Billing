@@ -104,7 +104,7 @@ class MikrotikClients extends Component
             return;
         }
 
-        return redirect()->route('customers.create', ['mikrotik_client' => $secret->id]);
+        return redirect()->route('reseller.customers.create', ['mikrotik_client' => $secret->id]);
     }
 
     public function exportCsv()
