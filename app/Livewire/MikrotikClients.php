@@ -3,8 +3,13 @@
 namespace App\Livewire;
 
 use App\Http\Controllers\MikrotikController;
+use App\Models\BillingInfo;
+use App\Models\CustomersInfo;
+use App\Models\OfficialInfo;
 use App\Models\PPPSecrets;
 use App\Models\RouterList;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -89,7 +94,53 @@ class MikrotikClients extends Component
         return response()->streamDownload(function () use ($sheet) { (new Xlsx($sheet))->save('php://output'); }, $file);
     }
 
-    public function exportClientList()
+    public function exportToClientList(): void
+    {
+        abort_unless(hasAccess(['Super Admin'], ['all-customer']), 403);
+
+        $secrets = $this->filteredSecretsQuery()->with('customer')->get();
+        $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
+        $last = CustomersInfo::orderBy('id', 'desc')->value('customer_unique_id');
+        $counter = $last && preg_match('/(\d+)$/', (string) $last, $m) ? (int) $m[1] : 99;
+        $created = 0;
+        $skipped = 0;
+
+        DB::transaction(function () use ($secrets, $prefix, &$counter, &$created, &$skipped) {
+            foreach ($secrets as $secret) {
+                if ($secret->customer) {
+                    $skipped++;
+                    continue;
+                }
+
+                do {
+                    $counter++;
+                    $uniqueId = $prefix.$counter;
+                } while (CustomersInfo::where('customer_unique_id', $uniqueId)->exists());
+
+                CustomersInfo::create([
+                    'customer_unique_id' => $uniqueId,
+                    'ppp_user_id' => $secret->id,
+                    'customer_name' => $secret->username,
+                    'status' => 'pending',
+                    'connection_date' => Carbon::now(),
+                ]);
+
+                BillingInfo::create([
+                    'customer_bill_unique_id' => $uniqueId,
+                    'billing_type' => 'prepaid',
+                    'auto_disable_date' => Carbon::now(),
+                ]);
+
+                OfficialInfo::create(['customer_office_unique_id' => $uniqueId]);
+                $created++;
+            }
+        });
+
+        $this->dispatch('customer-list-updated');
+        flash()->success("Added {$created} new clients to Client List. {$skipped} existing clients skipped.");
+    }
+
+    public function exportCsv()
     {
         return $this->csvDownload('client-list');
     }
@@ -99,17 +150,24 @@ class MikrotikClients extends Component
         return $this->csvDownload('macreseller');
     }
 
-    protected function exportRows(): array
+    protected function filteredSecretsQuery()
     {
-        $query = PPPSecrets::query()->with('customer')
-            ->when($this->router, fn ($q) => $q->where('router_name', $this->router))
+        return PPPSecrets::query()->when($this->router, fn ($q) => $q->where('router_name', $this->router))
             ->when($this->protocol, fn ($q) => $q->whereRaw('upper(service) = ?', [strtoupper($this->protocol)]))
             ->when($this->profile, fn ($q) => $q->where('profile', $this->profile))
+            ->when($this->userType === 'Unique', fn ($q) => $q->where(function ($q) {
+                $q->whereNull('status')->orWhereNotIn('status', ['duplicate', 'disabled_duplicate']);
+            }))
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $s = '%'.addcslashes($this->search, '%_').'%';
                 $q->where('username', 'like', $s)->orWhere('caller_id', 'like', $s)->orWhere('router_name', 'like', $s);
             }))
-            ->orderBy('username')->get();
+            ->orderBy('username');
+    }
+
+    protected function exportRows(): array
+    {
+        $query = $this->filteredSecretsQuery()->with('customer');
 
         return $query->map(function ($c) {
             $logout = $c->last_logged_out;
