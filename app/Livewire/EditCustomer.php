@@ -90,6 +90,11 @@ class EditCustomer extends Component
 
     public $interfaceNames = [];
 
+    private function mtValue(?string $value): string
+    {
+        return app(\App\Http\Controllers\MikrotikController::class)->mtQuote($value);
+    }
+
     public function mount($customerId)
     {
         if (! hasAccess(['Super Admin'], ['edit-customer']) && ! auth()->user()->hasRole('Reseller')) {
@@ -469,9 +474,9 @@ class EditCustomer extends Component
 
                     // Build and execute PPP secret add via pooled/cached controller
                     if ($this->ppp_remote_ip != '') {
-                        $cmd = "/ppp secret add name=\"{$this->username}\" password=\"{$this->password}\" service=\"{$this->service}\" profile=\"{$this->profile}\" comment=\"{$this->comment}\" remote-address=\"{$this->ppp_remote_ip}\" caller-id=\"{$this->caller_id}\"";
+                        $cmd = "/ppp secret add name={$this->mtValue($this->username)} password={$this->mtValue($this->password)} service={$this->mtValue($this->service)} profile={$this->mtValue($this->profile)} comment={$this->mtValue($this->comment)} remote-address={$this->mtValue($this->ppp_remote_ip)} caller-id={$this->mtValue($this->caller_id)}";
                     } else {
-                        $cmd = "/ppp secret add name=\"{$this->username}\" password=\"{$this->password}\" service=\"{$this->service}\" profile=\"{$this->profile}\" comment=\"{$this->comment}\" caller-id=\"{$this->caller_id}\"";
+                        $cmd = "/ppp secret add name={$this->mtValue($this->username)} password={$this->mtValue($this->password)} service={$this->mtValue($this->service)} profile={$this->mtValue($this->profile)} comment={$this->mtValue($this->comment)} caller-id={$this->mtValue($this->caller_id)}";
                     }
 
                     app(MikrotikController::class)->singleWrite($this->router_name, $cmd);
@@ -527,7 +532,7 @@ class EditCustomer extends Component
                     // Add simple queue via pooled/cached controller
                     app(MikrotikController::class)->singleWrite(
                         $this->router_name,
-                        "/queue simple add name=\"{$this->queue_name}\" profile=\"{$this->profile}\" address=\"{$this->ip_address}\" max-limit=\"{$this->bandwidth}\" comment=\"{$this->comment}\" disabled=yes"
+                        "/queue simple add name={$this->mtValue($this->queue_name)} profile={$this->mtValue($this->profile)} address={$this->mtValue($this->ip_address)} max-limit={$this->mtValue($this->bandwidth)} comment={$this->mtValue($this->comment)} disabled=yes"
                     );
 
                     // Router write succeeded — persist to database
