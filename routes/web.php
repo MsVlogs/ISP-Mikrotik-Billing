@@ -196,6 +196,19 @@ Route::middleware([
             return redirect()->route('site-settings');
         });
 
+        // Sweet Billing parity aliases — reuse existing production modules.
+        Route::get('/mobile-banking', fn () => redirect()->route('sms-setup'))->name('sweet.mobile-banking');
+        Route::get('/partner-network', fn () => redirect()->route('admin.resellers.index'))->name('sweet.partner-network');
+        Route::get('/bandwidth-reseller', fn () => redirect()->route('reseller.dashboard'))->name('sweet.bandwidth-reseller');
+        Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('sweet.devices-inventory');
+        Route::get('/stock-inventory', fn () => redirect()->route('admin.purchase-requests'))->name('sweet.stock-inventory');
+        Route::get('/communication-center', fn () => redirect()->route('sms-bridge.index'))->name('sweet.communication-center');
+        Route::get('/support-center', fn () => redirect()->route('admin-tickets'))->name('sweet.support-center');
+        Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('sweet.team-access');
+        Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('sweet.system-settings');
+        Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('sweet.billing-helpline');
+        Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('sweet.profile-security');
+
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
         // Route::get('/edit-customer', EditCustomer::class);
         // Route::get('/customers', CustomerList::class);

@@ -277,6 +277,28 @@
                 <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-login-messages') }}"><div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-bell"></i></span><span class="nav-link-text ps-1">{{ __('Logs & Alerts') }}</span></div></a>
             </li>
             <li class="nav-item">
+                <!-- Sweet Billing parity modules -->
+                <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
+                    <div class="col-auto navbar-vertical-label">{{ __('Sweet Billing') }}</div>
+                </div>
+                @foreach([
+                    ['sweet.mobile-banking','Mobile Banking','bi-phone'],
+                    ['sweet.partner-network','Partner Network','bi-diagram-2'],
+                    ['sweet.bandwidth-reseller','Bandwidth Reseller','bi-speedometer2'],
+                    ['sweet.devices-inventory','Devices Inventory','bi-router'],
+                    ['sweet.stock-inventory','Stock Inventory','bi-box-seam'],
+                    ['sweet.communication-center','Communication Center','bi-chat-dots'],
+                    ['sweet.support-center','Support Center','bi-life-preserver'],
+                    ['sweet.team-access','Team & Access','bi-people'],
+                    ['sweet.system-settings','System Settings','bi-gear'],
+                    ['sweet.billing-helpline','Billing Helpline','bi-headset'],
+                    ['sweet.profile-security','Profile & Security','bi-shield-lock'],
+                ] as [$route,$label,$icon])
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">
+                        <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi {{ $icon }}"></i></span><span class="nav-link-text ps-1">{{ __($label) }}</span></div>
+                    </a>
+                @endforeach
+
                 <!-- label-->
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
                     <div class="col-auto navbar-vertical-label">{{ __('Customers') }}</div>
