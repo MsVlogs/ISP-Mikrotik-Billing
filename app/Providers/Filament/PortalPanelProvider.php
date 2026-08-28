@@ -34,7 +34,7 @@ class PortalPanelProvider extends PanelProvider
             ->id('portal')
             ->path('portal')
             ->favicon(site_image(siteUrlSettings('site_favicon'), 'images/favicon.png'))
-            ->brandLogo(site_image(siteUrlSettings('site_logo'), 'images/favicon.png'))
+            ->brandLogo(asset('images/x-link-limited-logo.svg'))
             ->brandName(siteUrlSettings('portal_name') ?? siteUrlSettings('site_name') ?? 'Sweet Billing')
             ->brandLogoHeight('3.5rem')
             ->login(Login::class)
