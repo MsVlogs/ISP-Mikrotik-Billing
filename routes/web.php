@@ -196,18 +196,62 @@ Route::middleware([
             return redirect()->route('site-settings');
         });
 
-        // Sweet Billing parity aliases — reuse existing production modules.
-        Route::get('/mobile-banking', fn () => redirect()->route('sms-setup'))->name('sweet.mobile-banking');
-        Route::get('/partner-network', fn () => redirect()->route('admin.resellers.index'))->name('sweet.partner-network');
-        Route::get('/bandwidth-reseller', fn () => redirect()->route('reseller.dashboard'))->name('sweet.bandwidth-reseller');
-        Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('sweet.devices-inventory');
-        Route::get('/stock-inventory', fn () => redirect()->route('admin.purchase-requests'))->name('sweet.stock-inventory');
-        Route::get('/communication-center', fn () => redirect()->route('sms-bridge.index'))->name('sweet.communication-center');
-        Route::get('/support-center', fn () => redirect()->route('admin-tickets'))->name('sweet.support-center');
-        Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('sweet.team-access');
-        Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('sweet.system-settings');
-        Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('sweet.billing-helpline');
-        Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('sweet.profile-security');
+        // Sweet Billing functional module hubs — backed by existing production features.
+        Route::get('/mobile-banking', fn () => view('sweet.module', [
+            'title'=>'Mobile Banking','icon'=>'bi-phone','description'=>'Mobile payment, SMS and collection operations.',
+            'stats'=>[['Gateway','Ready'],['SMS','Ready'],['Collections','Live']],
+            'links'=>[[route('sms-setup'),'SMS Setup','Gateway configuration'],[route('sms-bridge.index'),'SMS Bridge','Bridge operations'],[route('payment-collection'),'Payment Collection','Collection desk']],
+        ]))->name('sweet.mobile-banking');
+        Route::get('/partner-network', fn () => view('sweet.module', [
+            'title'=>'Partner Network','icon'=>'bi-diagram-3','description'=>'Partner and reseller management.',
+            'stats'=>[['Partners','Live'],['Requests','Live'],['Access','Protected']],
+            'links'=>[[route('admin.resellers.index'),'Partner Management','Create and manage partners'],[route('admin.purchase-requests'),'Requests','Review requests'],[route('reseller.dashboard'),'Partner Dashboard','Reseller operations']],
+        ]))->name('sweet.partner-network');
+        Route::get('/bandwidth-reseller', fn () => view('sweet.module', [
+            'title'=>'Bandwidth Reseller','icon'=>'bi-speedometer2','description'=>'Reseller packages, wallet, vouchers and customers.',
+            'stats'=>[['Packages','Ready'],['Wallet','Live'],['Vouchers','Live']],
+            'links'=>[[route('reseller.dashboard'),'Reseller Dashboard','Operations'],[route('reseller.packages.index'),'Packages','Package management'],[route('reseller.wallet.index'),'Wallet','Balances'],[route('reseller.vouchers.index'),'Vouchers','Voucher management']],
+        ]))->name('sweet.bandwidth-reseller');
+        Route::get('/devices-inventory', fn () => view('sweet.module', [
+            'title'=>'Devices Inventory','icon'=>'bi-hdd-network','description'=>'Router inventory, topology and device health.',
+            'stats'=>[['Routers','Live'],['Topology','Ready'],['Watchers','Ready']],
+            'links'=>[[route('mikrotik-server'),'MikroTik Server','Router inventory'],[route('network-map'),'Network Map','Topology'],[route('device-watcher'),'Device Watcher','Health checks']],
+        ]))->name('sweet.devices-inventory');
+        Route::get('/stock-inventory', fn () => view('sweet.module', [
+            'title'=>'Stock Inventory','icon'=>'bi-box-seam','description'=>'Stock and package-request workflows.',
+            'stats'=>[['Requests','Live'],['Packages','Ready']],
+            'links'=>[[route('admin.purchase-requests'),'Purchase Requests','Review requests'],[route('package-list-setup'),'Packages','Catalog']],
+        ]))->name('sweet.stock-inventory');
+        Route::get('/communication-center', fn () => view('sweet.module', [
+            'title'=>'Communication Center','icon'=>'bi-chat-dots','description'=>'SMS, notifications and customer communication.',
+            'stats'=>[['SMS','Ready'],['Bridge','Ready'],['Alerts','Live']],
+            'links'=>[[route('sms-setup'),'SMS Setup','Gateway settings'],[route('sms-bridge.index'),'SMS Bridge','Bridge management'],[route('notifications'),'Notifications','Notification center']],
+        ]))->name('sweet.communication-center');
+        Route::get('/support-center', fn () => view('sweet.module', [
+            'title'=>'Support Center','icon'=>'bi-headset','description'=>'Customer support and operational assistance.',
+            'stats'=>[['Tickets','Live'],['Logs','Live']],
+            'links'=>[[route('admin-tickets'),'Support Tickets','Manage tickets'],[route('admin.activity-logs'),'Activity Logs','Operational history']],
+        ]))->name('sweet.support-center');
+        Route::get('/team-access', fn () => view('sweet.module', [
+            'title'=>'Team & Access','icon'=>'bi-people','description'=>'Users, roles and access administration.',
+            'stats'=>[['Users','Protected'],['Roles','Protected'],['Auth','Active']],
+            'links'=>[[route('admin-users'),'Manage Users','User administration'],[route('admin-roles'),'Manage Roles','Permissions'],[route('profile.show'),'My Profile','Account']],
+        ]))->name('sweet.team-access');
+        Route::get('/system-settings', fn () => view('sweet.module', [
+            'title'=>'System Settings','icon'=>'bi-gear','description'=>'Application, branding, MikroTik and messaging configuration.',
+            'stats'=>[['Environment',app()->environment()],['Debug',config('app.debug') ? 'ON' : 'OFF'],['Status','Online']],
+            'links'=>[[route('site-settings'),'Site Settings','Application settings'],[route('mikrotik-sync'),'MikroTik Setup','Router integration'],[route('sms-setup'),'SMS Setup','Messaging']],
+        ]))->name('sweet.system-settings');
+        Route::get('/billing-helpline', fn () => view('sweet.module', [
+            'title'=>'Billing Helpline','icon'=>'bi-telephone','description'=>'Billing support and collection assistance.',
+            'stats'=>[['Billing','Online'],['Support','Ready'],['Reports','Live']],
+            'links'=>[[route('admin-tickets'),'Support Tickets','Customer support'],[route('payment-collection'),'Payment Collection','Collection'],[route('collection-report.index'),'Collection Report','Reports']],
+        ]))->name('sweet.billing-helpline');
+        Route::get('/profile-security', fn () => view('sweet.module', [
+            'title'=>'Profile & Security','icon'=>'bi-shield-lock','description'=>'Account profile, access and authentication controls.',
+            'stats'=>[['Authentication','Protected'],['Debug',config('app.debug') ? 'ON' : 'OFF'],['Session','Secure']],
+            'links'=>[[route('profile.show'),'My Profile','Account settings'],[route('sweet.team-access'),'Team & Access','Users and roles'],[route('admin.login-logs'),'Login Logs','Authentication events']],
+        ]))->name('sweet.profile-security');
 
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
         // Route::get('/edit-customer', EditCustomer::class);
