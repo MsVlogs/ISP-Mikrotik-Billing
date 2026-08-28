@@ -35,6 +35,9 @@ class MikrotikClients extends Component
             ->whereNotNull('profile')->where('profile', '!=', '')->distinct()->orderBy('profile')->pluck('profile');
 
         $clients = PPPSecrets::query()->with('customer')
+            // Manual Client List export: once a PPP secret is exported and linked,
+            // remove it from this pending MikroTik import/sync list. Never delete the PPP secret.
+            ->whereDoesntHave('customer')
             ->when($this->router, fn ($q) => $q->where('router_name', $this->router))
             ->when($this->protocol, fn ($q) => $q->whereRaw('upper(service) = ?', [strtoupper($this->protocol)]))
             ->when($this->profile, fn ($q) => $q->where('profile', $this->profile))
@@ -94,9 +97,19 @@ class MikrotikClients extends Component
         return response()->streamDownload(function () use ($sheet) { (new Xlsx($sheet))->save('php://output'); }, $file);
     }
 
-    public function exportToClientList(): void
+    public function exportToClientList(?int $id = null): void
     {
         abort_unless(hasAccess(['Super Admin'], ['all-customer']), 403);
+
+        if ($id !== null) {
+            $secret = PPPSecrets::with('customer')->findOrFail($id);
+            if ($secret->customer) {
+                flash()->info("{$secret->username} is already in Client List.");
+                return;
+            }
+            $this->redirectRoute('new-customer', ['mikrotik_client' => $secret->id]);
+            return;
+        }
 
         $secrets = $this->filteredSecretsQuery()->with('customer')->get();
         $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
@@ -107,16 +120,11 @@ class MikrotikClients extends Component
 
         DB::transaction(function () use ($secrets, $prefix, &$counter, &$created, &$skipped) {
             foreach ($secrets as $secret) {
-                if ($secret->customer) {
-                    $skipped++;
-                    continue;
-                }
-
+                if ($secret->customer) { $skipped++; continue; }
                 do {
                     $counter++;
                     $uniqueId = $prefix.$counter;
                 } while (CustomersInfo::where('customer_unique_id', $uniqueId)->exists());
-
                 CustomersInfo::create([
                     'customer_unique_id' => $uniqueId,
                     'ppp_user_id' => $secret->id,
@@ -124,18 +132,15 @@ class MikrotikClients extends Component
                     'status' => 'pending',
                     'connection_date' => Carbon::now(),
                 ]);
-
                 BillingInfo::create([
                     'customer_bill_unique_id' => $uniqueId,
                     'billing_type' => 'prepaid',
                     'auto_disable_date' => Carbon::now(),
                 ]);
-
                 OfficialInfo::create(['customer_office_unique_id' => $uniqueId]);
                 $created++;
             }
         });
-
         $this->dispatch('customer-list-updated');
         flash()->success("Added {$created} new clients to Client List. {$skipped} existing clients skipped.");
     }
@@ -169,7 +174,11 @@ class MikrotikClients extends Component
     {
         $query = $this->filteredSecretsQuery()->with('customer');
 
+<<<<<<< HEAD
         return $query->map(function ($c) {
+=======
+        return $query->get()->map(function ($c) {
+>>>>>>> origin/main
             $logout = $c->last_logged_out;
             $logoutTime = $logout ? (is_object($logout) && method_exists($logout, 'format') ? $logout->format('d/m/Y h:i A') : date('d/m/Y h:i A', strtotime((string) $logout))) : 'N/A';
             return [$c->username, $c->password, $c->service, $c->profile, $c->caller_id ?: 'N/A', $c->router_name, $logoutTime, $c->status ?: 'Unknown', $c->customer?->branch ?: 'N/A'];

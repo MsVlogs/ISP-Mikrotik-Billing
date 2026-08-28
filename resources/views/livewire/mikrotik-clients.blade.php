@@ -33,7 +33,10 @@
                             <td class="fw-semibold">{{ $client->username }}</td><td>••••••••</td><td>{{ strtolower($client->service ?: 'pppoe') }}</td><td>{{ $client->profile ?: 'N/A' }}</td><td>{{ $client->caller_id ?: 'N/A' }}</td><td>{{ $client->router_name }}</td><td>{{ $client->last_logged_out ? \Illuminate\Support\Carbon::parse($client->last_logged_out)->format('d/m/Y h:i A') : 'N/A' }}</td>
                             <td><span class="badge bg-warning text-dark">{{ $client->status ?: 'Unique' }}</span></td><td>{{ $client->customer?->branch ?: 'N/A' }}</td>
                             <td><button wire:click="toggle({{ $client->id }})" class="btn btn-sm {{ in_array(strtolower((string)$client->status), ['disabled','inactive']) ? 'btn-secondary' : 'btn-primary' }}">{{ in_array(strtolower((string)$client->status), ['disabled','inactive']) ? 'Enable' : 'Disable' }}</button></td>
-                            <td><button wire:click="exportCsv" class="btn btn-sm btn-link" title="Export CSV"><i class="bi bi-filetype-csv"></i></button></td>
+                            <td class="text-nowrap">
+                                <button wire:click="exportToClientList({{ $client->id }})" class="btn btn-sm btn-info text-white" title="Export To Client List"><i class="bi bi-person-plus-fill"></i></button>
+                                <button wire:click="exportCsv" class="btn btn-sm btn-link" title="Export CSV"><i class="bi bi-filetype-csv"></i></button>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="11" class="text-center text-muted py-4">{{ __('No MikroTik clients found.') }}</td></tr>

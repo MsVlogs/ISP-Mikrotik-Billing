@@ -96,6 +96,8 @@ class NewCustomer extends Component
 
     public $router_name = '';
 
+    public bool $importingMikrotikClient = false;
+
     public $auto_disable_month = 0;
 
     public $step = 1;
@@ -129,6 +131,11 @@ class NewCustomer extends Component
 
     public $users; // Declare the property to hold address fields
 
+    private function mtValue(?string $value): string
+    {
+        return app(\App\Http\Controllers\MikrotikController::class)->mtQuote($value);
+    }
+
     public function mount()
     {
         if (! auth()->user()->can('create-customer') && ! auth()->user()->hasRole('Reseller')) {
@@ -137,7 +144,68 @@ class NewCustomer extends Component
 
         $this->connected_by = auth()->id();
 
+        $mikrotikClientId = request()->integer('mikrotik_client');
+        if ($mikrotikClientId) {
+            $secret = PPPSecrets::findOrFail($mikrotikClientId);
+            abort_unless($secret->service === null || strtolower((string) $secret->service) === 'pppoe', 422, 'Only PPPoE users can be imported from MikroTik.');
+
+            $this->importingMikrotikClient = true;
+            $this->customer_name = $secret->username;
+            $this->router_name = $secret->router_name ?? '';
+            $this->service = strtolower((string) ($secret->service ?: 'pppoe'));
+            $this->profile = $secret->profile;
+            $this->username = $secret->username;
+            $this->password = $secret->password;
+            $this->ppp_remote_ip = $secret->ppp_remote_ip;
+            $this->caller_id = $secret->caller_id;
+            $this->comment = $secret->comment;
+            $this->connection_date = optional($secret->created_at)->format('Y-m-d') ?: now()->format('Y-m-d');
+
+            // Parse the structured MikroTik comment and prefill matching customer fields.
+            $parsedComment = $this->parseMikrotikComment($secret->comment);
+            if (! empty($parsedComment['client_name'])) {
+                $this->customer_name = $parsedComment['client_name'];
+            }
+            $this->mobile = $parsedComment['contact_number'] ?? null;
+            if (! empty($parsedComment['present_address'])) {
+                $this->address['Present Address'] = $parsedComment['present_address'];
+            }
+            if (! empty($parsedComment['zone_name'])) {
+                $this->address['Zone Name'] = $parsedComment['zone_name'];
+            }
+            if (! empty($parsedComment['joining_date']) && strtotime($parsedComment['joining_date'])) {
+                $this->connection_date = date('Y-m-d', strtotime($parsedComment['joining_date']));
+            }
+            $this->profileNames = $this->profile ? [$this->profile] : [];
+            $this->auto_disable = true;
+            $this->auto_disable_date = now()->addDays(30)->format('Y-m-d');
+        }
+
         return true;
+    }
+
+    private function parseMikrotikComment(?string $comment): array
+    {
+        $result = [];
+        foreach (preg_split('/\r?\n/', (string) $comment) as $line) {
+            if (! str_contains($line, ':')) {
+                continue;
+            }
+            [$key, $value] = array_map('trim', explode(':', $line, 2));
+            if ($key === '' || $value === '') {
+                continue;
+            }
+            $normalized = strtolower(preg_replace('/[^a-z0-9]+/', '_', $key));
+            $result[$normalized] = $value;
+        }
+
+        return [
+            'client_name' => $result['client_name'] ?? $result['name'] ?? null,
+            'contact_number' => $result['contact_number'] ?? $result['phone'] ?? $result['mobile'] ?? null,
+            'zone_name' => $result['zone_name'] ?? $result['zone'] ?? null,
+            'present_address' => $result['present_address'] ?? $result['address'] ?? null,
+            'joining_date' => $result['joining_date'] ?? $result['connection_date'] ?? null,
+        ];
     }
 
     public function rules()
@@ -431,13 +499,19 @@ class NewCustomer extends Component
             $this->calculateTotal('package_name');
             $this->validate();
 
+            if ($this->importingMikrotikClient) {
+                // Importing an existing MikroTik PPP secret: never write it back to the router.
+                $this->createUser();
+                return;
+            }
+
             if ($this->service == 'pppoe') {
                 try {
                     // Add PPP secret via pooled/cached controller
                     if ($this->ppp_remote_ip != '') {
-                        $cmd = "/ppp secret add name=\"{$this->username}\" password=\"{$this->password}\" service=\"{$this->service}\" profile=\"{$this->profile}\" comment=\"{$this->comment}\" remote-address=\"{$this->ppp_remote_ip}\" caller-id=\"{$this->caller_id}\" disabled=yes";
+                        $cmd = "/ppp secret add name={$this->mtValue($this->username)} password={$this->mtValue($this->password)} service={$this->mtValue($this->service)} profile={$this->mtValue($this->profile)} comment={$this->mtValue($this->comment)} remote-address={$this->mtValue($this->ppp_remote_ip)} caller-id={$this->mtValue($this->caller_id)} disabled=yes";
                     } else {
-                        $cmd = "/ppp secret add name=\"{$this->username}\" password=\"{$this->password}\" service=\"{$this->service}\" profile=\"{$this->profile}\" comment=\"{$this->comment}\" caller-id=\"{$this->caller_id}\" disabled=yes";
+                        $cmd = "/ppp secret add name={$this->mtValue($this->username)} password={$this->mtValue($this->password)} service={$this->mtValue($this->service)} profile={$this->mtValue($this->profile)} comment={$this->mtValue($this->comment)} caller-id={$this->mtValue($this->caller_id)} disabled=yes";
                     }
 
                     app(MikrotikController::class)->singleWrite($this->router_name, $cmd);
@@ -453,7 +527,7 @@ class NewCustomer extends Component
                     // Add simple queue via pooled/cached controller
                     app(MikrotikController::class)->singleWrite(
                         $this->router_name,
-                        "/queue simple add name=\"{$this->queue_name}\" profile=\"{$this->profile}\" address=\"{$this->ip_address}\" max-limit=\"{$this->bandwidth}\" comment=\"{$this->comment}\" disabled=yes"
+                        "/queue simple add name={$this->mtValue($this->queue_name)} profile={$this->mtValue($this->profile)} address={$this->mtValue($this->ip_address)} max-limit={$this->mtValue($this->bandwidth)} comment={$this->mtValue($this->comment)} disabled=yes"
                     );
 
                     // Router write succeeded

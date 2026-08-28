@@ -160,16 +160,31 @@
                         <span class="text-success fw-bold"><i class="bi bi-geo-alt me-2"></i>{{ __('Customer Address') }}</span>
                     </x-slot>
                     <x-slot name="aside">
-                        @foreach ($addressFields as $addressField)
+                        @if ($addressFields->isEmpty())
                             <x-mikrotik.form-group
-                                label="{{ __($addressField['label']) }}"
-                                type="{{ $addressField['input_type'] }}"
-                                name="address.{{$addressField['label']}}"
-                                required="{{$addressField['required'] == 1 ? '*' : ''}}"
-                                placeholder="{{$addressField['input_type'] == 'dropdown' ? __('Select Any One') : __($addressField['label'])}}"
-                                :options="json_decode($addressField['dropdown_list'])"
+                                label="{{ __('Present Address') }}"
+                                type="textarea"
+                                name="address.Present Address"
+                                placeholder="{{ __('Present Address') }}"
                             />
-                        @endforeach
+                            <x-mikrotik.form-group
+                                label="{{ __('Zone Name') }}"
+                                type="text"
+                                name="address.Zone Name"
+                                placeholder="{{ __('Zone Name') }}"
+                            />
+                        @else
+                            @foreach ($addressFields as $addressField)
+                                <x-mikrotik.form-group
+                                    label="{{ __($addressField['label']) }}"
+                                    type="{{ $addressField['input_type'] }}"
+                                    name="address.{{$addressField['label']}}"
+                                    required="{{$addressField['required'] == 1 ? '*' : ''}}"
+                                    placeholder="{{$addressField['input_type'] == 'dropdown' ? __('Select Any One') : __($addressField['label'])}}"
+                                    :options="json_decode($addressField['dropdown_list'])"
+                                />
+                            @endforeach
+                        @endif
                     </x-slot>
                     <x-section-border/>
                 </x-mikrotik.section-form>
@@ -274,11 +289,11 @@
                                 :required="$service == 'static' ? true : false"
                                 :groupstyle="($router_name && $service == 'static') || !$router_name ? '' : 'display: none;'"
                             />
-                            <x-mikrotik.form-group
-                                label="{{ __('Comment') }}"
-                                type="text"
-                                name="comment"
-                            />
+                            <div class="mb-3">
+                                <label for="comment" class="form-label fw-semibold">{{ __('Comments / Remarks / Special Note') }}</label>
+                                <textarea id="comment" name="comment" rows="5" class="form-control @error('comment') is-invalid @enderror" wire:model="comment" placeholder="{{ __('MikroTik PPPoE comment / remarks') }}">{{ $comment }}</textarea>
+                                @error('comment') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
                             <x-mikrotik.form-group
                                 checkboxLabel="{{ __('Auto Temporary Disable Feature') }}"
                                 type="checkbox"
