@@ -220,19 +220,32 @@ Route::middleware([
 
         // Sweet Billing functional module hubs — backed by existing production features.
         Route::get('/mobile-banking', fn () => view('sweet.module', [
-            'title'=>'Mobile Banking','icon'=>'bi-phone','description'=>'Mobile payment, SMS and collection operations.',
-            'stats'=>[['Gateway','Ready'],['SMS','Ready'],['Collections','Live']],
-            'links'=>[[route('sms-setup'),'SMS Setup','Gateway configuration'],[route('sms-bridge.index'),'SMS Bridge','Bridge operations'],[route('payment-collection'),'Payment Collection','Collection desk']],
+            'title'=>'Mobile Banking','icon'=>'bi-phone','description'=>'Mobile payment gateways, SMS and collection operations.',
+            'stats'=>[
+                ['Gateway','Operational'],
+                ['bKash',\App\Models\MainSiteData::getValue('payment_bkash_enabled', 0) ? 'Enabled' : 'Disabled'],
+                ['Nagad',\App\Models\MainSiteData::getValue('payment_nagad_enabled', 0) ? 'Enabled' : 'Disabled'],
+                ['SSLCommerz',\App\Models\MainSiteData::getValue('payment_sslcommerz_enabled', 0) ? 'Enabled' : 'Disabled'],
+            ],
+            'links'=>[[route('site-settings'),'Payment Gateway Settings','Configure bKash, Nagad and SSLCommerz'],[route('payment-collection'),'Payment Collection','Collection desk'],[route('payment-invoice'),'Invoices','Payment invoices']],
         ]))->name('sweet.mobile-banking');
         Route::get('/partner-network', fn () => view('sweet.module', [
-            'title'=>'Partner Network','icon'=>'bi-diagram-3','description'=>'Partner and reseller management.',
-            'stats'=>[['Partners','Live'],['Requests','Live'],['Access','Protected']],
-            'links'=>[[route('admin.resellers.index'),'Partner Management','Create and manage partners'],[route('admin.purchase-requests'),'Requests','Review requests'],[route('reseller.dashboard'),'Partner Dashboard','Reseller operations']],
+            'title'=>'Partner Network','icon'=>'bi-diagram-3','description'=>'Partner and reseller network management.',
+            'stats'=>[
+                ['Partners',\App\Models\Reseller::count()],
+                ['Active',\App\Models\Reseller::where('status','active')->count()],
+                ['Requests',\App\Models\PackagePurchaseRequest::count()],
+            ],
+            'links'=>[[route('admin.resellers.index'),'Partner Management','Create and manage partners'],[route('admin.purchase-requests'),'Purchase Requests','Review partner requests'],[route('reseller.dashboard'),'Partner Dashboard','Reseller operations']],
         ]))->name('sweet.partner-network');
         Route::get('/bandwidth-reseller', fn () => view('sweet.module', [
-            'title'=>'Bandwidth Reseller','icon'=>'bi-speedometer2','description'=>'Reseller packages, wallet, vouchers and customers.',
-            'stats'=>[['Packages','Ready'],['Wallet','Live'],['Vouchers','Live']],
-            'links'=>[[route('reseller.dashboard'),'Reseller Dashboard','Operations'],[route('reseller.packages.index'),'Packages','Package management'],[route('reseller.wallet.index'),'Wallet','Balances'],[route('reseller.vouchers.index'),'Vouchers','Voucher management']],
+            'title'=>'Bandwidth Reseller','icon'=>'bi-speedometer2','description'=>'Reseller packages, wallet, vouchers and customer operations.',
+            'stats'=>[
+                ['Resellers',\App\Models\Reseller::count()],
+                ['Customers',\App\Models\CustomersInfo::whereNotNull('reseller_id')->count()],
+                ['Vouchers',\App\Models\Voucher::count()],
+            ],
+            'links'=>[[route('reseller.dashboard'),'Reseller Dashboard','Operations'],[route('reseller.packages.index'),'Packages','Package management'],[route('reseller.wallet.index'),'Wallet','Balances and transactions'],[route('reseller.vouchers.index'),'Vouchers','Voucher management']],
         ]))->name('sweet.bandwidth-reseller');
         Route::get('/devices-inventory', fn () => view('sweet.module', [
             'title'=>'Devices Inventory','icon'=>'bi-hdd-network','description'=>'Router inventory, topology and device health.',
