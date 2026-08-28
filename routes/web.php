@@ -247,26 +247,63 @@ Route::middleware([
             ],
             'links'=>[[route('reseller.dashboard'),'Reseller Dashboard','Operations'],[route('reseller.packages.index'),'Packages','Package management'],[route('reseller.wallet.index'),'Wallet','Balances and transactions'],[route('reseller.vouchers.index'),'Vouchers','Voucher management']],
         ]))->name('sweet.bandwidth-reseller');
-        Route::get('/devices-inventory', fn () => view('sweet.module', [
-            'title'=>'Devices Inventory','icon'=>'bi-hdd-network','description'=>'Router inventory, topology and device health.',
-            'stats'=>[['Routers','Live'],['Topology','Ready'],['Watchers','Ready']],
-            'links'=>[[route('mikrotik-server'),'MikroTik Server','Router inventory'],[route('network-map'),'Network Map','Topology'],[route('device-watcher'),'Device Watcher','Health checks']],
-        ]))->name('sweet.devices-inventory');
-        Route::get('/stock-inventory', fn () => view('sweet.module', [
-            'title'=>'Stock Inventory','icon'=>'bi-box-seam','description'=>'Stock and package-request workflows.',
-            'stats'=>[['Requests','Live'],['Packages','Ready']],
-            'links'=>[[route('admin.purchase-requests'),'Purchase Requests','Review requests'],[route('package-list-setup'),'Packages','Catalog']],
-        ]))->name('sweet.stock-inventory');
-        Route::get('/communication-center', fn () => view('sweet.module', [
-            'title'=>'Communication Center','icon'=>'bi-chat-dots','description'=>'SMS, notifications and customer communication.',
-            'stats'=>[['SMS','Ready'],['Bridge','Ready'],['Alerts','Live']],
-            'links'=>[[route('sms-setup'),'SMS Setup','Gateway settings'],[route('sms-bridge.index'),'SMS Bridge','Bridge management'],[route('notifications'),'Notifications','Notification center']],
-        ]))->name('sweet.communication-center');
-        Route::get('/support-center', fn () => view('sweet.module', [
-            'title'=>'Support Center','icon'=>'bi-headset','description'=>'Customer support and operational assistance.',
-            'stats'=>[['Tickets','Live'],['Logs','Live']],
-            'links'=>[[route('admin-tickets'),'Support Tickets','Manage tickets'],[route('admin.activity-logs'),'Activity Logs','Operational history']],
-        ]))->name('sweet.support-center');
+        Route::get('/devices-inventory', function () {
+            $routers = \App\Models\RouterList::orderBy('router_name')->get();
+            $watchers = \App\Models\DeviceWatcher::count();
+            return view('sweet.module', [
+                'title'=>'Devices Inventory','icon'=>'bi-hdd-network','description'=>'Router inventory, topology and device health.',
+                'stats'=>[['label'=>'Routers','value'=>$routers->count()],['label'=>'Connected','value'=>$routers->where('action','connected')->count()],['label'=>'Watchers','value'=>$watchers]],
+                'links'=>[
+                    ['url'=>route('mikrotik-server'),'label'=>'MikroTik Server','hint'=>'Router inventory and management'],
+                    ['url'=>route('network-map'),'label'=>'Network Map','hint'=>'Network topology'],
+                    ['url'=>route('device-watcher'),'label'=>'Device Watcher','hint'=>'Reachability and latency'],
+                    ['url'=>route('mikrotik-server-backup'),'label'=>'Server Backup','hint'=>'Router backup operations'],
+                ],
+            ]);
+        })->name('sweet.devices-inventory');
+        Route::get('/stock-inventory', function () {
+            $requests = \App\Models\PackagePurchaseRequest::query();
+            $pending = (clone $requests)->whereIn('status',['pending','requested'])->count();
+            $total = (clone $requests)->count();
+            $packages = \App\Models\PackageList::count();
+            return view('sweet.module', [
+                'title'=>'Stock Inventory','icon'=>'bi-box-seam','description'=>'Package catalog, stock requests and procurement workflow.',
+                'stats'=>[['label'=>'Packages','value'=>$packages],['label'=>'Pending Requests','value'=>$pending],['label'=>'Total Requests','value'=>$total]],
+                'links'=>[
+                    ['url'=>route('package-list-setup'),'label'=>'Package Catalog','hint'=>'Manage service packages'],
+                    ['url'=>route('admin.purchase-requests'),'label'=>'Purchase Requests','hint'=>'Review and process requests'],
+                    ['url'=>route('admin.vouchers'),'label'=>'Voucher Inventory','hint'=>'Voucher administration'],
+                ],
+            ]);
+        })->name('sweet.stock-inventory');
+        Route::get('/communication-center', function () {
+            $templates = \App\Models\SmsTemplate::count();
+            $notifications = \App\Models\NotificationLogs::count();
+            return view('sweet.module', [
+                'title'=>'Communication Center','icon'=>'bi-chat-dots','description'=>'Central SMS, notifications and customer communication tools.',
+                'stats'=>[['label'=>'SMS Templates','value'=>$templates],['label'=>'Notifications','value'=>$notifications],['label'=>'Bridge','value'=>'Ready']],
+                'links'=>[
+                    ['url'=>route('sms-setup'),'label'=>'SMS Setup','hint'=>'Gateway and messaging configuration'],
+                    ['url'=>route('sms-bridge.index'),'label'=>'SMS Bridge','hint'=>'Bridge operations'],
+                    ['url'=>route('notifications'),'label'=>'Notifications','hint'=>'Notification center'],
+                    ['url'=>route('admin-tickets'),'label'=>'Support Tickets','hint'=>'Customer communication'],
+                ],
+            ]);
+        })->name('sweet.communication-center');
+        Route::get('/support-center', function () {
+            $tickets = \App\Models\SupportTicket::query();
+            $open = (clone $tickets)->whereIn('status',['open','pending','in_progress'])->count();
+            $total = (clone $tickets)->count();
+            return view('sweet.module', [
+                'title'=>'Support Center','icon'=>'bi-headset','description'=>'Customer support desk with live ticket visibility and operational logs.',
+                'stats'=>[['label'=>'Open Tickets','value'=>$open],['label'=>'Total Tickets','value'=>$total],['label'=>'Status','value'=>'Online']],
+                'links'=>[
+                    ['url'=>route('admin-tickets'),'label'=>'Support Tickets','hint'=>'Manage customer issues'],
+                    ['url'=>route('admin.activity-logs'),'label'=>'Activity Logs','hint'=>'Operational history'],
+                    ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication activity'],
+                ],
+            ]);
+        })->name('sweet.support-center');
         Route::get('/team-access', fn () => view('sweet.module', [
             'title'=>'Team & Access','icon'=>'bi-people','description'=>'Users, roles and access administration.',
             'stats'=>[['Users','Protected'],['Roles','Protected'],['Auth','Active']],
