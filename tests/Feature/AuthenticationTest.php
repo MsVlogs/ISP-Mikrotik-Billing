@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -22,7 +22,7 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->withoutMiddleware(VerifyCsrfToken::class)->post('http://bill.xlinkbd.net:8081/login', [
+        $response = $this->withoutMiddleware(ValidateCsrfToken::class)->post('http://bill.xlinkbd.net:8081/login', [
             'email' => $user->email,
             'password' => 'password',
         ]);
