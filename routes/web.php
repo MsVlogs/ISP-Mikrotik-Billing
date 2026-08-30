@@ -196,27 +196,41 @@ Route::middleware([
             return redirect()->route('site-settings');
         });
 
-        // Sweet Billing control center
-        Route::get('/sweet-billing', fn () => view('sweet.index', [
-            'modules' => [
-                ['Mobile Banking','sweet.mobile-banking','bi-phone'],
-                ['Partner Network','sweet.partner-network','bi-diagram-3'],
-                ['Bandwidth Reseller','sweet.bandwidth-reseller','bi-speedometer2'],
-                ['Devices Inventory','sweet.devices-inventory','bi-hdd-network'],
-                ['Stock Inventory','sweet.stock-inventory','bi-box-seam'],
-                ['Communication Center','sweet.communication-center','bi-chat-dots'],
-                ['Support Center','sweet.support-center','bi-headset'],
-                ['Team & Access','sweet.team-access','bi-people'],
-                ['System Settings','sweet.system-settings','bi-gear'],
-                ['Billing Helpline','sweet.billing-helpline','bi-telephone'],
-                ['Profile & Security','sweet.profile-security','bi-shield-lock'],
-                ['Network Map','network-map','bi-diagram-3'],
-                ['Traffic Monitor','traffic-monitor','bi-activity'],
-                ['High Usage Monitor','high-usage-monitor','bi-bar-chart-line'],
-                ['Device Watcher','device-watcher','bi-eye'],
-                ['Logs & Alerts','mikrotik-login-messages','bi-bell'],
-            ],
-        ]))->name('sweet.index');
+        // Sweet Billing control center with live operational KPIs.
+        Route::get('/sweet-billing', function () {
+            $customers = \App\Models\CustomersInfo::count();
+            $routers = \App\Models\RouterList::count();
+            $openTickets = \App\Models\SupportTicket::whereIn('status', ['open','pending','in_progress'])->count();
+            $pendingRequests = \App\Models\PackagePurchaseRequest::whereIn('status', ['pending','requested'])->count();
+            $watchers = \App\Models\DeviceWatcher::count();
+            return view('sweet.index', [
+                'kpis' => [
+                    ['label'=>'Customers','value'=>$customers,'icon'=>'bi-people'],
+                    ['label'=>'Routers','value'=>$routers,'icon'=>'bi-router'],
+                    ['label'=>'Open Tickets','value'=>$openTickets,'icon'=>'bi-life-preserver'],
+                    ['label'=>'Pending Requests','value'=>$pendingRequests,'icon'=>'bi-hourglass-split'],
+                    ['label'=>'Device Watchers','value'=>$watchers,'icon'=>'bi-eye'],
+                ],
+                'modules' => [
+                    ['Mobile Banking','sweet.mobile-banking','bi-phone'],
+                    ['Partner Network','sweet.partner-network','bi-diagram-3'],
+                    ['Bandwidth Reseller','sweet.bandwidth-reseller','bi-speedometer2'],
+                    ['Devices Inventory','sweet.devices-inventory','bi-hdd-network'],
+                    ['Stock Inventory','sweet.stock-inventory','bi-box-seam'],
+                    ['Communication Center','sweet.communication-center','bi-chat-dots'],
+                    ['Support Center','sweet.support-center','bi-headset'],
+                    ['Team & Access','sweet.team-access','bi-people'],
+                    ['System Settings','sweet.system-settings','bi-gear'],
+                    ['Billing Helpline','sweet.billing-helpline','bi-telephone'],
+                    ['Profile & Security','sweet.profile-security','bi-shield-lock'],
+                    ['Network Map','network-map','bi-diagram-3'],
+                    ['Traffic Monitor','traffic-monitor','bi-activity'],
+                    ['High Usage Monitor','high-usage-monitor','bi-bar-chart-line'],
+                    ['Device Watcher','device-watcher','bi-eye'],
+                    ['Logs & Alerts','mikrotik-login-messages','bi-bell'],
+                ],
+            ]);
+        })->name('sweet.index');
 
         // Sweet Billing functional module hubs — backed by existing production features.
         Route::get('/mobile-banking', fn () => view('sweet.module', [
