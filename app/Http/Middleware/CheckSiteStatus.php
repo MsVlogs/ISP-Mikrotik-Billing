@@ -29,8 +29,10 @@ class CheckSiteStatus
             $host = $request->getHost();
             $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: config('app.url');
 
-            // Exclude admin panel subdomain (billing.*) so admins can access it to enable the site again.
-            if (str_starts_with($host, 'billing.')) {
+            // Keep management/portal services reachable while the public site is closed.
+            // Billing and Portal are explicitly isolated on 8081/8082 and must not be blocked
+            // by the public-site maintenance/disabled switch.
+            if (str_starts_with($host, 'billing.') || in_array((int) $request->getPort(), [8081, 8082], true)) {
                 return $next($request);
             }
 
