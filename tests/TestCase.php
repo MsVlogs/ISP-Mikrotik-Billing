@@ -15,7 +15,7 @@ abstract class TestCase extends BaseTestCase
         if (! str_starts_with($uri, 'http')) {
             $mainDomainRoutes = ['', 'all-packages', 'warning', 'billing', 'portal', 'php-artisan-optimize'];
             $isMainDomain = in_array(explode('/', $uri)[0], $mainDomainRoutes);
-            $domain = $isMainDomain ? 'http://localhost' : 'http://billing.localhost';
+            $domain = $isMainDomain ? 'http://localhost' : 'http://bill.xlinkbd.net:8081';
             $uri = $domain.'/'.$uri;
         }
 
