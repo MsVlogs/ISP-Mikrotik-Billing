@@ -5,14 +5,14 @@
   </div>
   <div class="row g-3 mb-4">
     @foreach(($stats ?? []) as $stat)
-      <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted">{{ $stat['label'] ?? $stat[0] ?? '' }}</small><h4 class="mt-2 mb-0">{{ $stat['value'] ?? $stat[1] ?? '' }}</h4></div></div></div>
+      <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted">{{ $stat[0] }}</small><h4 class="mt-2 mb-0">{{ $stat[1] }}</h4></div></div></div>
     @endforeach
   </div>
   <div class="card"><div class="card-body">
     <h5 class="mb-3">{{ $description }}</h5>
     <div class="row g-3">
       @foreach($links as $link)
-        <div class="col-md-4"><a href="{{ $link['url'] ?? $link[0] ?? '#' }}" wire:navigate.hover class="card h-100 text-decoration-none"><div class="card-body"><div class="fw-semibold">{{ $link['label'] ?? $link[1] ?? '' }}</div><small class="text-muted">{{ $link['hint'] ?? $link[2] ?? '' }}</small></div></a></div>
+        <div class="col-md-4"><a href="{{ $link[0] }}" wire:navigate.hover class="card h-100 text-decoration-none"><div class="card-body"><div class="fw-semibold">{{ $link[1] }}</div><small class="text-muted">{{ $link[2] }}</small></div></a></div>
       @endforeach
     </div>
   </div></div>
