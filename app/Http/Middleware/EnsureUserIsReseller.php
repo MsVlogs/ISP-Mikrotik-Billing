@@ -24,7 +24,7 @@ class EnsureUserIsReseller
         
         // Check if user has the reseller relation and status is active
         if (!$user->reseller || !$user->reseller->isActive()) {
-            Auth::logout();
+            Auth::guard('web')->logout();
             
             $request->session()->invalidate();
             $request->session()->regenerateToken();
