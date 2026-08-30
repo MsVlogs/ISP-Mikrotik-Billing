@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SweetBillingParityTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function sweet_billing_control_center_requires_authentication(): void
     {
         $response = $this->get('/sweet-billing');
@@ -14,7 +15,7 @@ class SweetBillingParityTest extends TestCase
         $this->assertStringContainsString('/login', $response->headers->get('Location'));
     }
 
-    /** @test */
+    #[Test]
     public function sweet_billing_module_routes_require_authentication(): void
     {
         $routes = [
@@ -30,7 +31,7 @@ class SweetBillingParityTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function network_monitoring_routes_remain_available(): void
     {
         foreach ([
