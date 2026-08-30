@@ -304,26 +304,76 @@ Route::middleware([
                 ],
             ]);
         })->name('sweet.support-center');
-        Route::get('/team-access', fn () => view('sweet.module', [
-            'title'=>'Team & Access','icon'=>'bi-people','description'=>'Users, roles and access administration.',
-            'stats'=>[['Users','Protected'],['Roles','Protected'],['Auth','Active']],
-            'links'=>[[route('admin-users'),'Manage Users','User administration'],[route('admin-roles'),'Manage Roles','Permissions'],[route('profile.show'),'My Profile','Account']],
-        ]))->name('sweet.team-access');
-        Route::get('/system-settings', fn () => view('sweet.module', [
-            'title'=>'System Settings','icon'=>'bi-gear','description'=>'Application, branding, MikroTik and messaging configuration.',
-            'stats'=>[['Environment',app()->environment()],['Debug',config('app.debug') ? 'ON' : 'OFF'],['Status','Online']],
-            'links'=>[[route('site-settings'),'Site Settings','Application settings'],[route('mikrotik-sync'),'MikroTik Setup','Router integration'],[route('sms-setup'),'SMS Setup','Messaging']],
-        ]))->name('sweet.system-settings');
-        Route::get('/billing-helpline', fn () => view('sweet.module', [
-            'title'=>'Billing Helpline','icon'=>'bi-telephone','description'=>'Billing support and collection assistance.',
-            'stats'=>[['Billing','Online'],['Support','Ready'],['Reports','Live']],
-            'links'=>[[route('admin-tickets'),'Support Tickets','Customer support'],[route('payment-collection'),'Payment Collection','Collection'],[route('collection-report.index'),'Collection Report','Reports']],
-        ]))->name('sweet.billing-helpline');
-        Route::get('/profile-security', fn () => view('sweet.module', [
-            'title'=>'Profile & Security','icon'=>'bi-shield-lock','description'=>'Account profile, access and authentication controls.',
-            'stats'=>[['Authentication','Protected'],['Debug',config('app.debug') ? 'ON' : 'OFF'],['Session','Secure']],
-            'links'=>[[route('profile.show'),'My Profile','Account settings'],[route('sweet.team-access'),'Team & Access','Users and roles'],[route('admin.login-logs'),'Login Logs','Authentication events']],
-        ]))->name('sweet.profile-security');
+        Route::get('/team-access', function () {
+            $users = \App\Models\User::count();
+            $roles = class_exists(\Spatie\Permission\Models\Role::class) ? \Spatie\Permission\Models\Role::count() : 0;
+            return view('sweet.module', [
+                'title'=>'Team & Access','icon'=>'bi-people','description'=>'Users, roles and access administration with protected admin controls.',
+                'stats'=>[
+                    ['label'=>'Users','value'=>$users],
+                    ['label'=>'Roles','value'=>$roles],
+                    ['label'=>'Auth','value'=>'Protected'],
+                ],
+                'links'=>[
+                    ['url'=>route('admin-users'),'label'=>'Manage Users','hint'=>'Create, edit and review users'],
+                    ['url'=>route('admin-roles'),'label'=>'Manage Roles','hint'=>'Roles and permissions'],
+                    ['url'=>route('profile.show'),'label'=>'My Profile','hint'=>'Account settings'],
+                    ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication history'],
+                ],
+            ]);
+        })->name('sweet.team-access');
+        Route::get('/system-settings', function () {
+            $debug = config('app.debug') ? 'ON' : 'OFF';
+            return view('sweet.module', [
+                'title'=>'System Settings','icon'=>'bi-gear','description'=>'Central application, branding, MikroTik and messaging configuration.',
+                'stats'=>[
+                    ['label'=>'Environment','value'=>app()->environment()],
+                    ['label'=>'Debug','value'=>$debug],
+                    ['label'=>'Status','value'=>'Online'],
+                ],
+                'links'=>[
+                    ['url'=>route('site-settings'),'label'=>'Site Settings','hint'=>'Branding and site configuration'],
+                    ['url'=>route('mikrotik-sync'),'label'=>'MikroTik Setup','hint'=>'Router integration and synchronization'],
+                    ['url'=>route('sms-setup'),'label'=>'SMS Setup','hint'=>'Gateway and messaging configuration'],
+                    ['url'=>route('main-site-setup'),'label'=>'Main Site Setup','hint'=>'Website content configuration'],
+                ],
+            ]);
+        })->name('sweet.system-settings');
+        Route::get('/billing-helpline', function () {
+            $tickets = \App\Models\SupportTicket::query();
+            $open = (clone $tickets)->whereIn('status',['open','pending','in_progress'])->count();
+            $total = (clone $tickets)->count();
+            return view('sweet.module', [
+                'title'=>'Billing Helpline','icon'=>'bi-telephone','description'=>'Billing support, collections and issue escalation desk.',
+                'stats'=>[
+                    ['label'=>'Open Tickets','value'=>$open],
+                    ['label'=>'Total Tickets','value'=>$total],
+                    ['label'=>'Billing','value'=>'Online'],
+                ],
+                'links'=>[
+                    ['url'=>route('admin-tickets'),'label'=>'Support Tickets','hint'=>'Handle billing/customer issues'],
+                    ['url'=>route('payment-collection'),'label'=>'Payment Collection','hint'=>'Collection desk'],
+                    ['url'=>route('collection-report.index'),'label'=>'Collection Report','hint'=>'Billing reporting'],
+                    ['url'=>route('customer-summary'),'label'=>'Customer Summary','hint'=>'Customer billing history'],
+                ],
+            ]);
+        })->name('sweet.billing-helpline');
+        Route::get('/profile-security', function () {
+            return view('sweet.module', [
+                'title'=>'Profile & Security','icon'=>'bi-shield-lock','description'=>'Profile, authentication, sessions and access-security controls.',
+                'stats'=>[
+                    ['label'=>'Authentication','value'=>'Protected'],
+                    ['label'=>'2FA','value'=>'Available'],
+                    ['label'=>'Debug','value'=>config('app.debug') ? 'ON' : 'OFF'],
+                ],
+                'links'=>[
+                    ['url'=>route('profile.show'),'label'=>'My Profile','hint'=>'Profile and personal settings'],
+                    ['url'=>route('two-factor.login'),'label'=>'Two-Factor Authentication','hint'=>'Manage account 2FA'],
+                    ['url'=>route('sweet.team-access'),'label'=>'Team & Access','hint'=>'Users and roles'],
+                    ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication events'],
+                ],
+            ]);
+        })->name('sweet.profile-security');
 
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
         // Route::get('/edit-customer', EditCustomer::class);
