@@ -12,7 +12,7 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered(): void
     {
-        $response = $this->get('/login');
+        $response = $this->withServerVariables(['HTTP_HOST' => parse_url(config('app.url'), PHP_URL_HOST)])->get('/login');
 
         $response->assertStatus(200);
     }
