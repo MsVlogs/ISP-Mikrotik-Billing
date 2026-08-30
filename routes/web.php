@@ -261,20 +261,30 @@ Route::middleware([
             ],
             'links'=>[[route('reseller.dashboard'),'Reseller Dashboard','Operations'],[route('reseller.packages.index'),'Packages','Package management'],[route('reseller.wallet.index'),'Wallet','Balances and transactions'],[route('reseller.vouchers.index'),'Vouchers','Voucher management']],
         ]))->name('sweet.bandwidth-reseller');
-        Route::get('/devices-inventory', function () {
+        Route::get('/network-inventory', function () {
             $routers = \App\Models\RouterList::orderBy('router_name')->get();
-            $watchers = \App\Models\DeviceWatcher::count();
-            return view('sweet.module', [
-                'title'=>'Devices Inventory','icon'=>'bi-hdd-network','description'=>'Router inventory, topology and device health.',
-                'stats'=>[['label'=>'Routers','value'=>$routers->count()],['label'=>'Connected','value'=>$routers->where('action','connected')->count()],['label'=>'Watchers','value'=>$watchers]],
-                'links'=>[
-                    ['url'=>route('mikrotik-server'),'label'=>'MikroTik Server','hint'=>'Router inventory and management'],
-                    ['url'=>route('network-map'),'label'=>'Network Map','hint'=>'Network topology'],
-                    ['url'=>route('device-watcher'),'label'=>'Device Watcher','hint'=>'Reachability and latency'],
-                    ['url'=>route('mikrotik-server-backup'),'label'=>'Server Backup','hint'=>'Router backup operations'],
-                ],
+            $totalRouters = $routers->count();
+            $onlineRouters = $routers->where('action', 'connected')->count();
+            $offlineRouters = max(0, $totalRouters - $onlineRouters);
+            $attention = $routers->where('action', '!=', 'connected')->take(5);
+
+            return view('sweet.network-inventory', [
+                'routerTotal' => $totalRouters,
+                'routerOnline' => $onlineRouters,
+                'oltTotal' => (int) config('app.network_inventory_olt_total', 0),
+                'oltOnline' => (int) config('app.network_inventory_olt_online', 0),
+                'switchTotal' => (int) config('app.network_inventory_switch_total', 0),
+                'switchOnline' => (int) config('app.network_inventory_switch_online', 0),
+                'apTotal' => (int) config('app.network_inventory_ap_total', 0),
+                'apOnline' => (int) config('app.network_inventory_ap_online', 0),
+                'attention' => $attention,
+                'offlineCount' => $offlineRouters,
             ]);
-        })->name('sweet.devices-inventory');
+        })->name('network-inventory');
+
+        Route::get('/devices-inventory', fn () => redirect()->route('network-inventory'))
+            ->name('sweet.devices-inventory');
+
         Route::get('/stock-inventory', function () {
             $requests = \App\Models\PackagePurchaseRequest::query();
             $pending = (clone $requests)->whereIn('status',['pending','requested'])->count();
