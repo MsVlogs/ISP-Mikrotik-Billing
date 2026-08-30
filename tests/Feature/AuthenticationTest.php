@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -12,7 +13,7 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered(): void
     {
-        $response = $this->get('/login');
+        $response = $this->get('http://bill.xlinkbd.net:8081/login');
 
         $response->assertStatus(200);
     }
@@ -21,12 +22,12 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->post('/login', [
+        $response = $this->withoutMiddleware(VerifyCsrfToken::class)->post('http://bill.xlinkbd.net:8081/login', [
             'email' => $user->email,
             'password' => 'password',
         ]);
 
-        $this->assertAuthenticated();
+        $this->assertAuthenticatedAs($user, 'web');
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
@@ -34,7 +35,7 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->post('/login', [
+        $this->post('http://bill.xlinkbd.net:8081/login', [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
