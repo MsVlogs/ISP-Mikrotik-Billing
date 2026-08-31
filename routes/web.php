@@ -309,6 +309,19 @@ Route::middleware([
 
         Route::get('/devices-inventory', fn () => redirect()->route('network-inventory'))
             ->name('sweet.devices-inventory');
+        Route::get('/network-inventory/health-history', function () {
+            $model = \App\Models\NetworkInventoryHealthCheck::query();
+            $health24 = (clone $model)->where('checked_at', '>=', now()->subDay())->get();
+            $health7 = (clone $model)->where('checked_at', '>=', now()->subDays(7))->get();
+            $uptime = fn ($rows) => $rows->count() ? round(($rows->where('status','online')->count() / $rows->count()) * 100, 2) : null;
+            $checks = (clone $model)->with('device')->latest('checked_at')->limit(100)->get();
+            return view('sweet.health-history', [
+                'checks' => $checks, 'uptime24' => $uptime($health24), 'uptime7' => $uptime($health7),
+                'incidentCount' => $health7->whereIn('status', ['down','degraded'])->count(),
+                'avgLatency' => $health24->whereNotNull('latency_ms')->count() ? round($health24->whereNotNull('latency_ms')->avg('latency_ms'), 1) : null,
+            ]);
+        })->name('network-inventory.health-history');
+
         Route::get('/network-inventory/mikrotik-management', function () {
             $routers = \App\Models\RouterList::orderBy('router_name')->get();
             return view('sweet.mikrotik-management', [

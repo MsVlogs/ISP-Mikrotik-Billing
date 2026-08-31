@@ -31,6 +31,7 @@
       <a class="shortcut" href="{{ route('network-map') }}" wire:navigate.hover><i class="bi bi-diagram-3 fs-5"></i><span>Network Map</span></a>
       <a class="shortcut" href="{{ route('mikrotik-server-backup') }}" wire:navigate.hover><i class="bi bi-hdd-stack fs-5"></i><span>Server Backup</span></a>
       <a class="shortcut" href="{{ route('device-watcher') }}" wire:navigate.hover><i class="bi bi-eye fs-5"></i><span>Device Watcher</span></a>
+      <a class="shortcut" href="{{ route('network-inventory.health-history') }}"><i class="bi bi-activity fs-5"></i><span>Health History</span></a>
     </div></div>
   </div>
 </div>
