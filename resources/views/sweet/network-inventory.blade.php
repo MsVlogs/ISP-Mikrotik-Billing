@@ -15,9 +15,9 @@
   <div class="row g-3">
     <div class="col-xl-7"><div class="ni-card bg-white"><div class="p-3 border-bottom"><div class="fw-bold fs-5">Live Inventory</div><div class="fw-semibold">Offline / Attention Needed <span class="badge bg-danger ms-1">{{ $offlineCount + max(0,$oltTotal-$oltOnline) + max(0,$switchTotal-$switchOnline) + max(0,$apTotal-$apOnline) }}</span></div></div>
       @forelse($attention as $device)
-        <div class="attention-item"><div class="status-dot"><i class="bi bi-hdd-network"></i></div><div class="flex-grow-1"><div class="fw-semibold">{{ $device->router_name }}</div><div class="small soft">MikroTik · {{ $device->ip_address }}</div></div><div class="small soft">{{ optional($device->updated_at)->format('d M H:i') }}</div></div>
+        <div class="attention-item"><div class="status-dot"><i class="bi bi-hdd-network"></i></div><div class="flex-grow-1"><div class="fw-semibold">{{ $device->display_name ?? $device->router_name }}</div><div class="small soft">{{ $device->device_type ?? 'MikroTik' }} · {{ $device->ip_address ?? 'No IP' }} · {{ ucfirst($device->health_status ?? 'down') }}</div></div><div class="small soft">{{ optional($device->last_checked_at ?? $device->updated_at)->format('d M H:i') }}</div></div>
       @empty
-        <div class="p-4 text-center soft">No offline MikroTik routers detected.</div>
+        <div class="p-4 text-center soft">No devices require attention.</div>
       @endforelse
     </div></div>
     <div class="col-xl-5"><div class="ni-card bg-white"><div class="p-3 border-bottom"><div class="fw-bold fs-5">Shortcuts</div><div class="soft">Quick Management</div></div>
