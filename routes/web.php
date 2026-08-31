@@ -296,7 +296,21 @@ Route::middleware([
         Route::get('/network-inventory/device/{type}', function (string $type) {
             abort_unless(in_array($type, ['olt','switch','access-point'], true), 404);
             $label = ['olt'=>'OLT','switch'=>'Switch','access-point'=>'Access Point'][$type];
-            $devices = \App\Models\NetworkInventoryDevice::type($type)->orderBy('name')->get();
+            $query = \App\Models\NetworkInventoryDevice::type($type);
+            if ($search = trim((string) request('q', ''))) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('ip_address', 'like', "%{$search}%")
+                      ->orWhere('vendor', 'like', "%{$search}%")
+                      ->orWhere('model', 'like', "%{$search}%")
+                      ->orWhere('location', 'like', "%{$search}%");
+                });
+            }
+            if (in_array(request('status'), ['online','offline','unknown'], true)) {
+                $query->where('status', request('status'));
+            }
+            $perPage = min(max((int) request('per_page', 10), 10), 50);
+            $devices = $query->orderBy('name')->paginate($perPage)->withQueryString();
             return view('sweet.inventory-list', compact('devices','type','label'));
         })->name('network-inventory.devices');
 
@@ -314,6 +328,18 @@ Route::middleware([
             \App\Models\NetworkInventoryDevice::create($data + ['type' => $type]);
             return back()->with('inventory_message', ucfirst(str_replace('-', ' ', $type)).' device added.');
         })->name('network-inventory.devices.store');
+
+        Route::put('/network-inventory/device/{type}/{device}', function (\Illuminate\Http\Request $request, string $type, \App\Models\NetworkInventoryDevice $device) {
+            abort_unless(in_array($type, ['olt','switch','access-point'], true) && $device->type === $type, 404);
+            $data = $request->validate([
+                'name' => ['required','string','max:120'], 'ip_address' => ['nullable','ip'],
+                'vendor' => ['nullable','string','max:80'], 'model' => ['nullable','string','max:120'],
+                'status' => ['required','in:online,offline,unknown'], 'location' => ['nullable','string','max:160'],
+                'notes' => ['nullable','string','max:1000'],
+            ]);
+            $device->update($data);
+            return back()->with('inventory_message', 'Inventory record updated.');
+        })->name('network-inventory.devices.update');
 
         Route::delete('/network-inventory/device/{type}/{device}', function (string $type, \App\Models\NetworkInventoryDevice $device) {
             abort_unless(in_array($type, ['olt','switch','access-point'], true) && $device->type === $type, 404);
