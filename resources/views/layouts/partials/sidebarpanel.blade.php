@@ -281,10 +281,10 @@
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
                     <div class="col-auto navbar-vertical-label">{{ __('X-Link Billing') }}</div>
                 </div>
-                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('xlink.devices-inventory') }}">
+                <a class="nav-link dropdown-indicator collapsed" href="#networkInventoryMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="networkInventoryMenu">
                     <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-router"></i></span><span class="nav-link-text ps-1">{{ __('Devices Inventory') }}</span></div>
                 </a>
-                <div class="ps-4">
+                <div class="collapse ps-4" id="networkInventoryMenu">
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory') }}"><span class="nav-link-text ps-1">{{ __('Dashboard') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.mikrotik') }}"><span class="nav-link-text ps-1">{{ __('MikroTik Management') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.olt') }}"><span class="nav-link-text ps-1">{{ __('OLT Management') }}</span></a>
