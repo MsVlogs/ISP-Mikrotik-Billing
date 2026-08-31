@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NetworkInventoryDevice extends Model
 {
@@ -23,5 +24,10 @@ class NetworkInventoryDevice extends Model
     public function scopeType($query, string $type)
     {
         return $query->where('type', $type);
+    }
+
+    public function healthChecks(): HasMany
+    {
+        return $this->hasMany(NetworkInventoryHealthCheck::class);
     }
 }
