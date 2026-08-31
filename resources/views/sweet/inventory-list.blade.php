@@ -31,11 +31,19 @@
       </form>
     </div>
   </div>
+  <form method="POST" action="{{ route('network-inventory.devices.bulk-status', $type) }}" class="card shadow-sm mb-3">
+    @csrf
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+      <span class="fw-semibold me-2">Bulk status:</span>
+      <select name="status" class="form-select form-select-sm" style="max-width:160px"><option value="online">Online</option><option value="offline">Offline</option><option value="unknown">Unknown</option></select>
+      <button class="btn btn-sm btn-outline-primary">Apply to selected</button>
+    </div>
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between"><strong>{{ $devices->total() }} devices</strong><span class="text-muted">Search, edit and manage inventory</span></div>
-    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Name</th><th>IP</th><th>Vendor / Model</th><th>Status</th><th>Location</th><th>Action</th></tr></thead><tbody>
+    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.inventory-select').forEach(e=>e.checked=this.checked)"></th><th>Name</th><th>IP</th><th>Vendor / Model</th><th>Status</th><th>Location</th><th>Action</th></tr></thead><tbody>
       @forelse($devices as $device)
         <tr>
+          <td><input class="inventory-select" type="checkbox" name="device_ids[]" value="{{ $device->id }}"></td>
           <td><form method="POST" action="{{ route('network-inventory.devices.update', [$type, $device->id]) }}" class="row g-2"><div class="col-12"><input name="name" value="{{ $device->name }}" class="form-control form-control-sm"></div></td>
           <td><input name="ip_address" value="{{ $device->ip_address }}" class="form-control form-control-sm"></td>
           <td><div class="d-flex gap-1"><input name="vendor" value="{{ $device->vendor }}" class="form-control form-control-sm" placeholder="Vendor"><input name="model" value="{{ $device->model }}" class="form-control form-control-sm" placeholder="Model"></div></td>
@@ -46,9 +54,10 @@
           </td>
         </tr>
       @empty
-        <tr><td colspan="6" class="text-center text-muted py-4">No {{ strtolower($label) }} records match the current filter.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4">No {{ strtolower($label) }} records match the current filter.</td></tr>
       @endforelse
     </tbody></table></div>
     <div class="card-footer">{{ $devices->links() }}</div>
   </div>
+  </form>
 </div>

@@ -341,6 +341,13 @@ Route::middleware([
             return back()->with('inventory_message', 'Inventory record updated.');
         })->name('network-inventory.devices.update');
 
+        Route::post('/network-inventory/device/{type}/bulk-status', function (\Illuminate\Http\Request $request, string $type) {
+            abort_unless(in_array($type, ['olt','switch','access-point'], true), 404);
+            $data = $request->validate(['device_ids'=>['required','array','min:1'],'device_ids.*'=>['integer'],'status'=>['required','in:online,offline,unknown']]);
+            \App\Models\NetworkInventoryDevice::type($type)->whereIn('id',$data['device_ids'])->update(['status'=>$data['status']]);
+            return back()->with('inventory_message', count($data['device_ids']).' device status records updated.');
+        })->name('network-inventory.devices.bulk-status');
+
         Route::delete('/network-inventory/device/{type}/{device}', function (string $type, \App\Models\NetworkInventoryDevice $device) {
             abort_unless(in_array($type, ['olt','switch','access-point'], true) && $device->type === $type, 404);
             $device->delete();
