@@ -300,6 +300,27 @@ Route::middleware([
             return view('sweet.inventory-list', compact('devices','type','label'));
         })->name('network-inventory.devices');
 
+        Route::post('/network-inventory/device/{type}', function (\Illuminate\Http\Request $request, string $type) {
+            abort_unless(in_array($type, ['olt','switch','access-point'], true), 404);
+            $data = $request->validate([
+                'name' => ['required','string','max:120'],
+                'ip_address' => ['nullable','ip'],
+                'vendor' => ['nullable','string','max:80'],
+                'model' => ['nullable','string','max:120'],
+                'status' => ['required','in:online,offline,unknown'],
+                'location' => ['nullable','string','max:160'],
+                'notes' => ['nullable','string','max:1000'],
+            ]);
+            \App\Models\NetworkInventoryDevice::create($data + ['type' => $type]);
+            return back()->with('inventory_message', ucfirst(str_replace('-', ' ', $type)).' device added.');
+        })->name('network-inventory.devices.store');
+
+        Route::delete('/network-inventory/device/{type}/{device}', function (string $type, \App\Models\NetworkInventoryDevice $device) {
+            abort_unless(in_array($type, ['olt','switch','access-point'], true) && $device->type === $type, 404);
+            $device->delete();
+            return back()->with('inventory_message', 'Inventory record deleted.');
+        })->name('network-inventory.devices.destroy');
+
         Route::get('/network-inventory/olt-management', fn () => view('sweet.device-management', [
             'title' => 'OLT Management', 'icon' => 'bi-diagram-3',
             'description' => 'Optical line terminal inventory and health management.', 'status' => 'Integration ready',
