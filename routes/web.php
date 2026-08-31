@@ -367,6 +367,10 @@ Route::middleware([
                 'location' => ['nullable','string','max:160'],
                 'notes' => ['nullable','string','max:1000'],
                 'health_port' => ['nullable','integer','min:1','max:65535'],
+                'onu_total' => ['nullable','integer','min:0'],
+                'onu_online' => ['nullable','integer','min:0'],
+                'rx_power' => ['nullable','numeric'],
+                'customer_count' => ['nullable','integer','min:0'],
                 'monitor_enabled' => ['nullable','boolean'],
             ]);
             \App\Models\NetworkInventoryDevice::create($data + [
@@ -384,6 +388,10 @@ Route::middleware([
                 'status' => ['required','in:online,offline,unknown'], 'location' => ['nullable','string','max:160'],
                 'notes' => ['nullable','string','max:1000'],
                 'health_port' => ['nullable','integer','min:1','max:65535'],
+                'onu_total' => ['nullable','integer','min:0'],
+                'onu_online' => ['nullable','integer','min:0'],
+                'rx_power' => ['nullable','numeric'],
+                'customer_count' => ['nullable','integer','min:0'],
                 'monitor_enabled' => ['nullable','boolean'],
             ]);
             $device->update($data + ['monitor_enabled' => (bool) ($data['monitor_enabled'] ?? false)]);
