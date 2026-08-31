@@ -6,6 +6,11 @@
   <div class="row g-3 mb-4">
     @foreach($stats as $stat)<div class="col-md-4"><div class="card h-100 shadow-sm"><div class="card-body"><small class="text-muted">{{ $stat[0] }}</small><div class="fs-3 fw-bold mt-2">{{ $stat[1] }}</div></div></div></div>@endforeach
   </div>
+  @if(isset($devices))
+  <div class="card shadow-sm mb-4"><div class="card-body"><h5>OLT Inventory</h5><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Name</th><th>IP</th><th>Status</th><th>Latency</th><th>Last Check</th></tr></thead><tbody>
+    @forelse($devices as $device)<tr><td>{{ $device->name }}</td><td>{{ $device->ip_address ?: '—' }}</td><td>{{ ucfirst($device->health_status ?? $device->status ?? 'unknown') }}</td><td>{{ $device->last_latency_ms !== null ? $device->last_latency_ms.' ms' : '—' }}</td><td>{{ optional($device->last_checked_at)->format('d M Y H:i') ?: '—' }}</td></tr>@empty<tr><td colspan="5" class="text-center text-muted py-4">No OLT devices configured.</td></tr>@endforelse
+  </tbody></table></div></div></div>
+  @endif
   <div class="card shadow-sm"><div class="card-body"><h5>Quick Management</h5><div class="row g-3 mt-1">
     @foreach($links as $link)<div class="col-md-6"><a wire:navigate.hover class="btn btn-outline-primary w-100 text-start" href="{{ route($link[0]) }}"><i class="bi bi-arrow-right-circle me-2"></i>{{ $link[1] }}<small class="d-block text-muted ms-4">{{ $link[2] }}</small></a></div>@endforeach
   </div></div></div>

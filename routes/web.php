@@ -399,12 +399,18 @@ Route::middleware([
             return back()->with('inventory_message', 'Inventory record deleted.');
         })->name('network-inventory.devices.destroy');
 
-        Route::get('/network-inventory/olt-management', fn () => view('xlink.device-management', [
-            'title' => 'OLT Management', 'icon' => 'bi-diagram-3',
-            'description' => 'Optical line terminal inventory and health management.', 'status' => 'Integration ready',
-            'stats' => [['Total OLTs',(int) config('app.network_inventory_olt_total',0)],['Online',(int) config('app.network_inventory_olt_online',0)],['Offline',max(0,(int) config('app.network_inventory_olt_total',0)-(int) config('app.network_inventory_olt_online',0))]],
-            'links' => [['network-inventory','Network Inventory','Back to device overview'],['main-site-setup','Inventory Settings','Configure inventory source']],
-        ]))->name('network-inventory.olt');
+        Route::get('/network-inventory/olt-management', function () {
+            $devices = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name')->get();
+            $total = $devices->count();
+            $online = $devices->where('health_status', 'online')->count();
+            return view('xlink.device-management', [
+                'title' => 'OLT Management', 'icon' => 'bi-diagram-3',
+                'description' => 'Optical line terminal inventory and health management.', 'status' => 'Live',
+                'stats' => [['Total OLTs',$total],['Online',$online],['Offline',max(0,$total-$online)]],
+                'devices' => $devices,
+                'links' => [['network-inventory','Network Inventory','Back to device overview'],['main-site-setup','Inventory Settings','Configure inventory source']],
+            ]);
+        })->name('network-inventory.olt');
 
         Route::get('/network-inventory/switch-management', fn () => view('xlink.device-management', [
             'title' => 'Switch Management', 'icon' => 'bi-ethernet',
