@@ -266,7 +266,18 @@ Route::middleware([
             $totalRouters = $routers->count();
             $onlineRouters = $routers->where('action', 'connected')->count();
             $offlineRouters = max(0, $totalRouters - $onlineRouters);
-            $attention = $routers->where('action', '!=', 'connected')->take(5);
+            $routerAttention = $routers->where('action', '!=', 'connected')->take(5)->map(fn ($router) => (object)[
+                'device_type' => 'MikroTik', 'display_name' => $router->router_name, 'ip_address' => $router->ip_address,
+                'health_status' => 'down', 'last_latency_ms' => null, 'last_checked_at' => $router->updated_at,
+            ]);
+            $deviceAttention = \App\Models\NetworkInventoryDevice::query()->where('monitor_enabled', true)
+                ->where(function ($q) { $q->whereIn('health_status', ['down','degraded'])->orWhere('status', 'offline'); })
+                ->orderByDesc('last_checked_at')->take(10)->get()->map(fn ($device) => (object)[
+                    'device_type' => strtoupper(str_replace('-', ' ', $device->type)), 'display_name' => $device->name,
+                    'ip_address' => $device->ip_address, 'health_status' => $device->health_status ?: $device->status,
+                    'last_latency_ms' => $device->last_latency_ms, 'last_checked_at' => $device->last_checked_at,
+                ]);
+            $attention = $routerAttention->merge($deviceAttention)->take(8);
 
             return view('sweet.network-inventory', [
                 'routerTotal' => $totalRouters,
