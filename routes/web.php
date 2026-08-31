@@ -284,6 +284,14 @@ Route::middleware([
 
         Route::get('/devices-inventory', fn () => redirect()->route('network-inventory'))
             ->name('sweet.devices-inventory');
+        Route::get('/network-inventory/mikrotik-management', function () {
+            $routers = \App\Models\RouterList::orderBy('router_name')->get();
+            return view('sweet.mikrotik-management', [
+                'routers' => $routers,
+                'online' => $routers->where('action', 'connected')->count(),
+            ]);
+        })->name('network-inventory.mikrotik');
+
 
         Route::get('/network-inventory/olt-management', fn () => view('sweet.device-management', [
             'title' => 'OLT Management',
