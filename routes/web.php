@@ -194,7 +194,7 @@ Route::middleware([
         // main site content management (deprecate name but keeps route if needed or redirection)
         Route::get('/main-site-setup', function () {
             return redirect()->route('site-settings');
-        });
+        })->name('main-site-setup');
 
         // X-Link Billing control center with live operational KPIs.
         Route::get('/xlink-billing', function () {
