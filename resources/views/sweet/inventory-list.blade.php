@@ -15,7 +15,7 @@
         <div class="col-md-2"><label class="form-label">Vendor</label><input name="vendor" class="form-control"></div>
         <div class="col-md-2"><label class="form-label">Model</label><input name="model" class="form-control"></div>
         <div class="col-md-2"><label class="form-label">Location</label><input name="location" class="form-control"></div>
-        <div class="col-md-1"><label class="form-label">Status</label><select name="status" class="form-select"><option>online</option><option>offline</option><option>unknown</option></select></div>
+        <div class="col-md-2"><label class="form-label">Status</label><select name="status" class="form-select"><option>online</option><option>offline</option><option>unknown</option></select></div><div class="col-md-2"><label class="form-label">Health port</label><input name="health_port" class="form-control" placeholder="e.g. 80 / 443 / 8728"></div><div class="col-md-1 d-flex align-items-center"><div class="form-check mt-4"><input name="monitor_enabled" value="1" type="checkbox" class="form-check-input" id="monitor"><label class="form-check-label" for="monitor">Monitor</label></div></div>
         <div class="col-12"><label class="form-label">Notes</label><input name="notes" class="form-control"></div>
         <div class="col-12"><button class="btn btn-primary">Add Device</button></div>
       </form>
@@ -40,7 +40,7 @@
     </div>
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between"><strong>{{ $devices->total() }} devices</strong><span class="text-muted">Search, edit and manage inventory</span></div>
-    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.inventory-select').forEach(e=>e.checked=this.checked)"></th><th>Name</th><th>IP</th><th>Vendor / Model</th><th>Status</th><th>Location</th><th>Action</th></tr></thead><tbody>
+    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.inventory-select').forEach(e=>e.checked=this.checked)"></th><th>Name</th><th>IP</th><th>Vendor / Model</th><th>Status</th><th>Health</th><th>Location</th><th>Action</th></tr></thead><tbody>
       @forelse($devices as $device)
         <tr>
           <td><input class="inventory-select" type="checkbox" name="device_ids[]" value="{{ $device->id }}"></td>
@@ -48,8 +48,9 @@
           <td><input name="ip_address" value="{{ $device->ip_address }}" class="form-control form-control-sm"></td>
           <td><div class="d-flex gap-1"><input name="vendor" value="{{ $device->vendor }}" class="form-control form-control-sm" placeholder="Vendor"><input name="model" value="{{ $device->model }}" class="form-control form-control-sm" placeholder="Model"></div></td>
           <td><select name="status" class="form-select form-select-sm"><option value="online" @selected($device->status==='online')>Online</option><option value="offline" @selected($device->status==='offline')>Offline</option><option value="unknown" @selected($device->status==='unknown')>Unknown</option></select></td>
+          <td><div class="input-group input-group-sm"><input name="health_port" value="{{ $device->health_port }}" class="form-control" placeholder="Port"><span class="input-group-text">{{ $device->health_status }}</span></div><div class="form-check mt-1"><input name="monitor_enabled" value="1" type="checkbox" class="form-check-input" id="mon-{{ $device->id }}" @checked($device->monitor_enabled)><label class="form-check-label small" for="mon-{{ $device->id }}">Monitor</label></div></td>
           <td><input name="location" value="{{ $device->location }}" class="form-control form-control-sm"></td>
-          <td class="text-nowrap">@csrf @method('PUT')<input type="hidden" name="notes" value="{{ $device->notes }}"><button class="btn btn-sm btn-outline-primary">Save</button></form>
+          <td class="text-nowrap">@csrf @method('PUT')<input type="hidden" name="notes" value="{{ $device->notes }}"><input type="hidden" name="monitor_enabled" value="0"><button class="btn btn-sm btn-outline-primary">Save</button></form>
             <form method="POST" action="{{ route('network-inventory.devices.destroy', [$type, $device->id]) }}" class="d-inline" onsubmit="return confirm('Delete this inventory record?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Delete</button></form>
           </td>
         </tr>

@@ -10,7 +10,14 @@ class NetworkInventoryDevice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'type','name','ip_address','vendor','model','status','location','notes',
+        'type', 'name', 'ip_address', 'health_port', 'monitor_enabled',
+        'vendor', 'model', 'status', 'health_status', 'last_latency_ms',
+        'last_checked_at', 'location', 'notes',
+    ];
+
+    protected $casts = [
+        'monitor_enabled' => 'boolean',
+        'last_checked_at' => 'datetime',
     ];
 
     public function scopeType($query, string $type)

@@ -59,3 +59,5 @@ Artisan::command('inspire', function () {
 //         'timezone' => config('app.timezone'),
 //     ]);
 // })->everyMinute();
+
+Schedule::command('app:check-network-inventory')->everyMinute()->withoutOverlapping();

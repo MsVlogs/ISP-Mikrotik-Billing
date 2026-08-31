@@ -324,8 +324,13 @@ Route::middleware([
                 'status' => ['required','in:online,offline,unknown'],
                 'location' => ['nullable','string','max:160'],
                 'notes' => ['nullable','string','max:1000'],
+                'health_port' => ['nullable','integer','min:1','max:65535'],
+                'monitor_enabled' => ['nullable','boolean'],
             ]);
-            \App\Models\NetworkInventoryDevice::create($data + ['type' => $type]);
+            \App\Models\NetworkInventoryDevice::create($data + [
+                'type' => $type,
+                'monitor_enabled' => (bool) ($data['monitor_enabled'] ?? false),
+            ]);
             return back()->with('inventory_message', ucfirst(str_replace('-', ' ', $type)).' device added.');
         })->name('network-inventory.devices.store');
 
@@ -336,8 +341,10 @@ Route::middleware([
                 'vendor' => ['nullable','string','max:80'], 'model' => ['nullable','string','max:120'],
                 'status' => ['required','in:online,offline,unknown'], 'location' => ['nullable','string','max:160'],
                 'notes' => ['nullable','string','max:1000'],
+                'health_port' => ['nullable','integer','min:1','max:65535'],
+                'monitor_enabled' => ['nullable','boolean'],
             ]);
-            $device->update($data);
+            $device->update($data + ['monitor_enabled' => (bool) ($data['monitor_enabled'] ?? false)]);
             return back()->with('inventory_message', 'Inventory record updated.');
         })->name('network-inventory.devices.update');
 
