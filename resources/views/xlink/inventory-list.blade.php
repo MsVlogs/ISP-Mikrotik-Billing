@@ -1,3 +1,4 @@
+<x-app-layout>
 <div class="container-fluid px-1">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div><h3 class="mb-1"><i class="bi bi-hdd-network me-2"></i>{{ $label }} Inventory</h3><div class="text-muted">Database-backed device inventory</div></div>
@@ -62,3 +63,4 @@
   </div>
   </form>
 </div>
+</x-app-layout>

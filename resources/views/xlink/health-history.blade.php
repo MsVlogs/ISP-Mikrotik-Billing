@@ -1,3 +1,4 @@
+<x-app-layout>
 <div class="container-fluid px-1">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div><h3 class="mb-1"><i class="bi bi-activity me-2"></i>Network Health History</h3><div class="text-muted">Historical uptime, incidents and latency</div></div>
@@ -20,3 +21,4 @@
     </tbody></table></div>
   </div>
 </div>
+</x-app-layout>

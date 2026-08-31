@@ -1,3 +1,4 @@
+<x-app-layout>
 <style>
 .network-inventory .ni-card{border:0;border-radius:16px;box-shadow:0 6px 22px rgba(31,41,55,.08);overflow:hidden}.network-inventory .ni-stat{color:#fff;min-height:126px;position:relative}.network-inventory .ni-stat .ni-icon{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:22px}.network-inventory .ni-stat.blue{background:linear-gradient(135deg,#1683e8,#2b6fe3)}.network-inventory .ni-stat.purple{background:linear-gradient(135deg,#8e3ff0,#a94ee7)}.network-inventory .ni-stat.cyan{background:linear-gradient(135deg,#16a6bd,#1592a6)}.network-inventory .ni-stat.green{background:linear-gradient(135deg,#22a55a,#17b86a)}
 .network-inventory .attention-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid #edf0f4}.network-inventory .attention-item:last-child{border-bottom:0}.network-inventory .status-dot{width:42px;height:42px;border-radius:12px;background:#ef4444;display:grid;place-items:center;color:#fff;flex:0 0 auto}.network-inventory .shortcut{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid #edf0f4;text-decoration:none}.network-inventory .shortcut:last-child{border-bottom:0}.network-inventory .shortcut:hover{background:#f8fafc}.network-inventory .soft{color:#64748b}
@@ -35,3 +36,4 @@
     </div></div>
   </div>
 </div>
+</x-app-layout>

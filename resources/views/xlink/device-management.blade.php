@@ -1,3 +1,4 @@
+<x-app-layout>
 <div class="container-fluid px-1">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div><h3 class="mb-1"><i class="bi {{ $icon ?? 'bi-hdd-network' }} me-2"></i>{{ $title }}</h3><div class="text-muted">{{ $description }}</div></div>
@@ -15,3 +16,4 @@
     @foreach($links as $link)<div class="col-md-6"><a wire:navigate.hover class="btn btn-outline-primary w-100 text-start" href="{{ route($link[0]) }}"><i class="bi bi-arrow-right-circle me-2"></i>{{ $link[1] }}<small class="d-block text-muted ms-4">{{ $link[2] }}</small></a></div>@endforeach
   </div></div></div>
 </div>
+</x-app-layout>

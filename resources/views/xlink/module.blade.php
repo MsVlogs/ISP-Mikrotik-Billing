@@ -1,3 +1,4 @@
+<x-app-layout>
 <div class="container-fluid py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div><h3 class="mb-1"><i class="bi {{ $icon ?? 'bi-grid' }} me-2"></i>{{ $title }}</h3><small class="text-muted">X-Link Billing module</small></div>
@@ -17,3 +18,4 @@
     </div>
   </div></div>
 </div>
+</x-app-layout>

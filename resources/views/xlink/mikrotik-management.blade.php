@@ -1,3 +1,4 @@
+<x-app-layout>
 <div class="container-fluid px-1">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div><h3 class="mb-1"><i class="bi bi-router me-2"></i>MikroTik Management</h3><div class="text-muted">Router inventory, connection state and management shortcuts</div></div>
@@ -30,3 +31,4 @@
     </div>
   </div>
 </div>
+</x-app-layout>
