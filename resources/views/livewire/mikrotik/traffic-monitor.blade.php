@@ -1,3 +1,6 @@
+@push('styles')
+<link rel="stylesheet" href="{{ asset('xlink-network-monitoring/network-monitoring-polish.css') }}">
+@endpush
 <div class="zoom-in">
     <x-slot name="header">{{ __('Live Traffic Monitor') }}</x-slot>
 

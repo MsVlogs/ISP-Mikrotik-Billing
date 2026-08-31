@@ -1,3 +1,6 @@
+@push('styles')
+<link rel="stylesheet" href="{{ asset('xlink-network-monitoring/network-monitoring-polish.css') }}">
+@endpush
 <div class="container-fluid py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div><h3 class="mb-1"><i class="bi bi-bell me-2"></i>Logs & Alerts</h3><small class="text-muted">MikroTik login, logout and authentication events</small></div>
