@@ -8,7 +8,7 @@ use Tests\TestCase;
 class XLinkBillingParityTest extends TestCase
 {
     #[Test]
-    public function sweet_billing_control_center_requires_authentication(): void
+    public function xlink_billing_control_center_requires_authentication(): void
     {
         $response = $this->get('/xlink-billing');
         $response->assertStatus(302);
@@ -16,7 +16,7 @@ class XLinkBillingParityTest extends TestCase
     }
 
     #[Test]
-    public function sweet_billing_module_routes_require_authentication(): void
+    public function xlink_billing_module_routes_require_authentication(): void
     {
         $routes = [
             '/mobile-banking', '/partner-network', '/bandwidth-reseller',
