@@ -196,14 +196,14 @@ Route::middleware([
             return redirect()->route('site-settings');
         });
 
-        // Sweet Billing control center with live operational KPIs.
-        Route::get('/sweet-billing', function () {
+        // X-Link Billing control center with live operational KPIs.
+        Route::get('/xlink-billing', function () {
             $customers = \App\Models\CustomersInfo::count();
             $routers = \App\Models\RouterList::count();
             $openTickets = \App\Models\SupportTicket::whereIn('status', ['open','pending','in_progress'])->count();
             $pendingRequests = \App\Models\PackagePurchaseRequest::whereIn('status', ['pending','requested'])->count();
             $watchers = \App\Models\DeviceWatcher::count();
-            return view('sweet.index', [
+            return view('xlink.index', [
                 'kpis' => [
                     ['label'=>'Customers','value'=>$customers,'icon'=>'bi-people'],
                     ['label'=>'Routers','value'=>$routers,'icon'=>'bi-router'],
@@ -212,17 +212,17 @@ Route::middleware([
                     ['label'=>'Device Watchers','value'=>$watchers,'icon'=>'bi-eye'],
                 ],
                 'modules' => [
-                    ['Mobile Banking','sweet.mobile-banking','bi-phone'],
-                    ['Partner Network','sweet.partner-network','bi-diagram-3'],
-                    ['Bandwidth Reseller','sweet.bandwidth-reseller','bi-speedometer2'],
-                    ['Devices Inventory','sweet.devices-inventory','bi-hdd-network'],
-                    ['Stock Inventory','sweet.stock-inventory','bi-box-seam'],
-                    ['Communication Center','sweet.communication-center','bi-chat-dots'],
-                    ['Support Center','sweet.support-center','bi-headset'],
-                    ['Team & Access','sweet.team-access','bi-people'],
-                    ['System Settings','sweet.system-settings','bi-gear'],
-                    ['Billing Helpline','sweet.billing-helpline','bi-telephone'],
-                    ['Profile & Security','sweet.profile-security','bi-shield-lock'],
+                    ['Mobile Banking','xlink.mobile-banking','bi-phone'],
+                    ['Partner Network','xlink.partner-network','bi-diagram-3'],
+                    ['Bandwidth Reseller','xlink.bandwidth-reseller','bi-speedometer2'],
+                    ['Devices Inventory','xlink.devices-inventory','bi-hdd-network'],
+                    ['Stock Inventory','xlink.stock-inventory','bi-box-seam'],
+                    ['Communication Center','xlink.communication-center','bi-chat-dots'],
+                    ['Support Center','xlink.support-center','bi-headset'],
+                    ['Team & Access','xlink.team-access','bi-people'],
+                    ['System Settings','xlink.system-settings','bi-gear'],
+                    ['Billing Helpline','xlink.billing-helpline','bi-telephone'],
+                    ['Profile & Security','xlink.profile-security','bi-shield-lock'],
                     ['Network Map','network-map','bi-diagram-3'],
                     ['Traffic Monitor','traffic-monitor','bi-activity'],
                     ['High Usage Monitor','high-usage-monitor','bi-bar-chart-line'],
@@ -230,10 +230,10 @@ Route::middleware([
                     ['Logs & Alerts','mikrotik-login-messages','bi-bell'],
                 ],
             ]);
-        })->name('sweet.index');
+        })->name('xlink.index');
 
-        // Sweet Billing functional module hubs — backed by existing production features.
-        Route::get('/mobile-banking', fn () => view('sweet.module', [
+        // X-Link Billing functional module hubs — backed by existing production features.
+        Route::get('/mobile-banking', fn () => view('xlink.module', [
             'title'=>'Mobile Banking','icon'=>'bi-phone','description'=>'Mobile payment gateways, SMS and collection operations.',
             'stats'=>[
                 ['Gateway','Operational'],
@@ -242,8 +242,8 @@ Route::middleware([
                 ['SSLCommerz',\App\Models\MainSiteData::getValue('payment_sslcommerz_enabled', 0) ? 'Enabled' : 'Disabled'],
             ],
             'links'=>[[route('site-settings'),'Payment Gateway Settings','Configure bKash, Nagad and SSLCommerz'],[route('payment-collection'),'Payment Collection','Collection desk'],[route('payment-invoice'),'Invoices','Payment invoices']],
-        ]))->name('sweet.mobile-banking');
-        Route::get('/partner-network', fn () => view('sweet.module', [
+        ]))->name('xlink.mobile-banking');
+        Route::get('/partner-network', fn () => view('xlink.module', [
             'title'=>'Partner Network','icon'=>'bi-diagram-3','description'=>'Partner and reseller network management.',
             'stats'=>[
                 ['Partners',\App\Models\Reseller::count()],
@@ -251,8 +251,8 @@ Route::middleware([
                 ['Requests',\App\Models\PackagePurchaseRequest::count()],
             ],
             'links'=>[[route('admin.resellers.index'),'Partner Management','Create and manage partners'],[route('admin.purchase-requests'),'Purchase Requests','Review partner requests'],[route('reseller.dashboard'),'Partner Dashboard','Reseller operations']],
-        ]))->name('sweet.partner-network');
-        Route::get('/bandwidth-reseller', fn () => view('sweet.module', [
+        ]))->name('xlink.partner-network');
+        Route::get('/bandwidth-reseller', fn () => view('xlink.module', [
             'title'=>'Bandwidth Reseller','icon'=>'bi-speedometer2','description'=>'Reseller packages, wallet, vouchers and customer operations.',
             'stats'=>[
                 ['Resellers',\App\Models\Reseller::count()],
@@ -260,7 +260,7 @@ Route::middleware([
                 ['Vouchers',\App\Models\Voucher::count()],
             ],
             'links'=>[[route('reseller.dashboard'),'Reseller Dashboard','Operations'],[route('reseller.packages.index'),'Packages','Package management'],[route('reseller.wallet.index'),'Wallet','Balances and transactions'],[route('reseller.vouchers.index'),'Vouchers','Voucher management']],
-        ]))->name('sweet.bandwidth-reseller');
+        ]))->name('xlink.bandwidth-reseller');
         Route::get('/network-inventory', function () {
             $routers = \App\Models\RouterList::orderBy('router_name')->get();
             $totalRouters = $routers->count();
@@ -289,7 +289,7 @@ Route::middleware([
             $incidentCount = $health7->whereIn('status', ['down','degraded'])->count();
             $avgLatency = $health24->whereNotNull('latency_ms')->avg('latency_ms');
 
-            return view('sweet.network-inventory', [
+            return view('xlink.network-inventory', [
                 'routerTotal' => $totalRouters,
                 'routerOnline' => $onlineRouters,
                 'oltTotal' => (int) \App\Models\NetworkInventoryDevice::type('olt')->count(),
@@ -308,14 +308,14 @@ Route::middleware([
         })->name('network-inventory');
 
         Route::get('/devices-inventory', fn () => redirect()->route('network-inventory'))
-            ->name('sweet.devices-inventory');
+            ->name('xlink.devices-inventory');
         Route::get('/network-inventory/health-history', function () {
             $model = \App\Models\NetworkInventoryHealthCheck::query();
             $health24 = (clone $model)->where('checked_at', '>=', now()->subDay())->get();
             $health7 = (clone $model)->where('checked_at', '>=', now()->subDays(7))->get();
             $uptime = fn ($rows) => $rows->count() ? round(($rows->where('status','online')->count() / $rows->count()) * 100, 2) : null;
             $checks = (clone $model)->with('device')->latest('checked_at')->limit(100)->get();
-            return view('sweet.health-history', [
+            return view('xlink.health-history', [
                 'checks' => $checks, 'uptime24' => $uptime($health24), 'uptime7' => $uptime($health7),
                 'incidentCount' => $health7->whereIn('status', ['down','degraded'])->count(),
                 'avgLatency' => $health24->whereNotNull('latency_ms')->count() ? round($health24->whereNotNull('latency_ms')->avg('latency_ms'), 1) : null,
@@ -324,7 +324,7 @@ Route::middleware([
 
         Route::get('/network-inventory/mikrotik-management', function () {
             $routers = \App\Models\RouterList::orderBy('router_name')->get();
-            return view('sweet.mikrotik-management', [
+            return view('xlink.mikrotik-management', [
                 'routers' => $routers,
                 'online' => $routers->where('action', 'connected')->count(),
             ]);
@@ -349,7 +349,7 @@ Route::middleware([
             }
             $perPage = min(max((int) request('per_page', 10), 10), 50);
             $devices = $query->orderBy('name')->paginate($perPage)->withQueryString();
-            return view('sweet.inventory-list', compact('devices','type','label'));
+            return view('xlink.inventory-list', compact('devices','type','label'));
         })->name('network-inventory.devices');
 
         Route::post('/network-inventory/device/{type}', function (\Illuminate\Http\Request $request, string $type) {
@@ -399,21 +399,21 @@ Route::middleware([
             return back()->with('inventory_message', 'Inventory record deleted.');
         })->name('network-inventory.devices.destroy');
 
-        Route::get('/network-inventory/olt-management', fn () => view('sweet.device-management', [
+        Route::get('/network-inventory/olt-management', fn () => view('xlink.device-management', [
             'title' => 'OLT Management', 'icon' => 'bi-diagram-3',
             'description' => 'Optical line terminal inventory and health management.', 'status' => 'Integration ready',
             'stats' => [['Total OLTs',(int) config('app.network_inventory_olt_total',0)],['Online',(int) config('app.network_inventory_olt_online',0)],['Offline',max(0,(int) config('app.network_inventory_olt_total',0)-(int) config('app.network_inventory_olt_online',0))]],
             'links' => [['network-inventory','Network Inventory','Back to device overview'],['main-site-setup','Inventory Settings','Configure inventory source']],
         ]))->name('network-inventory.olt');
 
-        Route::get('/network-inventory/switch-management', fn () => view('sweet.device-management', [
+        Route::get('/network-inventory/switch-management', fn () => view('xlink.device-management', [
             'title' => 'Switch Management', 'icon' => 'bi-ethernet',
             'description' => 'Switch inventory and port health management.', 'status' => 'Integration ready',
             'stats' => [['Total Switches',(int) config('app.network_inventory_switch_total',0)],['Online',(int) config('app.network_inventory_switch_online',0)],['Offline',max(0,(int) config('app.network_inventory_switch_total',0)-(int) config('app.network_inventory_switch_online',0))]],
             'links' => [['network-inventory','Network Inventory','Back to device overview'],['network-map','Topology','View network topology']],
         ]))->name('network-inventory.switches');
 
-        Route::get('/network-inventory/access-point-management', fn () => view('sweet.device-management', [
+        Route::get('/network-inventory/access-point-management', fn () => view('xlink.device-management', [
             'title' => 'Access Point Management', 'icon' => 'bi-wifi',
             'description' => 'Wireless access point inventory and availability management.', 'status' => 'Integration ready',
             'stats' => [['Total APs',(int) config('app.network_inventory_ap_total',0)],['Online',(int) config('app.network_inventory_ap_online',0)],['Offline',max(0,(int) config('app.network_inventory_ap_total',0)-(int) config('app.network_inventory_ap_online',0))]],
@@ -425,7 +425,7 @@ Route::middleware([
             $pending = (clone $requests)->whereIn('status',['pending','requested'])->count();
             $total = (clone $requests)->count();
             $packages = \App\Models\PackageList::count();
-            return view('sweet.module', [
+            return view('xlink.module', [
                 'title'=>'Stock Inventory','icon'=>'bi-box-seam','description'=>'Package catalog, stock requests and procurement workflow.',
                 'stats'=>[['label'=>'Packages','value'=>$packages],['label'=>'Pending Requests','value'=>$pending],['label'=>'Total Requests','value'=>$total]],
                 'links'=>[
@@ -434,11 +434,11 @@ Route::middleware([
                     ['url'=>route('admin.vouchers'),'label'=>'Voucher Inventory','hint'=>'Voucher administration'],
                 ],
             ]);
-        })->name('sweet.stock-inventory');
+        })->name('xlink.stock-inventory');
         Route::get('/communication-center', function () {
             $templates = \App\Models\SmsTemplate::count();
             $notifications = \App\Models\NotificationLogs::count();
-            return view('sweet.module', [
+            return view('xlink.module', [
                 'title'=>'Communication Center','icon'=>'bi-chat-dots','description'=>'Central SMS, notifications and customer communication tools.',
                 'stats'=>[['label'=>'SMS Templates','value'=>$templates],['label'=>'Notifications','value'=>$notifications],['label'=>'Bridge','value'=>'Ready']],
                 'links'=>[
@@ -448,12 +448,12 @@ Route::middleware([
                     ['url'=>route('admin-tickets'),'label'=>'Support Tickets','hint'=>'Customer communication'],
                 ],
             ]);
-        })->name('sweet.communication-center');
+        })->name('xlink.communication-center');
         Route::get('/support-center', function () {
             $tickets = \App\Models\SupportTicket::query();
             $open = (clone $tickets)->whereIn('status',['open','pending','in_progress'])->count();
             $total = (clone $tickets)->count();
-            return view('sweet.module', [
+            return view('xlink.module', [
                 'title'=>'Support Center','icon'=>'bi-headset','description'=>'Customer support desk with live ticket visibility and operational logs.',
                 'stats'=>[['label'=>'Open Tickets','value'=>$open],['label'=>'Total Tickets','value'=>$total],['label'=>'Status','value'=>'Online']],
                 'links'=>[
@@ -462,11 +462,11 @@ Route::middleware([
                     ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication activity'],
                 ],
             ]);
-        })->name('sweet.support-center');
+        })->name('xlink.support-center');
         Route::get('/team-access', function () {
             $users = \App\Models\User::count();
             $roles = class_exists(\Spatie\Permission\Models\Role::class) ? \Spatie\Permission\Models\Role::count() : 0;
-            return view('sweet.module', [
+            return view('xlink.module', [
                 'title'=>'Team & Access','icon'=>'bi-people','description'=>'Users, roles and access administration with protected admin controls.',
                 'stats'=>[
                     ['label'=>'Users','value'=>$users],
@@ -480,10 +480,10 @@ Route::middleware([
                     ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication history'],
                 ],
             ]);
-        })->name('sweet.team-access');
+        })->name('xlink.team-access');
         Route::get('/system-settings', function () {
             $debug = config('app.debug') ? 'ON' : 'OFF';
-            return view('sweet.module', [
+            return view('xlink.module', [
                 'title'=>'System Settings','icon'=>'bi-gear','description'=>'Central application, branding, MikroTik and messaging configuration.',
                 'stats'=>[
                     ['label'=>'Environment','value'=>app()->environment()],
@@ -497,12 +497,12 @@ Route::middleware([
                     ['url'=>route('main-site-setup'),'label'=>'Main Site Setup','hint'=>'Website content configuration'],
                 ],
             ]);
-        })->name('sweet.system-settings');
+        })->name('xlink.system-settings');
         Route::get('/billing-helpline', function () {
             $tickets = \App\Models\SupportTicket::query();
             $open = (clone $tickets)->whereIn('status',['open','pending','in_progress'])->count();
             $total = (clone $tickets)->count();
-            return view('sweet.module', [
+            return view('xlink.module', [
                 'title'=>'Billing Helpline','icon'=>'bi-telephone','description'=>'Billing support, collections and issue escalation desk.',
                 'stats'=>[
                     ['label'=>'Open Tickets','value'=>$open],
@@ -516,9 +516,9 @@ Route::middleware([
                     ['url'=>route('customer-summary'),'label'=>'Customer Summary','hint'=>'Customer billing history'],
                 ],
             ]);
-        })->name('sweet.billing-helpline');
+        })->name('xlink.billing-helpline');
         Route::get('/profile-security', function () {
-            return view('sweet.module', [
+            return view('xlink.module', [
                 'title'=>'Profile & Security','icon'=>'bi-shield-lock','description'=>'Profile, authentication, sessions and access-security controls.',
                 'stats'=>[
                     ['label'=>'Authentication','value'=>'Protected'],
@@ -528,28 +528,28 @@ Route::middleware([
                 'links'=>[
                     ['url'=>route('profile.show'),'label'=>'My Profile','hint'=>'Profile and personal settings'],
                     ['url'=>route('two-factor.login'),'label'=>'Two-Factor Authentication','hint'=>'Manage account 2FA'],
-                    ['url'=>route('sweet.team-access'),'label'=>'Team & Access','hint'=>'Users and roles'],
+                    ['url'=>route('xlink.team-access'),'label'=>'Team & Access','hint'=>'Users and roles'],
                     ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication events'],
                 ],
             ]);
-        })->name('sweet.profile-security');
+        })->name('xlink.profile-security');
 
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
         // Route::get('/edit-customer', EditCustomer::class);
         // Route::get('/customers', CustomerList::class);
 
-        // Sweet Billing parity aliases — reuse existing production modules.
-        Route::get('/mobile-banking', fn () => redirect()->route('sms-setup'))->name('sweet.mobile-banking');
-        Route::get('/partner-network', fn () => redirect()->route('admin.resellers.index'))->name('sweet.partner-network');
-        Route::get('/bandwidth-reseller', fn () => redirect()->route('reseller.dashboard'))->name('sweet.bandwidth-reseller');
-        Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('sweet.devices-inventory');
-        Route::get('/stock-inventory', fn () => redirect()->route('admin.purchase-requests'))->name('sweet.stock-inventory');
-        Route::get('/communication-center', fn () => redirect()->route('sms-bridge.index'))->name('sweet.communication-center');
-        Route::get('/support-center', fn () => redirect()->route('admin-tickets'))->name('sweet.support-center');
-        Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('sweet.team-access');
-        Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('sweet.system-settings');
-        Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('sweet.billing-helpline');
-        Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('sweet.profile-security');
+        // X-Link Billing parity aliases — reuse existing production modules.
+        Route::get('/mobile-banking', fn () => redirect()->route('sms-setup'))->name('xlink.mobile-banking');
+        Route::get('/partner-network', fn () => redirect()->route('admin.resellers.index'))->name('xlink.partner-network');
+        Route::get('/bandwidth-reseller', fn () => redirect()->route('reseller.dashboard'))->name('xlink.bandwidth-reseller');
+        Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
+        Route::get('/stock-inventory', fn () => redirect()->route('admin.purchase-requests'))->name('xlink.stock-inventory');
+        Route::get('/communication-center', fn () => redirect()->route('sms-bridge.index'))->name('xlink.communication-center');
+        Route::get('/support-center', fn () => redirect()->route('admin-tickets'))->name('xlink.support-center');
+        Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('xlink.team-access');
+        Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('xlink.system-settings');
+        Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('xlink.billing-helpline');
+        Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('xlink.profile-security');
 
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
         // Route::get('/edit-customer', EditCustomer::class);

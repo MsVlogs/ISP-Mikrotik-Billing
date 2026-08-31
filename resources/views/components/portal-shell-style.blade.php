@@ -1,5 +1,5 @@
 <style>
-/* Customer Portal — Sweet Billing compact admin-style shell */
+/* Customer Portal — X-Link Billing compact admin-style shell */
 .fi-sidebar {
     width: 9rem !important;
     background: #07111d !important;

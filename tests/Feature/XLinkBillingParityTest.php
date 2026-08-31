@@ -5,12 +5,12 @@ namespace Tests\Feature;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-class SweetBillingParityTest extends TestCase
+class XLinkBillingParityTest extends TestCase
 {
     #[Test]
     public function sweet_billing_control_center_requires_authentication(): void
     {
-        $response = $this->get('/sweet-billing');
+        $response = $this->get('/xlink-billing');
         $response->assertStatus(302);
         $this->assertStringContainsString('/login', $response->headers->get('Location'));
     }

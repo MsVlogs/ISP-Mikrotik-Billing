@@ -35,7 +35,7 @@ class PortalPanelProvider extends PanelProvider
             ->path('portal')
             ->favicon(site_image(siteUrlSettings('site_favicon'), 'images/favicon.png'))
             ->brandLogo(asset('images/x-link-limited-logo.svg'))
-            ->brandName(siteUrlSettings('portal_name') ?? siteUrlSettings('site_name') ?? 'Sweet Billing')
+            ->brandName(siteUrlSettings('portal_name') ?? siteUrlSettings('site_name') ?? 'X-Link Billing')
             ->brandLogoHeight('3.5rem')
             ->login(Login::class)
             ->registration((siteUrlSettings('portal_registration_enabled') ?? 1) ? Register::class : null)

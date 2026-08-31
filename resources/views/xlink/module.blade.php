@@ -1,6 +1,6 @@
 <div class="container-fluid py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <div><h3 class="mb-1"><i class="bi {{ $icon ?? 'bi-grid' }} me-2"></i>{{ $title }}</h3><small class="text-muted">Sweet Billing module</small></div>
+    <div><h3 class="mb-1"><i class="bi {{ $icon ?? 'bi-grid' }} me-2"></i>{{ $title }}</h3><small class="text-muted">X-Link Billing module</small></div>
     <span class="badge bg-success">Ready</span>
   </div>
   <div class="row g-3 mb-4">

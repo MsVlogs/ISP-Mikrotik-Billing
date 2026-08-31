@@ -277,11 +277,11 @@
                 <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-login-messages') }}"><div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-bell"></i></span><span class="nav-link-text ps-1">{{ __('Logs & Alerts') }}</span></div></a>
             </li>
             <li class="nav-item">
-                <!-- Sweet Billing parity modules -->
+                <!-- X-Link Billing parity modules -->
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
-                    <div class="col-auto navbar-vertical-label">{{ __('Sweet Billing') }}</div>
+                    <div class="col-auto navbar-vertical-label">{{ __('X-Link Billing') }}</div>
                 </div>
-                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('sweet.devices-inventory') }}">
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('xlink.devices-inventory') }}">
                     <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-router"></i></span><span class="nav-link-text ps-1">{{ __('Devices Inventory') }}</span></div>
                 </a>
                 <div class="ps-4">
@@ -292,16 +292,16 @@
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.access-points') }}"><span class="nav-link-text ps-1">{{ __('Access Point Management') }}</span></a>
                 </div>
                 @foreach([
-                    ['sweet.mobile-banking','Mobile Banking','bi-phone'],
-                    ['sweet.partner-network','Partner Network','bi-diagram-2'],
-                    ['sweet.bandwidth-reseller','Bandwidth Reseller','bi-speedometer2'],
-                    ['sweet.stock-inventory','Stock Inventory','bi-box-seam'],
-                    ['sweet.communication-center','Communication Center','bi-chat-dots'],
-                    ['sweet.support-center','Support Center','bi-life-preserver'],
-                    ['sweet.team-access','Team & Access','bi-people'],
-                    ['sweet.system-settings','System Settings','bi-gear'],
-                    ['sweet.billing-helpline','Billing Helpline','bi-headset'],
-                    ['sweet.profile-security','Profile & Security','bi-shield-lock'],
+                    ['xlink.mobile-banking','Mobile Banking','bi-phone'],
+                    ['xlink.partner-network','Partner Network','bi-diagram-2'],
+                    ['xlink.bandwidth-reseller','Bandwidth Reseller','bi-speedometer2'],
+                    ['xlink.stock-inventory','Stock Inventory','bi-box-seam'],
+                    ['xlink.communication-center','Communication Center','bi-chat-dots'],
+                    ['xlink.support-center','Support Center','bi-life-preserver'],
+                    ['xlink.team-access','Team & Access','bi-people'],
+                    ['xlink.system-settings','System Settings','bi-gear'],
+                    ['xlink.billing-helpline','Billing Helpline','bi-headset'],
+                    ['xlink.profile-security','Profile & Security','bi-shield-lock'],
                 ] as [$route,$label,$icon])
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">
                         <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi {{ $icon }}"></i></span><span class="nav-link-text ps-1">{{ __($label) }}</span></div>

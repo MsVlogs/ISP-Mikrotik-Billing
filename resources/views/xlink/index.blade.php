@@ -1,7 +1,7 @@
 <div class="container-fluid py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h3 class="mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>Sweet Billing Control Center</h3>
+      <h3 class="mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>X-Link Billing Control Center</h3>
       <p class="text-muted mb-0">Operational overview and module access.</p>
     </div>
     <span class="badge bg-success">Live</span>
