@@ -11,7 +11,7 @@
   </div>
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between"><strong>Recent health checks</strong><span class="text-muted">Latest 100 records</span></div>
-    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Device</th><th>Type</th><th>Status</th><th>Latency</th><th>Checked</th></tr></thead><tbody>
+    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Device</th><th>Type</th><th>Status</th><th>Latency</th><th>Checked</th><th>Details</th></tr></thead><tbody>
       @forelse($checks as $check)
         <tr><td class="fw-semibold">{{ $check->device->name }}</td><td>{{ strtoupper(str_replace('-', ' ', $check->device->type)) }}</td><td><span class="badge {{ $check->status==='online'?'bg-success':($check->status==='degraded'?'bg-warning text-dark':'bg-danger') }}">{{ ucfirst($check->status) }}</span></td><td>{{ $check->latency_ms !== null ? $check->latency_ms.' ms' : '—' }}</td><td>{{ optional($check->checked_at)->format('d M Y H:i:s') }}</td></tr>
       @empty
