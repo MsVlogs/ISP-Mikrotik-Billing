@@ -359,6 +359,10 @@ Route::middleware([
                 'ip_address' => ['nullable','ip'],
                 'vendor' => ['nullable','string','max:80'],
                 'model' => ['nullable','string','max:120'],
+                'onu_total' => ['nullable','integer','min:0'],
+                'onu_online' => ['nullable','integer','min:0'],
+                'rx_power' => ['nullable','numeric','between:-99.99,99.99'],
+                'customer_count' => ['nullable','integer','min:0'],
                 'status' => ['required','in:online,offline,unknown'],
                 'location' => ['nullable','string','max:160'],
                 'notes' => ['nullable','string','max:1000'],
@@ -401,16 +405,10 @@ Route::middleware([
 
         Route::get('/network-inventory/olt-management', function () {
             $devices = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name')->get();
-            $total = $devices->count();
-            $online = $devices->where('health_status', 'online')->count();
-            return view('xlink.device-management', [
-                'title' => 'OLT Management', 'icon' => 'bi-diagram-3',
-                'description' => 'Optical line terminal inventory and health management.', 'status' => 'Live',
-                'stats' => [['Total OLTs',$total],['Online',$online],['Offline',max(0,$total-$online)]],
-                'devices' => $devices,
-                'links' => [['network-inventory','Network Inventory','Back to device overview'],['main-site-setup','Inventory Settings','Configure inventory source']],
-            ]);
+            return view('xlink.olts', ['devices' => $devices]);
         })->name('network-inventory.olt');
+
+        Route::get('/olts', fn () => redirect()->route('network-inventory.olt'))->name('olts');
 
         Route::get('/network-inventory/switch-management', fn () => view('xlink.device-management', [
             'title' => 'Switch Management', 'icon' => 'bi-ethernet',

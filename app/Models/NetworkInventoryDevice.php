@@ -12,7 +12,7 @@ class NetworkInventoryDevice extends Model
 
     protected $fillable = [
         'type', 'name', 'ip_address', 'health_port', 'monitor_enabled',
-        'vendor', 'model', 'status', 'health_status', 'last_latency_ms',
+        'vendor', 'model', 'onu_total', 'onu_online', 'rx_power', 'customer_count', 'status', 'health_status', 'last_latency_ms',
         'last_checked_at', 'location', 'notes',
     ];
 
