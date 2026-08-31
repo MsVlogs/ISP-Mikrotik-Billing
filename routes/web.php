@@ -293,6 +293,13 @@ Route::middleware([
         })->name('network-inventory.mikrotik');
 
 
+        Route::get('/network-inventory/device/{type}', function (string $type) {
+            abort_unless(in_array($type, ['olt','switch','access-point'], true), 404);
+            $label = ['olt'=>'OLT','switch'=>'Switch','access-point'=>'Access Point'][$type];
+            $devices = \App\Models\NetworkInventoryDevice::type($type)->orderBy('name')->get();
+            return view('sweet.inventory-list', compact('devices','type','label'));
+        })->name('network-inventory.devices');
+
         Route::get('/network-inventory/olt-management', fn () => view('sweet.device-management', [
             'title' => 'OLT Management', 'icon' => 'bi-diagram-3',
             'description' => 'Optical line terminal inventory and health management.', 'status' => 'Integration ready',
