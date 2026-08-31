@@ -281,14 +281,20 @@
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
                     <div class="col-auto navbar-vertical-label">{{ __('Sweet Billing') }}</div>
                 </div>
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('sweet.devices-inventory') }}">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-router"></i></span><span class="nav-link-text ps-1">{{ __('Devices Inventory') }}</span></div>
+                </a>
+                <div class="ps-4">
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory') }}"><span class="nav-link-text ps-1">{{ __('Dashboard') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.mikrotik') }}"><span class="nav-link-text ps-1">{{ __('MikroTik Management') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.olt') }}"><span class="nav-link-text ps-1">{{ __('OLT Management') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.switches') }}"><span class="nav-link-text ps-1">{{ __('Switch Management') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.access-points') }}"><span class="nav-link-text ps-1">{{ __('Access Point Management') }}</span></a>
+                </div>
                 @foreach([
                     ['sweet.mobile-banking','Mobile Banking','bi-phone'],
                     ['sweet.partner-network','Partner Network','bi-diagram-2'],
                     ['sweet.bandwidth-reseller','Bandwidth Reseller','bi-speedometer2'],
-                    ['sweet.devices-inventory','Devices Inventory','bi-router'],
-                    ['network-inventory.olt','OLT Management','bi-diagram-3'],
-                    ['network-inventory.switches','Switch Management','bi-ethernet'],
-                    ['network-inventory.access-points','Access Point Management','bi-wifi'],
                     ['sweet.stock-inventory','Stock Inventory','bi-box-seam'],
                     ['sweet.communication-center','Communication Center','bi-chat-dots'],
                     ['sweet.support-center','Support Center','bi-life-preserver'],
