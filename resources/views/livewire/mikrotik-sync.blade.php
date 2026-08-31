@@ -45,6 +45,18 @@
                                         <input class="form-control form-control-sm" type="number" id="api_port" wire:model="api_port" placeholder="{{ __('API Port') }}" aria-label="API Port">
                                         <x-input-error for='api_port' />
                                     </div>
+                                    <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+                                        <input class="form-control form-control-sm" type="number" step="any" id="latitude" wire:model="latitude" placeholder="Latitude" aria-label="Latitude">
+                                        <x-input-error for='latitude' />
+                                    </div>
+                                    <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+                                        <input class="form-control form-control-sm" type="number" step="any" id="longitude" wire:model="longitude" placeholder="Longitude" aria-label="Longitude">
+                                        <x-input-error for='longitude' />
+                                    </div>
+                                    <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+                                        <input class="form-control form-control-sm" type="text" id="location" wire:model="location" placeholder="Location" aria-label="Location">
+                                        <x-input-error for='location' />
+                                    </div>
                                 </div>
                                 <button class="btn btn-sm btn-primary mt-2" type="submit">{{ __('Submit') }}</button>
                             </form>

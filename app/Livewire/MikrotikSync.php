@@ -32,6 +32,12 @@ class MikrotikSync extends Component
 
     public $api_port;
 
+    public $latitude;
+
+    public $longitude;
+
+    public $location;
+
     public function mount()
     {
         if (! hasAccess(['Super Admin'], ['mikrotik-setup'])) {
@@ -83,6 +89,9 @@ class MikrotikSync extends Component
             'password' => 'required_if:RouterListId,null|string|max:255',
             'ssh_port' => 'nullable|required_without:api_port|integer|min:1|max:65535',
             'api_port' => 'nullable|required_without:ssh_port|integer|min:1|max:65535',
+            'latitude' => ['nullable','numeric','between:-90,90'],
+            'longitude' => ['nullable','numeric','between:-180,180'],
+            'location' => ['nullable','string','max:160'],
         ];
     }
 
@@ -97,6 +106,9 @@ class MikrotikSync extends Component
             'username' => $this->username,
             'ssh_port' => $this->ssh_port ?? null,
             'api_port' => $this->api_port ?? null,
+            'latitude' => $this->latitude !== '' ? $this->latitude : null,
+            'longitude' => $this->longitude !== '' ? $this->longitude : null,
+            'location' => $this->location !== '' ? $this->location : null,
         ];
 
         // Include password only if provided
@@ -354,6 +366,9 @@ class MikrotikSync extends Component
             $this->password = '';  // Reset password field
             $this->ssh_port = $router->ssh_port;
             $this->api_port = $router->api_port;
+            $this->latitude = $router->latitude;
+            $this->longitude = $router->longitude;
+            $this->location = $router->location ?? '';
         }
     }
 

@@ -11,7 +11,7 @@ class NetworkInventoryDevice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'type', 'name', 'ip_address', 'health_port', 'monitor_enabled',
+        'type', 'name', 'ip_address', 'latitude', 'longitude', 'health_port', 'monitor_enabled',
         'vendor', 'model', 'onu_total', 'onu_online', 'rx_power', 'customer_count', 'status', 'health_status', 'last_latency_ms',
         'last_checked_at', 'location', 'notes',
     ];
