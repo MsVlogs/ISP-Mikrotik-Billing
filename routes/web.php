@@ -271,12 +271,12 @@ Route::middleware([
             return view('sweet.network-inventory', [
                 'routerTotal' => $totalRouters,
                 'routerOnline' => $onlineRouters,
-                'oltTotal' => (int) config('app.network_inventory_olt_total', 0),
-                'oltOnline' => (int) config('app.network_inventory_olt_online', 0),
-                'switchTotal' => (int) config('app.network_inventory_switch_total', 0),
-                'switchOnline' => (int) config('app.network_inventory_switch_online', 0),
-                'apTotal' => (int) config('app.network_inventory_ap_total', 0),
-                'apOnline' => (int) config('app.network_inventory_ap_online', 0),
+                'oltTotal' => (int) \App\Models\NetworkInventoryDevice::type('olt')->count(),
+                'oltOnline' => (int) \App\Models\NetworkInventoryDevice::type('olt')->where('status','online')->count(),
+                'switchTotal' => (int) \App\Models\NetworkInventoryDevice::type('switch')->count(),
+                'switchOnline' => (int) \App\Models\NetworkInventoryDevice::type('switch')->where('status','online')->count(),
+                'apTotal' => (int) \App\Models\NetworkInventoryDevice::type('access-point')->count(),
+                'apOnline' => (int) \App\Models\NetworkInventoryDevice::type('access-point')->where('status','online')->count(),
                 'attention' => $attention,
                 'offlineCount' => $offlineRouters,
             ]);
