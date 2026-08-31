@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3"><div><h3 class="mb-1"><i class="bi bi-diagram-3 me-2"></i>Network Map</h3><small class="text-muted">Router, OLT, ONU, WiFi Router and customer locations</small></div><span class="badge bg-success">{{ $routers->where('action','connected')->count() }} routers online</span></div>
 <div class="row g-3 mb-3">
 <div class="col-md-3"><div class="card"><div class="card-body"><small>Active Customers</small><h4>{{ number_format($customers) }}</h4></div></div></div>
-<div class="col-md-3"><div class="card"><div class="card-body"><small>Map Devices</small><h4>{{ number_format(count($routerNodes) + count($oltNodes) + $deviceLocations->count() + $nodes->where('kind','customer')->count()) }}</h4></div></div></div>
+<div class="col-md-3"><div class="card"><div class="card-body"><small>Map Devices</small><h4>{{ number_format($nodes->count()) }}</h4></div></div></div>
 <div class="col-md-6"><div class="card"><div class="card-body"><div class="map-device-legend"><span>🛜 MikroTik Router</span><span>🔷 OLT</span><span>🔹 ONU</span><span>📶 WiFi Router</span><span>📡 Access Point</span><span>● Customer</span></div></div></div></div>
 </div>
 <div class="card"><div class="card-body">
