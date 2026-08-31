@@ -12,6 +12,12 @@
     <div class="col-md-6 col-xl-3"><div class="ni-card ni-stat cyan p-3"><div class="d-flex justify-content-between"><div><div class="small opacity-75">Switches</div><div class="fs-2 fw-bold">{{ $switchOnline }} / {{ $switchTotal }}</div><div class="small opacity-75">Online / total · Offline {{ max(0,$switchTotal-$switchOnline) }}</div></div><div class="ni-icon"><i class="bi bi-ethernet"></i></div></div></div></div>
     <div class="col-md-6 col-xl-3"><div class="ni-card ni-stat green p-3"><div class="d-flex justify-content-between"><div><div class="small opacity-75">Access Points</div><div class="fs-2 fw-bold">{{ $apOnline }} / {{ $apTotal }}</div><div class="small opacity-75">Online / total · Offline {{ max(0,$apTotal-$apOnline) }}</div></div><div class="ni-icon"><i class="bi bi-wifi"></i></div></div></div></div>
   </div>
+  <div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-3"><div class="ni-card bg-white p-3"><div class="small soft">24h Uptime</div><div class="fs-3 fw-bold">{{ $uptime24 !== null ? $uptime24.'%' : '—' }}</div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="ni-card bg-white p-3"><div class="small soft">7d Uptime</div><div class="fs-3 fw-bold">{{ $uptime7 !== null ? $uptime7.'%' : '—' }}</div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="ni-card bg-white p-3"><div class="small soft">7d Incidents</div><div class="fs-3 fw-bold {{ $incidentCount ? 'text-danger' : 'text-success' }}">{{ $incidentCount }}</div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="ni-card bg-white p-3"><div class="small soft">24h Avg Latency</div><div class="fs-3 fw-bold">{{ $avgLatency !== null ? $avgLatency.' ms' : '—' }}</div></div></div>
+  </div>
   <div class="row g-3">
     <div class="col-xl-7"><div class="ni-card bg-white"><div class="p-3 border-bottom"><div class="fw-bold fs-5">Live Inventory</div><div class="fw-semibold">Offline / Attention Needed <span class="badge bg-danger ms-1">{{ $offlineCount + max(0,$oltTotal-$oltOnline) + max(0,$switchTotal-$switchOnline) + max(0,$apTotal-$apOnline) }}</span></div></div>
       @forelse($attention as $device)

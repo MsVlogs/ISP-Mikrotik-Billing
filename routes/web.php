@@ -278,6 +278,16 @@ Route::middleware([
                     'last_latency_ms' => $device->last_latency_ms, 'last_checked_at' => $device->last_checked_at,
                 ]);
             $attention = $routerAttention->merge($deviceAttention)->take(8);
+            $healthModel = \App\Models\NetworkInventoryHealthCheck::query();
+            $health24 = (clone $healthModel)->where('checked_at', '>=', now()->subDay())->get();
+            $health7 = (clone $healthModel)->where('checked_at', '>=', now()->subDays(7))->get();
+            $uptime = function ($rows) {
+                $total = $rows->count();
+                $up = $rows->where('status', 'online')->count();
+                return $total ? round(($up / $total) * 100, 2) : null;
+            };
+            $incidentCount = $health7->whereIn('status', ['down','degraded'])->count();
+            $avgLatency = $health24->whereNotNull('latency_ms')->avg('latency_ms');
 
             return view('sweet.network-inventory', [
                 'routerTotal' => $totalRouters,
@@ -290,6 +300,10 @@ Route::middleware([
                 'apOnline' => (int) \App\Models\NetworkInventoryDevice::type('access-point')->where('status','online')->count(),
                 'attention' => $attention,
                 'offlineCount' => $offlineRouters,
+                'uptime24' => $uptime($health24),
+                'uptime7' => $uptime($health7),
+                'incidentCount' => $incidentCount,
+                'avgLatency' => $avgLatency !== null ? round($avgLatency, 1) : null,
             ]);
         })->name('network-inventory');
 
