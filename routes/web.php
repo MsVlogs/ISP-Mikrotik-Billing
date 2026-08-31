@@ -285,6 +285,33 @@ Route::middleware([
         Route::get('/devices-inventory', fn () => redirect()->route('network-inventory'))
             ->name('sweet.devices-inventory');
 
+        Route::get('/network-inventory/olt-management', fn () => view('sweet.device-management', [
+            'title' => 'OLT Management',
+            'icon' => 'bi-diagram-3',
+            'description' => 'Optical line terminal inventory and health management.',
+            'status' => 'Integration ready',
+            'stats' => [['Total OLTs',(int) config('app.network_inventory_olt_total',0)],['Online',(int) config('app.network_inventory_olt_online',0)],['Offline',max(0,(int) config('app.network_inventory_olt_total',0)-(int) config('app.network_inventory_olt_online',0))]],
+            'links' => [['network-inventory','Network Inventory','Back to device overview']],
+        ]))->name('network-inventory.olt');
+
+        Route::get('/network-inventory/switch-management', fn () => view('sweet.device-management', [
+            'title' => 'Switch Management',
+            'icon' => 'bi-ethernet',
+            'description' => 'Switch inventory and port health management.',
+            'status' => 'Integration ready',
+            'stats' => [['Total Switches',(int) config('app.network_inventory_switch_total',0)],['Online',(int) config('app.network_inventory_switch_online',0)],['Offline',max(0,(int) config('app.network_inventory_switch_total',0)-(int) config('app.network_inventory_switch_online',0))]],
+            'links' => [['network-inventory','Network Inventory','Back to device overview']],
+        ]))->name('network-inventory.switches');
+
+        Route::get('/network-inventory/access-point-management', fn () => view('sweet.device-management', [
+            'title' => 'Access Point Management',
+            'icon' => 'bi-wifi',
+            'description' => 'Wireless access point inventory and availability management.',
+            'status' => 'Integration ready',
+            'stats' => [['Total APs',(int) config('app.network_inventory_ap_total',0)],['Online',(int) config('app.network_inventory_ap_online',0)],['Offline',max(0,(int) config('app.network_inventory_ap_total',0)-(int) config('app.network_inventory_ap_online',0))]],
+            'links' => [['network-inventory','Network Inventory','Back to device overview']],
+        ]))->name('network-inventory.access-points');
+
         Route::get('/stock-inventory', function () {
             $requests = \App\Models\PackagePurchaseRequest::query();
             $pending = (clone $requests)->whereIn('status',['pending','requested'])->count();
