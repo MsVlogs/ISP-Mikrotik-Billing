@@ -450,7 +450,16 @@ Route::middleware([
         Route::get('/network-inventory/olt/{device}/customers', function(\App\Models\NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); return view('xlink.olt-customers',compact('device')); })->name('network-inventory.olt.customers');
         Route::get('/network-inventory/olt/{device}/diagnostics', function(\App\Models\NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); return view('xlink.olt-diagnostics',compact('device')); })->name('network-inventory.olt.diagnostics');
         Route::post('/network-inventory/olt/{device}/diagnostic-check', function(\App\Models\NetworkInventoryDevice $device){
-            abort_unless($device->type==='olt',404); $host=$device->host ?: $device->ip_address; $port=(int)($device->health_port ?: $device->port ?: 23); $start=microtime(true); $ok=false; $err=''; $errno=0; if($host){$s=@fsockopen($host,$port,$errno,$err,3); if($s){$ok=true; fclose($s);}} $device->update(['status'=>$ok?'online':'offline','health_status'=>$ok?'ready':'failed','last_latency_ms'=>(int)round((microtime(true)-$start)*1000),'last_checked_at'=>now()]); return back()->with('diagnostic_message',$ok?'Connectivity check passed.':'Connectivity check failed: '.($err?:'connection refused'));
+            abort_unless($device->type==='olt',404);
+            $host=$device->host ?: $device->ip_address;
+            $port=(int)($device->port ?: 23);
+            $start=microtime(true); $ok=false; $err=''; $errno=0;
+            if($host){
+                $s=@fsockopen($host,$port,$errno,$err,3);
+                if($s){$ok=true; fclose($s);}
+            }
+            $device->update(['status'=>$ok?'online':'offline','health_status'=>$ok?'ready':'failed','last_latency_ms'=>(int)round((microtime(true)-$start)*1000),'last_checked_at'=>now()]);
+            return back()->with('diagnostic_message',$ok?'Connectivity check passed on '.$host.':'.$port.'.':'Connectivity check failed on '.$host.':'.$port.' — '.($err?:'connection refused').'. Health Port '.$device->health_port.' is reserved for health/SNMP monitoring.');
         })->name('network-inventory.olt.diagnostic-check');
 
         Route::get('/network-inventory/switch-management', fn () => view('xlink.device-management', [
