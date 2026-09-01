@@ -628,7 +628,13 @@ Route::middleware([
         // Route::get('/customers', CustomerList::class);
 
         // X-Link Billing parity aliases — reuse existing production modules.
-        Route::get('/mobile-banking', fn () => redirect()->route('sms-setup'))->name('xlink.mobile-banking');
+        Route::get('/mobile-banking', [\App\Http\Controllers\MobileBankingController::class, 'index'])->name('xlink.mobile-banking');
+        Route::get('/mobile-banking/logs', [\App\Http\Controllers\MobileBankingController::class, 'logs'])->name('mobile-banking.logs');
+        Route::get('/mobile-banking/gateways', [\App\Http\Controllers\MobileBankingController::class, 'gateways'])->name('mobile-banking.gateways');
+        Route::get('/mobile-banking/methods', [\App\Http\Controllers\MobileBankingController::class, 'methods'])->name('mobile-banking.methods');
+        Route::post('/mobile-banking/methods', [\App\Http\Controllers\MobileBankingController::class, 'saveMethod'])->name('mobile-banking.methods.save');
+        Route::get('/mobile-banking/settings', [\App\Http\Controllers\MobileBankingController::class, 'settings'])->name('mobile-banking.settings');
+        Route::post('/mobile-banking/settings', [\App\Http\Controllers\MobileBankingController::class, 'updateSettings'])->name('mobile-banking.settings.update');
         Route::get('/partner-network', fn () => redirect()->route('admin.resellers.index'))->name('xlink.partner-network');
         Route::get('/bandwidth-reseller', fn () => redirect()->route('reseller.dashboard'))->name('xlink.bandwidth-reseller');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
