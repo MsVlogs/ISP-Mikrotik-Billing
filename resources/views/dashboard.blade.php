@@ -1,106 +1,66 @@
 <x-app-layout>
-    @push('styles')
-        <link rel="stylesheet" href="{{ asset('xlink-dashboard/dashboard-presets.css') }}">
-        <link rel="stylesheet" href="{{ asset('xlink-dashboard/dashboard-live.css') }}">
-        <link rel="stylesheet" href="{{ asset('xlink-dashboard/layout-fixes.css') }}">
-        <link rel="stylesheet" href="{{ asset('xlink-dashboard/report-ux.css') }}">
-        <link rel="stylesheet" href="{{ asset('xlink-dashboard/ui-polish-20260826.css') }}">
-        <link rel="stylesheet" href="{{ asset('xlink-dashboard/sidebar-presets.css') }}">
-    @endpush
-
-    <x-slot name="header">{{ __('Dashboard') }}</x-slot>
-
-    <div class="dashboard-card-deck">
-        @php
-            $cards = [
-                ['tone'=>'green','icon'=>'bi-person-check-fill','label'=>'Active Customers','value'=>number_format($activeCustomerTotal ?? 0),'sub'=>'Company '.number_format($activeCompany ?? 0).' • Reseller '.number_format($activeReseller ?? 0)],
-                ['tone'=>'green','icon'=>'bi-wifi','label'=>'Online Now','value'=>number_format($onlineNow ?? 0),'sub'=>'Live PPPoE sessions'],
-                ['tone'=>'red','icon'=>'bi-calendar-x-fill','label'=>'Expired','value'=>number_format($expired ?? 0),'sub'=>'Billing expiry reached'],
-                ['tone'=>'amber','icon'=>'bi-shield-lock-fill','label'=>'Locked / Disabled','value'=>number_format($lockedDisabled ?? 0),'sub'=>'Disabled or temporary'],
-                ['tone'=>'purple','icon'=>'bi-calendar2-week-fill','label'=>'This Month Collection','value'=>number_format($monthCollection ?? 0,2).' ৳','sub'=>'PPPoE '.number_format($monthCollectionPppoe ?? 0,2).' ৳ • Hotspot '.number_format($monthCollectionHotspot ?? 0,2).' ৳'],
-                ['tone'=>'rose','icon'=>'bi-cash-coin','label'=>'Running Due','value'=>number_format($runningDue ?? 0,2).' ৳','sub'=>'Active customer outstanding'],
-                ['tone'=>'teal','icon'=>'bi-wallet2','label'=>'Today Collection','value'=>number_format($todayCollection ?? 0,2).' ৳','sub'=>'PPPoE '.number_format($todayPppoe ?? 0,2).' ৳ • Hotspot '.number_format($todayHotspot ?? 0,2).' ৳'],
-                ['tone'=>'cyan','icon'=>'bi-graph-up-arrow','label'=>'Weekly Collection','value'=>number_format($weekCollection ?? 0,2).' ৳','sub'=>'Last 7 days • PPPoE + Hotspot'],
-                ['tone'=>'indigo','icon'=>'bi-shop-window','label'=>'Reseller Due','value'=>number_format($resellerDue ?? 0,2).' ৳','sub'=>'Outstanding partner balance'],
-                ['tone'=>'slate','icon'=>'bi-calendar2-check-fill','label'=>'Today Attendance','value'=>number_format($attendanceToday ?? 0).' / '.number_format($attendanceTotal ?? 0),'sub'=>'Attendance module'],
-                ['tone'=>'orange','icon'=>'bi-phone-vibrate-fill','label'=>'MFS Collection','value'=>number_format($mfsCollection ?? 0,2).' ৳','sub'=>'Digital + SMS banking (month)'],
-                ['tone'=>'emerald','icon'=>'bi-router-fill','label'=>'Router Health','value'=>number_format($deviceStats['routers_online'] ?? 0).' / '.number_format($deviceStats['routers_total'] ?? 0),'sub'=>'Online routers / active routers'],
-                ['tone'=>'purple','icon'=>'bi-wifi','label'=>'Hotspot Customers','value'=>number_format((int)($hotspotCustomers ?? 0)),'sub'=>'Unique hotspot users this month'],
-                ['tone'=>'amber','icon'=>'bi-ticket-perforated','label'=>'Hotspot Card Stock','value'=>number_format(class_exists('App\\Models\\HotspotVoucher') ? \App\Models\HotspotVoucher::whereIn('status',['unused','active'])->count() : 0),'sub'=>'Unused + Active'],
-                ['tone'=>'indigo','icon'=>'bi-graph-up','label'=>'Hotspot Monthly','value'=>number_format((float)($monthCollectionHotspot ?? 0),2).' ৳','sub'=>'Hotspot collection this month'],
-                ['tone'=>'emerald','icon'=>'bi-broadcast-pin','label'=>'Access Point Health','value'=>number_format($deviceStats['aps_online'] ?? 0).' / '.number_format($deviceStats['aps_total'] ?? 0),'sub'=>'Online AP / total AP'],
-            ];
-        @endphp
-        @foreach($cards as $card)
-            <a class="dashboard-card tone-{{ $card['tone'] }}" href="#">
-                <span class="dashboard-card-icon"><i class="bi {{ $card['icon'] }}"></i></span>
-                <span class="dashboard-card-copy"><span class="dashboard-card-label">{{ __($card['label']) }}</span><strong class="dashboard-card-value">{{ $card['value'] }}</strong><small class="dashboard-card-sub">{{ __($card['sub']) }}</small></span>
-                <i class="bi bi-arrow-up-right dashboard-card-open"></i>
-            </a>
-        @endforeach
-    </div>
-
-    <div class="dashboard-masonry-grid mt-3">
-        <section class="dashboard-panel panel-collection">
-            <header><div><span>{{ __('Collection Trend') }}</span><h3>{{ __('Last 7 Days Collection') }}</h3></div><a href="{{ route('income-summary') }}">{{ __('Full report') }} <i class="bi bi-arrow-right"></i></a></header>
-            <div class="dashboard-chart-shell"><canvas id="collectionChart"></canvas></div>
-        </section>
-
-        <section class="dashboard-panel panel-recent">
-            <header><div><span>{{ __('Ledger Activity') }}</span><h3>{{ __('Recent Transactions') }}</h3></div></header>
-            <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>{{ __('Customer / Source') }}</th><th>{{ __('Type') }}</th><th class="text-end">{{ __('Amount') }}</th></tr></thead><tbody>
-                @forelse($recentTransactions as $tx)
-                    <tr><td><div class="fw-semibold">{{ optional($tx->customer)->customer_name ?? $tx->customer_collection_unique_id }}</div><div class="small text-secondary">{{ $tx->collection_date }}</div></td><td><span class="badge text-bg-success">{{ $tx->payment_type ?? 'collection' }}</span></td><td class="text-end fw-bold">{{ number_format((float)$tx->collection_amount,2) }} ৳</td></tr>
-                @empty
-                    <tr><td colspan="3" class="text-center text-secondary py-4">{{ __('No recent transaction found.') }}</td></tr>
-                @endforelse
-            </tbody></table></div>
-        </section>
-
-        <section class="dashboard-panel panel-customers">
-            <header><div><span>{{ __('Customer Accounts') }}</span><h3>{{ __('Customer Account Analysis') }}</h3></div></header>
-            <div class="p-3"><div class="row g-2">
-                @foreach([['Total',$customersData['total'] ?? 0],['Active',$customersData['active'] ?? 0],['Pending',$customersData['pending'] ?? 0],['Free',$customersData['free'] ?? 0],['Temporary Disable',$customersData['temporary_disable'] ?? 0],['Inactive',$customersData['inactive'] ?? 0]] as $item)
-                    <div class="col-6"><div class="p-2 rounded-3 bg-body-tertiary"><div class="small text-secondary">{{ __($item[0]) }}</div><strong>{{ number_format($item[1]) }}</strong></div></div>
-                @endforeach
-            </div></div>
-        </section>
-
-        <section class="dashboard-panel panel-revenue">
-            <header><div><span>{{ __('Income Mix') }}</span><h3>{{ __('Monthly Collection Analysis') }}</h3></div></header>
-            <div class="dashboard-chart-shell"><canvas id="revenueMixChart"></canvas></div>
-            <div class="revenue-summary"><span><i class="broadband"></i>{{ __('Broadband') }} <strong>{{ number_format((float)$monthCollection,2) }} ৳</strong></span><span><i class="hotspot"></i>{{ __('Hotspot') }} <strong>{{ number_format((float)($billInformationData['hotspot_today'] ?? 0),2) }} ৳</strong></span></div>
-        </section>
-
-        <section class="dashboard-panel">
-            <header><div><span>{{ __('Support') }}</span><h3>{{ __('Ticket Overview') }}</h3></div></header>
-            <div class="p-3"><div class="row g-2"><div class="col-6"><div class="p-3 rounded-3 bg-body-tertiary"><div class="small text-secondary">{{ __('Open') }}</div><strong>0</strong></div></div><div class="col-6"><div class="p-3 rounded-3 bg-body-tertiary"><div class="small text-secondary">{{ __('Pending') }}</div><strong>0</strong></div></div><div class="col-6"><div class="p-3 rounded-3 bg-body-tertiary"><div class="small text-secondary">{{ __('Closed') }}</div><strong>0</strong></div></div><div class="col-6"><div class="p-3 rounded-3 bg-body-tertiary"><div class="small text-secondary">{{ __('Today') }}</div><strong>0</strong></div></div></div></div>
-        </section>
-
-        <section class="dashboard-panel">
-            <header><div><span>{{ __('Connections') }}</span><h3>{{ __('New Connection Graph') }}</h3></div></header>
-            <div class="dashboard-chart-shell"><canvas id="newConnectionsChart"></canvas></div>
-        </section>
-    </div>
-
-    @push('scripts')
-        <script src="{{ asset('xlink-dashboard/chart.umd.min.js.download') }}"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const css = getComputedStyle(document.documentElement);
-                const grid = document.querySelector('.dashboard-card-deck');
-                if (grid) [...grid.querySelectorAll('.dashboard-card')].forEach((el, i) => el.style.animationDelay = `${i * 20}ms`);
-                const chartCfg = {responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}};
-                const last7 = @json(collect($results)->values());
-                const labels = last7.map((_,i)=>`D${i+1}`);
-                const totals = last7.map(r => Math.max(0, Number(r.income_current_year || 0)));
-                new Chart(document.getElementById('collectionChart'), {type:'line', data:{labels,datasets:[{data:totals,tension:.35,fill:true,borderWidth:2}]}, options:{...chartCfg,scales:{y:{beginAtZero:true}}}});
-                new Chart(document.getElementById('revenueMixChart'), {type:'doughnut', data:{labels:['Broadband','Hotspot'],datasets:[{data:[Number(@json($monthCollection)),Number(@json($billInformationData['hotspot_today'] ?? 0))]}]}, options:{...chartCfg,cutout:'68%'}});
-                const connectionData = @json($newConnections);
-                const monthLabels = Object.keys(connectionData);
-                const monthValues = monthLabels.map(k => Number(connectionData[k].total || 0));
-                new Chart(document.getElementById('newConnectionsChart'), {type:'bar', data:{labels:monthLabels,datasets:[{data:monthValues,borderRadius:6}]}, options:{...chartCfg,scales:{y:{beginAtZero:true}}}});
-            });
-        </script>
-    @endpush
+@push('styles')
+<link rel="stylesheet" href="{{ asset('xlink-dashboard/dashboard-presets.css') }}">
+<link rel="stylesheet" href="{{ asset('xlink-dashboard/dashboard-live.css') }}">
+<link rel="stylesheet" href="{{ asset('xlink-dashboard/layout-fixes.css') }}">
+<link rel="stylesheet" href="{{ asset('xlink-dashboard/report-ux.css') }}">
+<link rel="stylesheet" href="{{ asset('xlink-dashboard/ui-polish-20260826.css') }}">
+@endpush
+<x-slot name="header">{{ __('Dashboard') }}</x-slot>
+@php
+$total=(int)($activeCustomerTotal??0); $online=(int)($onlineNow??0); $offline=max(0,$total-$online);
+$company=(int)($activeCompany??0); $reseller=(int)($activeReseller??0);
+$newToday=\App\Models\CustomersInfo::whereDate('created_at',now()->toDateString())->count();
+$newWeek=\App\Models\CustomersInfo::where('created_at','>=',now()->subDays(6)->startOfDay())->count();
+$newMonth=\App\Models\CustomersInfo::whereYear('created_at',now()->year)->whereMonth('created_at',now()->month)->count();
+$yesterday=(float)\App\Models\CollectionSummary::whereDate('collection_date',now()->subDay()->toDateString())->sum('collection_amount');
+$expiring=\App\Models\BillingInfo::join('customers_infos','billing_infos.customer_bill_unique_id','=','customers_infos.customer_unique_id')->whereNull('customers_infos.deleted_at')->where('customers_infos.status','active')->whereNotNull('billing_infos.auto_disable_date')->whereBetween('billing_infos.auto_disable_date',[now()->toDateString(),now()->addDays(7)->toDateString()])->count();
+@endphp
+<div class="dashboard-shell preset-isp-color-cards size-compact show-subtext" style="--db-cols:4;--db-chart-height:362px">
+<div class="dashboard-controlbar"><div><span class="dashboard-kicker">{{ __('X-Link Limited Billing') }}</span><h2>{{ __('Dashboard') }}</h2><p>{{ __('Live operational and billing overview') }}</p></div></div>
+<div class="dashboard-card-deck" aria-label="Dashboard cards">
+<a class="dashboard-card tone-teal" href="{{route('income-summary')}}"><span class="dashboard-card-icon"><i class="bi bi-calendar2-minus-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Yesterday Collection</span><strong class="dashboard-card-value">{{number_format($yesterday,2)}} ৳</strong><small class="dashboard-card-sub">Verified broadband collection</small></span></a>
+<a class="dashboard-card tone-slate" href="{{route('broadband-offline-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-wifi-off"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Offline Now</span><strong class="dashboard-card-value">{{number_format($offline)}}</strong><small class="dashboard-card-sub">Company {{number_format(max(0,$company-$online))}} • Reseller {{number_format($reseller)}}</small></span></a>
+<a class="dashboard-card tone-cyan" href="{{route('income-summary')}}"><span class="dashboard-card-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Weekly Collection</span><strong class="dashboard-card-value">{{number_format($weekCollection??0,2)}} ৳</strong><small class="dashboard-card-sub">PPPoE {{number_format($weekPppoe??0,2)}} ৳ • Hotspot {{number_format($weekHotspot??0,2)}} ৳</small></span></a>
+<a class="dashboard-card tone-indigo" href="{{route('reseller.dashboard')}}"><span class="dashboard-card-icon"><i class="bi bi-shop-window"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Reseller Due</span><strong class="dashboard-card-value">{{number_format((float)($resellerDue??0),2)}} ৳</strong><small class="dashboard-card-sub">Outstanding partner balance</small></span></a>
+<a class="dashboard-card tone-cyan" href="{{route('broadband-new-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-person-add"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">New Connections Today</span><strong class="dashboard-card-value">{{$newToday}}</strong><small class="dashboard-card-sub">Company + Reseller</small></span></a>
+<a class="dashboard-card tone-blue" href="{{route('broadband-new-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-people"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">New Connections This Week</span><strong class="dashboard-card-value">{{$newWeek}}</strong><small class="dashboard-card-sub">Last 7 days</small></span></a>
+<a class="dashboard-card tone-purple" href="#"><span class="dashboard-card-icon"><i class="bi bi-person-vcard-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Pending KYC</span><strong class="dashboard-card-value">0</strong><small class="dashboard-card-sub">Customer information waiting for review</small></span></a>
+<a class="dashboard-card tone-indigo" href="{{route('hotspot-ledger')}}"><span class="dashboard-card-icon"><i class="bi bi-graph-up"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Hotspot Monthly</span><strong class="dashboard-card-value">{{number_format((float)($monthCollectionHotspot??0),2)}} ৳</strong><small class="dashboard-card-sub">Company Hotspot Collection</small></span></a>
+<a class="dashboard-card tone-red" href="{{route('broadband-due-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-calendar-x-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Expired</span><strong class="dashboard-card-value">{{number_format($expired??0)}}</strong><small class="dashboard-card-sub">Billing expiry reached</small></span></a>
+<a class="dashboard-card tone-purple" href="{{route('hotspot-dashboard')}}"><span class="dashboard-card-icon"><i class="bi bi-wifi"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Hotspot Customers</span><strong class="dashboard-card-value">{{number_format((int)($hotspotCustomers??0))}}</strong><small class="dashboard-card-sub">Company + Reseller users</small></span></a>
+<a class="dashboard-card tone-slate" href="#"><span class="dashboard-card-icon"><i class="bi bi-calendar2-check-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Today Attendance</span><strong class="dashboard-card-value">{{number_format($attendanceToday??0)}} / {{number_format($attendanceTotal??0)}}</strong><small class="dashboard-card-sub">Attendance module</small></span></a>
+<a class="dashboard-card tone-amber" href="#"><span class="dashboard-card-icon"><i class="bi bi-hourglass-split"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">MFS Pending</span><strong class="dashboard-card-value">0</strong><small class="dashboard-card-sub">Received, matched, failed or waiting</small></span></a>
+<a class="dashboard-card tone-green" href="#"><span class="dashboard-card-icon"><i class="bi bi-person-check-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">KYC Approved This Month</span><strong class="dashboard-card-value">0</strong><small class="dashboard-card-sub">Reviewed customer KYC requests</small></span></a>
+<a class="dashboard-card tone-green" href="{{route('broadband-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-person-check-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Active Customers</span><strong class="dashboard-card-value">{{number_format($total)}}</strong><small class="dashboard-card-sub">Company {{number_format($company)}} • Reseller {{number_format($reseller)}}</small></span></a>
+<a class="dashboard-card tone-red" href="#"><span class="dashboard-card-icon"><i class="bi bi-ticket-perforated-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Open Tickets</span><strong class="dashboard-card-value">0</strong><small class="dashboard-card-sub">Open and processing support items</small></span></a>
+<a class="dashboard-card tone-green" href="{{route('broadband-online-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-wifi"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Online Now</span><strong class="dashboard-card-value">{{number_format($online)}}</strong><small class="dashboard-card-sub">Live PPPoE sessions</small></span></a>
+<a class="dashboard-card tone-amber" href="{{route('hotspot-cards')}}"><span class="dashboard-card-icon"><i class="bi bi-ticket-perforated"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Hotspot Card Stock</span><strong class="dashboard-card-value">{{number_format($hotspotCardStock??0)}}</strong><small class="dashboard-card-sub">Unused • Active</small></span></a>
+<a class="dashboard-card tone-emerald" href="{{route('network-inventory.access-points')}}"><span class="dashboard-card-icon"><i class="bi bi-broadcast-pin"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Access Point Health</span><strong class="dashboard-card-value">{{number_format($deviceStats['aps_online']??0)}} / {{number_format($deviceStats['aps_total']??0)}}</strong><small class="dashboard-card-sub">Online AP / total AP</small></span></a>
+<a class="dashboard-card tone-indigo" href="#"><span class="dashboard-card-icon"><i class="bi bi-funnel-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Open Sales Leads</span><strong class="dashboard-card-value">0</strong><small class="dashboard-card-sub">Sales queries not converted or lost</small></span></a>
+<a class="dashboard-card tone-emerald" href="{{route('device-watcher')}}"><span class="dashboard-card-icon"><i class="bi bi-router-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Router Health</span><strong class="dashboard-card-value">{{number_format($deviceStats['routers_online']??0)}} / {{number_format($deviceStats['routers_total']??0)}}</strong><small class="dashboard-card-sub">Online routers / active routers</small></span></a>
+<a class="dashboard-card tone-amber" href="{{route('broadband-due-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-calendar-week-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Expiring Next 7 Days</span><strong class="dashboard-card-value">{{number_format($expiring)}}</strong><small class="dashboard-card-sub">Upcoming billing follow-up</small></span></a>
+<a class="dashboard-card tone-red" href="#"><span class="dashboard-card-icon"><i class="bi bi-alarm-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Tickets Over 24 Hours</span><strong class="dashboard-card-value">0</strong><small class="dashboard-card-sub">Open workload needing follow-up</small></span></a>
+<a class="dashboard-card tone-purple" href="#"><span class="dashboard-card-icon"><i class="bi bi-ticket-detailed-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Tickets Created Today</span><strong class="dashboard-card-value">0</strong><small class="dashboard-card-sub">Complaint, task and sales tickets</small></span></a>
+<a class="dashboard-card tone-purple" href="{{route('income-summary')}}"><span class="dashboard-card-icon"><i class="bi bi-calendar2-week-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">This Month Collection</span><strong class="dashboard-card-value">{{number_format($monthCollection??0,2)}} ৳</strong><small class="dashboard-card-sub">PPPoE {{number_format($monthCollectionPppoe??0,2)}} ৳ • Hotspot {{number_format($monthCollectionHotspot??0,2)}} ৳</small></span></a>
+<a class="dashboard-card tone-cyan" href="{{route('broadband-new-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-person-plus-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">New This Month</span><strong class="dashboard-card-value">{{$newMonth}}</strong><small class="dashboard-card-sub">New customer accounts</small></span></a>
+<a class="dashboard-card tone-rose" href="{{route('broadband-due-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-cash-coin"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Running Due</span><strong class="dashboard-card-value">{{number_format($runningDue??0,2)}} ৳</strong><small class="dashboard-card-sub">Active customer outstanding</small></span></a>
+<a class="dashboard-card tone-teal" href="{{route('income-summary')}}"><span class="dashboard-card-icon"><i class="bi bi-wallet2"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Today Collection</span><strong class="dashboard-card-value">{{number_format($todayCollection??0,2)}} ৳</strong><small class="dashboard-card-sub">PPPoE {{number_format($todayPppoe??0,2)}} ৳ • Hotspot {{number_format($todayHotspot??0,2)}} ৳</small></span></a>
+<a class="dashboard-card tone-amber" href="{{route('broadband-inactive-customers')}}"><span class="dashboard-card-icon"><i class="bi bi-shield-lock-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">Locked / Disabled</span><strong class="dashboard-card-value">{{number_format($lockedDisabled??0)}}</strong><small class="dashboard-card-sub">Disabled or temporary</small></span></a>
+<a class="dashboard-card tone-orange" href="{{route('income-summary')}}"><span class="dashboard-card-icon"><i class="bi bi-phone-vibrate-fill"></i></span><span class="dashboard-card-copy"><span class="dashboard-card-label">MFS Collection</span><strong class="dashboard-card-value">{{number_format($mfsCollection??0,2)}} ৳</strong><small class="dashboard-card-sub">Digital + SMS banking (month)</small></span></a>
+</div>
+<div class="dashboard-panels" id="dashboardMasonryPanels">
+<section class="dashboard-panel dashboard-masonry-item panel-analysis"><header><div><span>Subscriber Health</span><h3>Customer Account Analysis</h3></div><a href="{{route('broadband-customers')}}">Customer list <i class="bi bi-arrow-right"></i></a></header><div class="customer-ring-wrap"><div class="customer-ring-canvas"><canvas id="customerRingChart"></canvas><div class="ring-center"><small>Active</small><strong>{{number_format($total)}}</strong></div></div><div class="ring-metrics"><a class="ring-metric"><i class="ring-dot"></i><span>Total</span><strong>{{number_format($customersData['total']??0)}}</strong></a><a class="ring-metric active"><i class="ring-dot"></i><span>Active</span><strong>{{number_format($customersData['active']??0)}}</strong></a><a class="ring-metric"><i class="ring-dot"></i><span>Pending</span><strong>{{number_format($customersData['pending']??0)}}</strong></a><a class="ring-metric"><i class="ring-dot"></i><span>Free</span><strong>{{number_format($customersData['free']??0)}}</strong></a><a class="ring-metric"><i class="ring-dot"></i><span>Temporary Disable</span><strong>{{number_format($customersData['temporary_disable']??0)}}</strong></a><a class="ring-metric"><i class="ring-dot"></i><span>Inactive</span><strong>{{number_format($customersData['inactive']??0)}}</strong></a><a class="ring-metric"><i class="ring-dot"></i><span>Recent</span><strong>{{number_format($customersData['recent']??0)}}</strong></a></div></div></section>
+<section class="dashboard-panel dashboard-masonry-item panel-operations"><header><div><span>Billing Forecast</span><h3>Billing Health</h3></div><a href="{{route('income-summary')}}">Finance report <i class="bi bi-arrow-right"></i></a></header><div class="analysis-metric-list"><a href="{{route('income-summary')}}"><span>This Month Collection</span><strong>{{number_format($monthCollection??0,2)}} ৳</strong></a><a class="danger" href="{{route('broadband-due-customers')}}"><span>Running Due</span><strong>{{number_format($runningDue??0,2)}} ৳</strong></a><a href="{{route('broadband-due-customers')}}"><span>Expiring Next 7 Days</span><strong>{{$expiring}}</strong></a></div></section>
+<section class="dashboard-panel dashboard-masonry-item panel-operations"><header><div><span>Business Split</span><h3>Company vs Reseller Split</h3></div><a href="{{route('reseller.dashboard')}}">Partner network <i class="bi bi-arrow-right"></i></a></header><div class="analysis-metric-list"><a href="{{route('broadband-customers')}}"><span>Company Customers</span><strong>{{$company}}</strong></a><a href="{{route('reseller.dashboard')}}"><span>Reseller Customers</span><strong>{{$reseller}}</strong></a><a href="{{route('income-summary')}}"><span>Company Collection</span><strong>{{number_format($monthCollectionPppoe??0,2)}} ৳</strong></a><a href="{{route('reseller.dashboard')}}"><span>Reseller Due</span><strong>{{number_format($resellerDue??0,2)}} ৳</strong></a></div></section>
+<section class="dashboard-panel dashboard-masonry-item panel-ticket-overview"><header><div><span>Support Workload</span><h3>Ticket Overview</h3></div></header><div class="operation-grid"><a href="#"><i class="bi bi-ticket"></i><span>Open</span><strong>0</strong></a><a href="#"><i class="bi bi-alarm"></i><span>Over 24 Hours</span><strong>0</strong></a><a href="#"><i class="bi bi-plus-circle"></i><span>Today</span><strong>0</strong></a><a href="#"><i class="bi bi-person-vcard"></i><span>Pending KYC</span><strong>0</strong></a></div></section>
+<section class="dashboard-panel dashboard-masonry-item panel-new-connections"><header><div><span>Subscriber Growth</span><h3>New Connection Graph</h3></div></header><div class="dashboard-chart-shell"><canvas id="newConnectionChart"></canvas></div></section>
+<section class="dashboard-panel dashboard-masonry-item panel-revenue"><header><div><span>Income Mix</span><h3>Monthly Collection Analysis</h3></div></header><div class="dashboard-chart-shell"><canvas id="revenueMixChart"></canvas></div><div class="revenue-summary"><span><i class="broadband"></i>Broadband <strong>{{number_format($monthCollectionPppoe??0,2)}} ৳</strong></span><span><i class="hotspot"></i>Hotspot <strong>{{number_format($monthCollectionHotspot??0,2)}} ৳</strong></span></div></section>
+<section class="dashboard-panel dashboard-masonry-item panel-recent"><header><div><span>Ledger Activity</span><h3>Recent Transactions</h3></div><div class="d-flex gap-1"><a href="{{route('ledger-summary')}}">Broadband</a><a href="{{route('hotspot-ledger')}}">Hotspot</a></div></header><div class="table-responsive"><table class="table table-hover align-middle mb-0 dashboard-recent-table"><thead><tr><th>Customer / Source</th><th>Type</th><th class="text-end">Amount</th></tr></thead><tbody>@forelse($recentTransactions as $tx)<tr><td><div class="fw-semibold">{{optional($tx->customer)->customer_name??$tx->customer_collection_unique_id}}</div><div class="small text-secondary">{{$tx->collection_date}}</div></td><td><span class="badge text-bg-success">{{$tx->payment_type??'collection'}}</span></td><td class="text-end fw-bold">{{number_format((float)$tx->collection_amount,2)}} ৳</td></tr>@empty<tr><td colspan="3" class="text-center text-secondary py-4">No recent transaction found.</td></tr>@endforelse</tbody></table></div></section>
+<section class="dashboard-panel dashboard-masonry-item panel-operations panel-span-full"><header><div><span>System Status</span><h3>Operational Overview</h3></div></header><div class="operation-grid"><a href="{{route('device-watcher')}}"><i class="bi bi-router"></i><span>Routers</span><strong>{{($deviceStats['routers_online']??0)}} / {{($deviceStats['routers_total']??0)}}</strong></a><a href="#"><i class="bi bi-ticket"></i><span>Open Tickets</span><strong>0</strong></a><a href="#"><i class="bi bi-person-vcard"></i><span>Pending KYC</span><strong>0</strong></a><a href="{{route('income-summary')}}"><i class="bi bi-phone"></i><span>MFS Pending</span><strong>0</strong></a></div></section>
+</div></div>
+@push('scripts')
+<script src="{{asset('xlink-dashboard/chart.umd.min.js.download')}}"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){const m=(id,c)=>{const e=document.getElementById(id);if(e&&window.Chart)new Chart(e,c)};const v=@json([$customersData['total']??0,$customersData['active']??0,$customersData['pending']??0,$customersData['free']??0,$customersData['temporary_disable']??0,$customersData['inactive']??0,$customersData['recent']??0]);m('customerRingChart',{type:'doughnut',data:{labels:['Total','Active','Pending','Free','Temporary Disable','Inactive','Recent'],datasets:[{data:v}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false}}}});const n=@json($newConnections);m('newConnectionChart',{type:'bar',data:{labels:Object.keys(n),datasets:[{data:Object.values(n).map(x=>Number(x.total||0)),borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}},plugins:{legend:{display:false}}}});m('revenueMixChart',{type:'doughnut',data:{labels:['Broadband','Hotspot'],datasets:[{data:[Number(@json($monthCollectionPppoe??0)),Number(@json($monthCollectionHotspot??0))]}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false}}}});});</script>
+@endpush
 </x-app-layout>
