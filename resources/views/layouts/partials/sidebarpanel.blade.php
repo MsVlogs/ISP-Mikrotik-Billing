@@ -164,6 +164,31 @@
                     </div>
                 </a>
             </li>
+
+            {{-- ── Broadband ── --}}
+            <li class="nav-item">
+                <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
+                    <div class="col-auto navbar-vertical-label">{{ __('Broadband') }}</div>
+                    <div class="col ps-0"><hr class="mb-0 navbar-vertical-divider" /></div>
+                </div>
+                <!-- Broadband Dropdown -->
+                <a class="nav-link dropdown-indicator collapsed" href="#broadbandMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="broadbandMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-wifi"></i></span><span class="nav-link-text ps-1">{{ __('Broadband') }}</span></div>
+                </a>
+                <ul class="nav collapse" id="broadbandMenu">
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('customer-add') }}"><span class="nav-link-text ps-1">{{ __('Add Customer') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customers') }}"><span class="nav-link-text ps-1">{{ __('Customer List') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customer-search') }}"><span class="nav-link-text ps-1">{{ __('Customer Search') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-online-customers') }}"><span class="nav-link-text ps-1">{{ __('Online Customers') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-due-customers') }}"><span class="nav-link-text ps-1">{{ __('Due Customers') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-inactive-customers') }}"><span class="nav-link-text ps-1">{{ __('Inactive Customers') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-new-customers') }}"><span class="nav-link-text ps-1">{{ __('New Customers') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-unverified-customers') }}"><span class="nav-link-text ps-1">{{ __('Unverified Customers') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-packages') }}"><span class="nav-link-text ps-1">{{ __('Broadband Packages') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customer-package-import') }}"><span class="nav-link-text ps-1">{{ __('Customer & Package Import') }}</span></a></li>
+                </ul>
+
+            </li>
             {{-- ── Billing & Finance ── --}}
             <li class="nav-item">
                 <a class="nav-link dropdown-indicator collapsed" href="#billingFinanceMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="billingFinanceMenu">
@@ -200,23 +225,6 @@
                         <span class="nav-link-text ps-1">{{ __('Mikrotik Sync') }}</span>
                     </div>
                 </a>
-
-                <!-- Broadband Dropdown -->
-                <a class="nav-link dropdown-indicator collapsed" href="#broadbandMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="broadbandMenu">
-                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-wifi"></i></span><span class="nav-link-text ps-1">{{ __('Broadband') }}</span></div>
-                </a>
-                <ul class="nav collapse" id="broadbandMenu">
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('customer-add') }}"><span class="nav-link-text ps-1">{{ __('Add Customer') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customers') }}"><span class="nav-link-text ps-1">{{ __('Customer List') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customer-search') }}"><span class="nav-link-text ps-1">{{ __('Customer Search') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-online-customers') }}"><span class="nav-link-text ps-1">{{ __('Online Customers') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-due-customers') }}"><span class="nav-link-text ps-1">{{ __('Due Customers') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-inactive-customers') }}"><span class="nav-link-text ps-1">{{ __('Inactive Customers') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-new-customers') }}"><span class="nav-link-text ps-1">{{ __('New Customers') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-unverified-customers') }}"><span class="nav-link-text ps-1">{{ __('Unverified Customers') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-packages') }}"><span class="nav-link-text ps-1">{{ __('Broadband Packages') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customer-package-import') }}"><span class="nav-link-text ps-1">{{ __('Customer & Package Import') }}</span></a></li>
-                </ul>
 
                 <!-- Mikrotik Server Dropdown -->
                 <a class="nav-link dropdown-indicator collapsed" href="#mikrotikServer" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="mikrotikServer">

@@ -6,6 +6,7 @@ use App\Models\BillingInfo;
 use App\Models\CollectionSummary;
 use App\Models\CustomersInfo;
 use App\Models\HotspotSale;
+use App\Models\PPPSecrets;
 use App\Models\Reseller;
 use App\Models\ResellerCommission;
 use Carbon\Carbon;
@@ -161,6 +162,37 @@ class DashboardController extends Controller
         }
 
         // Calculate total cashflow, income, and revenue difference for the year
-        return view('dashboard', compact('results', 'customersData', 'billInformationData', 'systemOverview', 'resellerData'));
+        $onlineNow = PPPSecrets::where('status', 'online')->count();
+        $expired = $statusCounts['expired'] ?? 0;
+        $lockedDisabled = ($statusCounts['disable'] ?? 0) + ($statusCounts['temporary_disable'] ?? 0);
+        $runningDue = abs((float) ($billInformationData['due_amount'] ?? 0));
+        $monthCollection = CollectionSummary::whereMonth('collection_date', Carbon::now()->month)
+            ->whereYear('collection_date', Carbon::now()->year)->sum('collection_amount')
+            + HotspotSale::whereMonth('sale_date', Carbon::now()->month)
+            ->whereYear('sale_date', Carbon::now()->year)->sum('amount');
+        $weekCollection = CollectionSummary::whereBetween('collection_date', [Carbon::now()->subDays(6)->startOfDay(), Carbon::now()->endOfDay()])->sum('collection_amount')
+            + HotspotSale::whereBetween('sale_date', [Carbon::now()->subDays(6)->startOfDay(), Carbon::now()->endOfDay()])->sum('amount');
+        $recentTransactions = CollectionSummary::with('customer')->latest('collection_date')->latest('id')->limit(8)->get();
+        $newConnections = CustomersInfo::where('created_at', '>=', Carbon::now()->subMonths(11)->startOfMonth())
+            ->selectRaw('YEAR(created_at) as y, MONTH(created_at) as m, COUNT(*) as total')
+            ->groupBy('y','m')->get()->keyBy(fn($r) => sprintf('%04d-%02d', $r->y, $r->m));
+        $hotspotCustomers = HotspotSale::whereYear('sale_date', Carbon::now()->year)
+            ->distinct('username')->count('username');
+        $hotspotCardStock = \App\Models\HotspotVoucher::whereIn('status', ['unused', 'active'])->count();
+        $attendanceTotal = \App\Models\User::count();
+        $deviceStats = [
+            'routers_total' => \App\Models\RouterList::count(),
+            'routers_online' => \App\Models\RouterList::where('action', 'connected')->count(),
+            'olts_total' => (int) \App\Models\NetworkInventoryDevice::type('olt')->count(),
+            'olts_online' => (int) \App\Models\NetworkInventoryDevice::type('olt')->where('status','online')->count(),
+            'aps_total' => (int) \App\Models\NetworkInventoryDevice::type('access-point')->count(),
+            'aps_online' => (int) \App\Models\NetworkInventoryDevice::type('access-point')->where('status','online')->count(),
+        ];
+
+        return view('dashboard', compact(
+            'results', 'customersData', 'billInformationData', 'systemOverview', 'resellerData',
+            'onlineNow', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
+            'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'deviceStats'
+        ));
     }
 }
