@@ -224,15 +224,10 @@ This project is open-source software licensed under the [AGPL-3.0 license](/LICE
 
 ## Developed & Maintained by
 
-**Md Jahangir Alam Rohan**
-- **WhatsApp Support:** [+8801840451881](https://wa.me/8801840451881) (Fastest Response)
-- **E-mail:** [rohan9222@gmail.com](mailto:rohan9222@gmail.com)
-- **GitHub:** [@rohan9222](https://github.com/rohan9222)
+**X-Link Limited**
 
 ## Support & Customization
 
-For full setup support, custom ISP modules integration, payment gateway configuration, or technical queries:
-- **WhatsApp:** [Chat on WhatsApp](https://wa.me/8801840451881)
-- **E-mail:** [rohan9222@gmail.com](mailto:rohan9222@gmail.com)
+For setup support, custom ISP module integration, payment gateway configuration, or technical queries, please use the repository issue tracker or your organization's official support channel.
 
 *Feel free to submit a pull request or open an issue on the repository to contribute to the project.*
