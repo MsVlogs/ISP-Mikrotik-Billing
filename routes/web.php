@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ProfitSummaryController;
 use App\Http\Controllers\Admin\ResellerController;
+use App\Http\Controllers\Admin\PartnerNetworkController;
 use App\Livewire\Admin\ExpenseManager;
 use App\Livewire\Admin\ActivityLogViewer;
 use App\Livewire\Admin\ManagePurchaseRequests;
@@ -276,15 +277,9 @@ Route::middleware([
             ],
             'links'=>[[route('site-settings'),'Payment Gateway Settings','Configure bKash, Nagad and SSLCommerz'],[route('payment-collection'),'Payment Collection','Collection desk'],[route('payment-invoice'),'Invoices','Payment invoices']],
         ]))->name('xlink.mobile-banking');
-        Route::get('/partner-network', fn () => view('xlink.module', [
-            'title'=>'Partner Network','icon'=>'bi-diagram-3','description'=>'Partner and reseller network management.',
-            'stats'=>[
-                ['Partners',\App\Models\Reseller::count()],
-                ['Active',\App\Models\Reseller::where('status','active')->count()],
-                ['Requests',\App\Models\PackagePurchaseRequest::count()],
-            ],
-            'links'=>[[route('admin.resellers.index'),'Partner Management','Create and manage partners'],[route('admin.purchase-requests'),'Purchase Requests','Review partner requests'],[route('reseller.dashboard'),'Partner Dashboard','Reseller operations']],
-        ]))->name('xlink.partner-network');
+        Route::get('/partner-network', [PartnerNetworkController::class, 'index'])->name('xlink.partner-network');
+        Route::get('/reseller-cashflow', [PartnerNetworkController::class, 'cashflow'])->name('reseller-cashflow');
+        Route::get('/reseller-ledger', [PartnerNetworkController::class, 'ledger'])->name('reseller-ledger');
         Route::get('/bandwidth-reseller', fn () => view('xlink.module', [
             'title'=>'Bandwidth Reseller','icon'=>'bi-speedometer2','description'=>'Reseller packages, wallet, vouchers and customer operations.',
             'stats'=>[
@@ -635,7 +630,6 @@ Route::middleware([
         Route::post('/mobile-banking/methods', [\App\Http\Controllers\MobileBankingController::class, 'saveMethod'])->name('mobile-banking.methods.save');
         Route::get('/mobile-banking/settings', [\App\Http\Controllers\MobileBankingController::class, 'settings'])->name('mobile-banking.settings');
         Route::post('/mobile-banking/settings', [\App\Http\Controllers\MobileBankingController::class, 'updateSettings'])->name('mobile-banking.settings.update');
-        Route::get('/partner-network', fn () => redirect()->route('admin.resellers.index'))->name('xlink.partner-network');
         Route::get('/bandwidth-reseller', fn () => redirect()->route('reseller.dashboard'))->name('xlink.bandwidth-reseller');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
         Route::get('/stock-inventory', fn () => redirect()->route('admin.purchase-requests'))->name('xlink.stock-inventory');
