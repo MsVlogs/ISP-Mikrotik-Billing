@@ -1,0 +1,39 @@
+<x-app-layout>
+@push('styles')<link rel="stylesheet" href="{{ asset('xlink-olt/olt-source.css') }}">@endpush
+<div class="container-fluid px-1"><div class="d-flex justify-content-between align-items-center mb-3"><div><span class="text-uppercase small text-muted fw-semibold">Admin Panel</span><h3 class="mb-0">{{ $edit ? 'Edit OLT' : 'Add OLT' }}</h3><small class="text-muted">{{ $edit ? 'Update OLT connection and hardware configuration' : 'Configure a new Optical Line Terminal' }}</small></div><a class="btn btn-outline-secondary" href="{{ route('network-inventory.olt') }}">Back to OLT</a></div>
+<div class="card shadow-sm border-0"><form method="POST" action="{{ $edit ? route('network-inventory.olt.update',$device) : route('network-inventory.olt.store') }}">@csrf @if($edit) @method('PUT') @endif
+<div class="card-body"><div class="row g-3">
+<div class="col-md-4"><label class="form-label">OLT Name</label><input class="form-control" name="name" value="{{ old('name',$device->name) }}" required></div>
+<div class="col-md-4"><label class="form-label">OLT Type ID</label><input class="form-control" name="olt_type_id" value="{{ old('olt_type_id',$device->olt_type_id) }}"></div>
+<div class="col-md-4"><label class="form-label">Host / IP</label><input class="form-control" name="host" value="{{ old('host',$device->host ?: $device->ip_address) }}"></div>
+<div class="col-md-3"><label class="form-label">Port</label><input class="form-control" type="number" name="port" value="{{ old('port',$device->port ?: 23) }}"></div>
+<div class="col-md-3"><label class="form-label">Username</label><input class="form-control" name="username" value="{{ old('username',$device->username) }}"></div>
+<div class="col-md-3"><label class="form-label">Password</label><input class="form-control" type="password" name="password"></div>
+<div class="col-md-3"><label class="form-label">Web Protocol</label><select class="form-select" name="web_protocol"><option value="http" @selected(old('web_protocol',$device->web_protocol)==='http')>HTTP</option><option value="https" @selected(old('web_protocol',$device->web_protocol)==='https')>HTTPS</option></select></div>
+<div class="col-md-3"><label class="form-label">Web Port</label><input class="form-control" type="number" name="web_port" value="{{ old('web_port',$device->web_port) }}"></div>
+<div class="col-md-3"><label class="form-label">Brand</label><input class="form-control" name="vendor" value="{{ old('vendor',$device->vendor) }}"></div>
+<div class="col-md-3"><label class="form-label">Model</label><input class="form-control" name="model" value="{{ old('model',$device->model) }}"></div>
+<div class="col-md-3"><label class="form-label">Firmware</label><input class="form-control" name="firmware" value="{{ old('firmware',$device->firmware) }}"></div>
+<div class="col-md-3"><label class="form-label">Serial No.</label><input class="form-control" name="serial_no" value="{{ old('serial_no',$device->serial_no) }}"></div>
+<div class="col-md-2"><label class="form-label">PON Ports</label><input class="form-control" type="number" name="pon_ports" value="{{ old('pon_ports',$device->pon_ports) }}"></div>
+<div class="col-md-2"><label class="form-label">GE Ports</label><input class="form-control" type="number" name="ge_ports" value="{{ old('ge_ports',$device->ge_ports) }}"></div>
+<div class="col-md-2"><label class="form-label">SFP Ports</label><input class="form-control" type="number" name="sfp_ports" value="{{ old('sfp_ports',$device->sfp_ports) }}"></div>
+<div class="col-md-2"><label class="form-label">SFP+ Ports</label><input class="form-control" type="number" name="sfp_plus_ports" value="{{ old('sfp_plus_ports',$device->sfp_plus_ports) }}"></div>
+<div class="col-md-2"><label class="form-label">Connect Timeout</label><input class="form-control" type="number" name="connect_timeout" value="{{ old('connect_timeout',$device->connect_timeout) }}"></div>
+<div class="col-md-2"><label class="form-label">CLI Timeout</label><input class="form-control" type="number" name="cli_timeout" value="{{ old('cli_timeout',$device->cli_timeout) }}"></div>
+<div class="col-md-4"><label class="form-label">Location</label><input class="form-control" name="location" value="{{ old('location',$device->location) }}" placeholder="Address or lat, lng"></div>
+<div class="col-md-2"><label class="form-label">Latitude</label><input class="form-control" type="number" step="any" name="latitude" value="{{ old('latitude',$device->latitude) }}"></div>
+<div class="col-md-2"><label class="form-label">Longitude</label><input class="form-control" type="number" step="any" name="longitude" value="{{ old('longitude',$device->longitude) }}"></div>
+<div class="col-md-2"><label class="form-label">Health Port</label><input class="form-control" type="number" name="health_port" value="{{ old('health_port',$device->health_port) }}"></div>
+<div class="col-md-2"><label class="form-label">Read Delay ms</label><input class="form-control" type="number" name="read_delay_ms" value="{{ old('read_delay_ms',$device->read_delay_ms) }}"></div>
+<div class="col-md-4"><label class="form-label">Diagnostic Command</label><input class="form-control" name="diagnostic_command" value="{{ old('diagnostic_command',$device->diagnostic_command) }}"></div>
+<div class="col-md-4"><label class="form-label">Adapter Config</label><input class="form-control" name="adapter_config" value="{{ old('adapter_config',$device->adapter_config) }}"></div>
+<div class="col-md-2"><label class="form-label">ONU Total</label><input class="form-control" type="number" name="onu_total" value="{{ old('onu_total',$device->onu_total) }}"></div>
+<div class="col-md-2"><label class="form-label">ONU Online</label><input class="form-control" type="number" name="onu_online" value="{{ old('onu_online',$device->onu_online) }}"></div>
+<div class="col-md-2"><label class="form-label">RX Power</label><input class="form-control" type="number" step="0.01" name="rx_power" value="{{ old('rx_power',$device->rx_power) }}"></div>
+<div class="col-md-2"><label class="form-label">Customers</label><input class="form-control" type="number" name="customer_count" value="{{ old('customer_count',$device->customer_count) }}"></div>
+<div class="col-md-2"><label class="form-label">Status</label><select class="form-select" name="status"><option value="online" @selected(old('status',$device->status)==='online')>Online</option><option value="offline" @selected(old('status',$device->status)==='offline')>Offline</option><option value="unknown" @selected(old('status',$device->status)==='unknown')>Waiting</option></select></div>
+<div class="col-md-2 d-flex align-items-end"><label class="form-check"><input class="form-check-input" type="checkbox" name="is_active" value="1" @checked(old('is_active',$device->is_active ?? true))> Active</label></div>
+<div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" rows="3" name="notes">{{ old('notes',$device->notes) }}</textarea></div>
+</div></div><div class="card-footer d-flex justify-content-end gap-2"><a class="btn btn-light" href="{{ route('network-inventory.olt') }}">Cancel</a><button class="btn btn-primary">{{ $edit ? 'Update OLT' : 'Save OLT' }}</button></div></form></div></div>
+</x-app-layout>

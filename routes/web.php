@@ -416,11 +416,42 @@ Route::middleware([
         })->name('network-inventory.devices.destroy');
 
         Route::get('/network-inventory/olt-management', function () {
-            $devices = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name')->get();
-            return view('xlink.olts', ['devices' => $devices]);
+            $query = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name');
+            if ($q = trim((string) request('q',''))) {
+                $query->where(function($x) use ($q) {
+                    $x->where('name','like',"%{$q}%")->orWhere('ip_address','like',"%{$q}%")->orWhere('vendor','like',"%{$q}%")->orWhere('model','like',"%{$q}%")->orWhere('location','like',"%{$q}%");
+                });
+            }
+            if (in_array(request('status'),['online','offline','unknown'],true)) $query->where('status',request('status'));
+            $devices=$query->paginate(20)->withQueryString();
+            return view('xlink.olts',['devices'=>$devices]);
         })->name('network-inventory.olt');
 
         Route::get('/olts', fn () => redirect()->route('network-inventory.olt'))->name('olts');
+        Route::get('/network-inventory/olt/add', fn () => view('xlink.olt-form',['device'=>new \App\Models\NetworkInventoryDevice(['type'=>'olt','status'=>'unknown','is_active'=>true]),'edit'=>false]))->name('network-inventory.olt.add');
+        Route::post('/network-inventory/olt', function(\Illuminate\Http\Request $request){
+            $data=$request->validate([
+                'name'=>['required','string','max:120'],'olt_type_id'=>['nullable','string','max:120'],'host'=>['nullable','string','max:255'],
+                'ip_address'=>['nullable','ip'],'port'=>['nullable','integer','min:1','max:65535'],'username'=>['nullable','string','max:120'],'password'=>['nullable','string','max:255'],
+                'model'=>['nullable','string','max:120'],'firmware'=>['nullable','string','max:120'],'serial_no'=>['nullable','string','max:160'],'vendor'=>['nullable','string','max:80'],
+                'pon_ports'=>['nullable','integer','min:0'],'ge_ports'=>['nullable','integer','min:0'],'sfp_ports'=>['nullable','integer','min:0'],'sfp_plus_ports'=>['nullable','integer','min:0'],
+                'web_protocol'=>['nullable','in:http,https'],'web_port'=>['nullable','integer','min:1','max:65535'],'connect_timeout'=>['nullable','integer','min:1'],'cli_timeout'=>['nullable','integer','min:1'],'read_delay_ms'=>['nullable','integer','min:0'],
+                'diagnostic_command'=>['nullable','string','max:1000'],'adapter_config'=>['nullable','string','max:2000'],'latitude'=>['nullable','numeric','between:-90,90'],'longitude'=>['nullable','numeric','between:-180,180'],'location'=>['nullable','string','max:255'],
+                'onu_total'=>['nullable','integer','min:0'],'onu_online'=>['nullable','integer','min:0'],'rx_power'=>['nullable','numeric'],'customer_count'=>['nullable','integer','min:0'],'status'=>['required','in:online,offline,unknown'],'health_port'=>['nullable','integer','min:1','max:65535'],'notes'=>['nullable','string','max:2000'],'is_active'=>['nullable','boolean'],
+            ]);
+            $data['type']='olt'; $data['ip_address']=$data['ip_address']??($data['host']??null); $data['is_active']=(bool)($data['is_active']??false);
+            \App\Models\NetworkInventoryDevice::create($data); return redirect()->route('network-inventory.olt')->with('inventory_message','OLT created successfully.');
+        })->name('network-inventory.olt.store');
+        Route::get('/network-inventory/olt/{device}/edit', function(\App\Models\NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); return view('xlink.olt-form',['device'=>$device,'edit'=>true]); })->name('network-inventory.olt.edit');
+        Route::put('/network-inventory/olt/{device}', function(\Illuminate\Http\Request $request, \App\Models\NetworkInventoryDevice $device){
+            abort_unless($device->type==='olt',404); $data=$request->validate(['name'=>['required','string','max:120'],'olt_type_id'=>['nullable','string','max:120'],'host'=>['nullable','string','max:255'],'ip_address'=>['nullable','ip'],'port'=>['nullable','integer','min:1','max:65535'],'username'=>['nullable','string','max:120'],'password'=>['nullable','string','max:255'],'model'=>['nullable','string','max:120'],'firmware'=>['nullable','string','max:120'],'serial_no'=>['nullable','string','max:160'],'vendor'=>['nullable','string','max:80'],'pon_ports'=>['nullable','integer','min:0'],'ge_ports'=>['nullable','integer','min:0'],'sfp_ports'=>['nullable','integer','min:0'],'sfp_plus_ports'=>['nullable','integer','min:0'],'web_protocol'=>['nullable','in:http,https'],'web_port'=>['nullable','integer','min:1','max:65535'],'connect_timeout'=>['nullable','integer','min:1'],'cli_timeout'=>['nullable','integer','min:1'],'read_delay_ms'=>['nullable','integer','min:0'],'diagnostic_command'=>['nullable','string','max:1000'],'adapter_config'=>['nullable','string','max:2000'],'latitude'=>['nullable','numeric','between:-90,90'],'longitude'=>['nullable','numeric','between:-180,180'],'location'=>['nullable','string','max:255'],'onu_total'=>['nullable','integer','min:0'],'onu_online'=>['nullable','integer','min:0'],'rx_power'=>['nullable','numeric'],'customer_count'=>['nullable','integer','min:0'],'status'=>['required','in:online,offline,unknown'],'health_port'=>['nullable','integer','min:1','max:65535'],'notes'=>['nullable','string','max:2000'],'is_active'=>['nullable','boolean']]);
+            if(empty($data['password'])) unset($data['password']); $data['ip_address']=$data['ip_address']??($data['host']??$device->ip_address); $data['is_active']=(bool)($data['is_active']??false); $device->update($data); return redirect()->route('network-inventory.olt')->with('inventory_message','OLT updated successfully.');
+        })->name('network-inventory.olt.update');
+        Route::get('/network-inventory/olt/{device}/customers', function(\App\Models\NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); return view('xlink.olt-customers',compact('device')); })->name('network-inventory.olt.customers');
+        Route::get('/network-inventory/olt/{device}/diagnostics', function(\App\Models\NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); return view('xlink.olt-diagnostics',compact('device')); })->name('network-inventory.olt.diagnostics');
+        Route::post('/network-inventory/olt/{device}/diagnostic-check', function(\App\Models\NetworkInventoryDevice $device){
+            abort_unless($device->type==='olt',404); $host=$device->host ?: $device->ip_address; $port=(int)($device->health_port ?: $device->port ?: 23); $start=microtime(true); $ok=false; $err=''; $errno=0; if($host){$s=@fsockopen($host,$port,$errno,$err,3); if($s){$ok=true; fclose($s);}} $device->update(['status'=>$ok?'online':'offline','health_status'=>$ok?'ready':'failed','last_latency_ms'=>(int)round((microtime(true)-$start)*1000),'last_checked_at'=>now()]); return back()->with('diagnostic_message',$ok?'Connectivity check passed.':'Connectivity check failed: '.($err?:'connection refused'));
+        })->name('network-inventory.olt.diagnostic-check');
 
         Route::get('/network-inventory/switch-management', fn () => view('xlink.device-management', [
             'title' => 'Switch Management', 'icon' => 'bi-ethernet',
