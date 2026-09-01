@@ -13,26 +13,26 @@
     <div class="dashboard-card-deck">
         @php
             $cards = [
-                ['tone'=>'green','icon'=>'bi-person-check-fill','label'=>'Active Customers','value'=>number_format($customersData['active'] ?? 0),'sub'=>'Company + Reseller'],
+                ['tone'=>'green','icon'=>'bi-person-check-fill','label'=>'Active Customers','value'=>number_format($activeCustomerTotal ?? 0),'sub'=>'Company '.number_format($activeCompany ?? 0).' • Reseller '.number_format($activeReseller ?? 0)],
                 ['tone'=>'green','icon'=>'bi-wifi','label'=>'Online Now','value'=>number_format($onlineNow ?? 0),'sub'=>'Live PPPoE sessions'],
-                ['tone'=>'red','icon'=>'bi-calendar-x-fill','label'=>'Expired','value'=>number_format($expired ?? 0),'sub'=>'Accounts requiring attention'],
+                ['tone'=>'red','icon'=>'bi-calendar-x-fill','label'=>'Expired','value'=>number_format($expired ?? 0),'sub'=>'Billing expiry reached'],
                 ['tone'=>'amber','icon'=>'bi-shield-lock-fill','label'=>'Locked / Disabled','value'=>number_format($lockedDisabled ?? 0),'sub'=>'Disabled or temporary'],
-                ['tone'=>'purple','icon'=>'bi-calendar2-week-fill','label'=>'This Month Collection','value'=>number_format($monthCollection ?? 0,2).' ৳','sub'=>'PPPoE + Hotspot'],
+                ['tone'=>'purple','icon'=>'bi-calendar2-week-fill','label'=>'This Month Collection','value'=>number_format($monthCollection ?? 0,2).' ৳','sub'=>'PPPoE '.number_format($monthCollectionPppoe ?? 0,2).' ৳ • Hotspot '.number_format($monthCollectionHotspot ?? 0,2).' ৳'],
                 ['tone'=>'rose','icon'=>'bi-cash-coin','label'=>'Running Due','value'=>number_format($runningDue ?? 0,2).' ৳','sub'=>'Active customer outstanding'],
-                ['tone'=>'teal','icon'=>'bi-wallet2','label'=>'Today Collection','value'=>number_format($billInformationData['today_paid_amount'] ?? 0,2).' ৳','sub'=>'PPPoE collection'],
-                ['tone'=>'cyan','icon'=>'bi-graph-up-arrow','label'=>'Weekly Collection','value'=>number_format($weekCollection ?? 0,2).' ৳','sub'=>'Last 7 days'],
-                ['tone'=>'indigo','icon'=>'bi-shop-window','label'=>'Reseller Due','value'=>number_format(max(0, (float)($resellerData['total_balance'] ?? 0)),2).' ৳','sub'=>'Partner account balance'],
-                ['tone'=>'slate','icon'=>'bi-calendar2-check-fill','label'=>'Today Attendance','value'=>'0 / '.number_format($attendanceTotal ?? 0),'sub'=>'Attendance module'],
-                ['tone'=>'orange','icon'=>'bi-phone-vibrate-fill','label'=>'MFS Collection','value'=>'0.00 ৳','sub'=>'Digital + SMS banking'],
+                ['tone'=>'teal','icon'=>'bi-wallet2','label'=>'Today Collection','value'=>number_format($todayCollection ?? 0,2).' ৳','sub'=>'PPPoE '.number_format($todayPppoe ?? 0,2).' ৳ • Hotspot '.number_format($todayHotspot ?? 0,2).' ৳'],
+                ['tone'=>'cyan','icon'=>'bi-graph-up-arrow','label'=>'Weekly Collection','value'=>number_format($weekCollection ?? 0,2).' ৳','sub'=>'Last 7 days • PPPoE + Hotspot'],
+                ['tone'=>'indigo','icon'=>'bi-shop-window','label'=>'Reseller Due','value'=>number_format($resellerDue ?? 0,2).' ৳','sub'=>'Outstanding partner balance'],
+                ['tone'=>'slate','icon'=>'bi-calendar2-check-fill','label'=>'Today Attendance','value'=>number_format($attendanceToday ?? 0).' / '.number_format($attendanceTotal ?? 0),'sub'=>'Attendance module'],
+                ['tone'=>'orange','icon'=>'bi-phone-vibrate-fill','label'=>'MFS Collection','value'=>number_format($mfsCollection ?? 0,2).' ৳','sub'=>'Digital + SMS banking (month)'],
                 ['tone'=>'emerald','icon'=>'bi-router-fill','label'=>'Router Health','value'=>number_format($deviceStats['routers_online'] ?? 0).' / '.number_format($deviceStats['routers_total'] ?? 0),'sub'=>'Online routers / active routers'],
-                ['tone'=>'purple','icon'=>'bi-wifi','label'=>'Hotspot Customers','value'=>number_format((int)($hotspotCustomers ?? 0)),'sub'=>'Hotspot accounts'],
+                ['tone'=>'purple','icon'=>'bi-wifi','label'=>'Hotspot Customers','value'=>number_format((int)($hotspotCustomers ?? 0)),'sub'=>'Unique hotspot users this month'],
                 ['tone'=>'amber','icon'=>'bi-ticket-perforated','label'=>'Hotspot Card Stock','value'=>number_format(class_exists('App\\Models\\HotspotVoucher') ? \App\Models\HotspotVoucher::whereIn('status',['unused','active'])->count() : 0),'sub'=>'Unused + Active'],
-                ['tone'=>'indigo','icon'=>'bi-graph-up','label'=>'Hotspot Monthly','value'=>number_format((float)($billInformationData['hotspot_today'] ?? 0),2).' ৳','sub'=>'Hotspot collection'],
+                ['tone'=>'indigo','icon'=>'bi-graph-up','label'=>'Hotspot Monthly','value'=>number_format((float)($monthCollectionHotspot ?? 0),2).' ৳','sub'=>'Hotspot collection this month'],
                 ['tone'=>'emerald','icon'=>'bi-broadcast-pin','label'=>'Access Point Health','value'=>number_format($deviceStats['aps_online'] ?? 0).' / '.number_format($deviceStats['aps_total'] ?? 0),'sub'=>'Online AP / total AP'],
             ];
         @endphp
         @foreach($cards as $card)
-            <a class="dashboard-card tone-{{ $card['tone'] }}" href="#">
+            <a class="dashboard-card tone-{{ $card['tone'] }}" href="{{ match($card['label']) { 'Active Customers' => route('broadband-customers'), 'Online Now' => route('broadband-online-customers'), 'Expired' => route('broadband-due-customers'), 'Locked / Disabled' => route('broadband-inactive-customers'), 'This Month Collection' => route('income-summary'), 'Running Due' => route('broadband-due-customers'), 'Today Collection' => route('income-summary'), 'Weekly Collection' => route('income-summary'), 'Reseller Due' => route('reseller.dashboard'), 'Today Attendance' => route('dashboard'), 'MFS Collection' => route('income-summary'), 'Router Health' => route('device-watcher'), 'Hotspot Customers' => route('hotspot-dashboard'), 'Hotspot Card Stock' => route('hotspot-cards'), 'Hotspot Monthly' => route('hotspot-ledger'), 'Access Point Health' => route('network-inventory.access-points'), default => route('dashboard') }}">
                 <span class="dashboard-card-icon"><i class="bi {{ $card['icon'] }}"></i></span>
                 <span class="dashboard-card-copy"><span class="dashboard-card-label">{{ __($card['label']) }}</span><strong class="dashboard-card-value">{{ $card['value'] }}</strong><small class="dashboard-card-sub">{{ __($card['sub']) }}</small></span>
                 <i class="bi bi-arrow-up-right dashboard-card-open"></i>

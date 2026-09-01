@@ -161,25 +161,59 @@ class DashboardController extends Controller
             $systemOverview = [];
         }
 
-        // Calculate total cashflow, income, and revenue difference for the year
+        // Reference-aligned KPI metrics. These are derived from live application data, not demo snapshot values.
+        $today = Carbon::today();
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd = Carbon::now()->endOfMonth();
+        $weekStart = Carbon::now()->subDays(6)->startOfDay();
+
+        $activeCustomers = CustomersInfo::where('status', 'active');
+        $activeCustomerTotal = (clone $activeCustomers)->count();
+        $activeCompany = (clone $activeCustomers)->whereNull('reseller_id')->count();
+        $activeReseller = (clone $activeCustomers)->whereNotNull('reseller_id')->count();
         $onlineNow = PPPSecrets::where('status', 'online')->count();
-        $expired = $statusCounts['expired'] ?? 0;
-        $lockedDisabled = ($statusCounts['disable'] ?? 0) + ($statusCounts['temporary_disable'] ?? 0);
-        $runningDue = abs((float) ($billInformationData['due_amount'] ?? 0));
-        $monthCollection = CollectionSummary::whereMonth('collection_date', Carbon::now()->month)
-            ->whereYear('collection_date', Carbon::now()->year)->sum('collection_amount')
-            + HotspotSale::whereMonth('sale_date', Carbon::now()->month)
-            ->whereYear('sale_date', Carbon::now()->year)->sum('amount');
-        $weekCollection = CollectionSummary::whereBetween('collection_date', [Carbon::now()->subDays(6)->startOfDay(), Carbon::now()->endOfDay()])->sum('collection_amount')
-            + HotspotSale::whereBetween('sale_date', [Carbon::now()->subDays(6)->startOfDay(), Carbon::now()->endOfDay()])->sum('amount');
+
+        // Expired means active accounts whose billing disable/expiry date has passed.
+        $expired = BillingInfo::join('customers_infos', 'billing_infos.customer_bill_unique_id', '=', 'customers_infos.customer_unique_id')
+            ->whereNull('customers_infos.deleted_at')
+            ->where('customers_infos.status', 'active')
+            ->whereNotNull('billing_infos.auto_disable_date')
+            ->whereDate('billing_infos.auto_disable_date', '<', $today)
+            ->count();
+
+        $lockedDisabled = CustomersInfo::whereIn('status', ['disable', 'temporary_disable'])->count();
+        $runningDue = (float) (clone $activeCustomers)->join('billing_infos', 'billing_infos.customer_bill_unique_id', '=', 'customers_infos.customer_unique_id')
+            ->sum('billing_infos.due_amount');
+        $runningDue = abs($runningDue);
+
+        $monthCollectionPppoe = CollectionSummary::whereBetween('collection_date', [$monthStart, $monthEnd])->sum('collection_amount');
+        $monthCollectionHotspot = HotspotSale::whereBetween('sale_date', [$monthStart->toDateString(), $monthEnd->toDateString()])->sum('amount');
+        $monthCollection = (float) $monthCollectionPppoe + (float) $monthCollectionHotspot;
+
+        $todayPppoe = CollectionSummary::whereDate('collection_date', $today)->sum('collection_amount');
+        $todayHotspot = HotspotSale::whereDate('sale_date', $today)->sum('amount');
+        $todayCollection = (float) $todayPppoe + (float) $todayHotspot;
+
+        $weekPppoe = CollectionSummary::whereBetween('collection_date', [$weekStart, Carbon::now()->endOfDay()])->sum('collection_amount');
+        $weekHotspot = HotspotSale::whereBetween('sale_date', [$weekStart->toDateString(), Carbon::now()->toDateString()])->sum('amount');
+        $weekCollection = (float) $weekPppoe + (float) $weekHotspot;
+
+        $mfsCollection = (float) CollectionSummary::whereBetween('collection_date', [$monthStart, $monthEnd])
+            ->where(function ($q) {
+                $q->whereRaw("LOWER(COALESCE(payment_method,'')) REGEXP 'bkash|nagad|rocket|upay|sslcommerz|mobile|mfs|sms|banking'")
+                  ->orWhereRaw("LOWER(COALESCE(payment_type,'')) REGEXP 'bkash|nagad|rocket|upay|sslcommerz|mobile|mfs|sms|banking'");
+            })->sum('collection_amount');
+
+        $resellerDue = max(0, (float) Reseller::sum('balance'));
         $recentTransactions = CollectionSummary::with('customer')->latest('collection_date')->latest('id')->limit(8)->get();
         $newConnections = CustomersInfo::where('created_at', '>=', Carbon::now()->subMonths(11)->startOfMonth())
             ->selectRaw('YEAR(created_at) as y, MONTH(created_at) as m, COUNT(*) as total')
             ->groupBy('y','m')->get()->keyBy(fn($r) => sprintf('%04d-%02d', $r->y, $r->m));
-        $hotspotCustomers = HotspotSale::whereYear('sale_date', Carbon::now()->year)
-            ->distinct('username')->count('username');
+        $hotspotCustomers = HotspotSale::whereBetween('sale_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->whereNotNull('username')->distinct()->count('username');
         $hotspotCardStock = \App\Models\HotspotVoucher::whereIn('status', ['unused', 'active'])->count();
-        $attendanceTotal = \App\Models\User::count();
+        $attendanceTotal = \App\Models\User::where('is_active', true)->count();
+        $attendanceToday = 0;
         $deviceStats = [
             'routers_total' => \App\Models\RouterList::count(),
             'routers_online' => \App\Models\RouterList::where('action', 'connected')->count(),
@@ -192,7 +226,8 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'results', 'customersData', 'billInformationData', 'systemOverview', 'resellerData',
             'onlineNow', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
-            'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'deviceStats'
+            'todayCollection', 'mfsCollection', 'resellerDue', 'activeCustomerTotal', 'activeCompany', 'activeReseller',
+            'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'attendanceToday', 'deviceStats'
         ));
     }
 }
