@@ -6,7 +6,7 @@
   </div>
   <div class="card mb-3"><div class="card-body py-2">
     <div class="d-flex flex-wrap gap-2">
-      <a class="btn btn-sm {{ $tab==='overview'?'btn-primary':'btn-outline-primary' }}" href="{{ route('mobile-banking') }}"><i class="bi bi-grid me-1"></i>Overview</a>
+      <a class="btn btn-sm {{ $tab==='overview'?'btn-primary':'btn-outline-primary' }}" href="{{ route('xlink.mobile-banking') }}"><i class="bi bi-grid me-1"></i>Overview</a>
       <a class="btn btn-sm {{ $tab==='logs'?'btn-primary':'btn-outline-primary' }}" href="{{ route('mobile-banking.logs') }}"><i class="bi bi-list-check me-1"></i>Mobile Banking LOG</a>
       <a class="btn btn-sm {{ $tab==='gateways'?'btn-primary':'btn-outline-primary' }}" href="{{ route('mobile-banking.gateways') }}"><i class="bi bi-credit-card me-1"></i>Payment Gateway</a>
       <a class="btn btn-sm {{ $tab==='methods'?'btn-primary':'btn-outline-primary' }}" href="{{ route('mobile-banking.methods') }}"><i class="bi bi-wallet2 me-1"></i>Payment Methods</a>
