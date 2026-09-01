@@ -164,6 +164,24 @@
                     </div>
                 </a>
             </li>
+            {{-- ── Billing & Finance ── --}}
+            <li class="nav-item">
+                <a class="nav-link dropdown-indicator collapsed" href="#billingFinanceMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="billingFinanceMenu">
+                    <div class="d-flex align-items-center">
+                        <span class="nav-link-icon"><i class="bi bi-cash-stack"></i></span>
+                        <span class="nav-link-text ps-1">{{ __('Billing & Finance') }}</span>
+                    </div>
+                </a>
+                <div class="collapse ps-4" id="billingFinanceMenu">
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('billing-finance') }}"><span class="nav-link-text ps-1">{{ __('Overview') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('income-summary') }}"><span class="nav-link-text ps-1">{{ __('Income & Collection') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('ledger-summary') }}"><span class="nav-link-text ps-1">{{ __('Ledger Summary') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('extra-charges') }}"><span class="nav-link-text ps-1">{{ __('Extra Charges') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('admin.expenses') }}"><span class="nav-link-text ps-1">{{ __('Expenses') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('admin.profit-summary') }}"><span class="nav-link-text ps-1">{{ __('Profit & Loss') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('payment-collection') }}"><span class="nav-link-text ps-1">{{ __('Payment Collection') }}</span></a>
+                </div>
+            </li>
             <li class="nav-item">
                 <!-- label-->
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">

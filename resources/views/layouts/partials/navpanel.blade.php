@@ -205,20 +205,18 @@
             </li>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="false" id="financeDropdown">{{ __('Finance') }}</a>
+                    aria-haspopup="true" aria-expanded="false" id="financeDropdown">{{ __('Billing & Finance') }}</a>
                 <div class="dropdown-menu dropdown-caret dropdown-menu-card border-0 mt-0"
                     aria-labelledby="financeDropdown">
                     <div class="bg-white dark__bg-1000 rounded-3 py-2">
                         <img class="img-dropdown" src="{{ asset('images/authentication-corner.png') }}"
                             width="60" alt="" />
-                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium"
-                            href="{{ route('admin.expenses') }}">
-                            {{ __('Expense Management') }}
-                        </a>
-                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium"
-                            href="{{ route('admin.profit-summary') }}">
-                            {{ __('Profit & Loss') }}
-                        </a>
+                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium" href="{{ route('billing-finance') }}">{{ __('Overview') }}</a>
+                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium" href="{{ route('income-summary') }}">{{ __('Income & Collection') }}</a>
+                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium" href="{{ route('ledger-summary') }}">{{ __('Ledger Summary') }}</a>
+                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium" href="{{ route('extra-charges') }}">{{ __('Extra Charges') }}</a>
+                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium" href="{{ route('admin.expenses') }}">{{ __('Expenses') }}</a>
+                        <a wire:navigate.hover wire:current="active" class="dropdown-item link-600 fw-medium" href="{{ route('admin.profit-summary') }}">{{ __('Profit & Loss') }}</a>
                     </div>
                 </div>
             </li>
