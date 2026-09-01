@@ -227,7 +227,7 @@ class DashboardController extends Controller
             'results', 'customersData', 'billInformationData', 'systemOverview', 'resellerData',
             'onlineNow', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
             'todayCollection', 'mfsCollection', 'resellerDue', 'activeCustomerTotal', 'activeCompany', 'activeReseller',
-            'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'attendanceToday', 'deviceStats'
+            'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'attendanceToday', 'deviceStats', 'monthCollectionPppoe', 'monthCollectionHotspot', 'todayPppoe', 'todayHotspot', 'weekPppoe', 'weekHotspot'
         ));
     }
 }
