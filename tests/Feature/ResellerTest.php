@@ -475,10 +475,10 @@ class ResellerTest extends TestCase
             ->get(route('dashboard'));
 
         $response->assertStatus(200);
-        $response->assertSee('Total Resellers');
+        $response->assertSee('Company vs Reseller Split');
         $response->assertSee('Reseller Customers');
-        $response->assertSee('Wallet Balances');
-        $response->assertSee('Total Commissions');
+        $response->assertSee('Reseller Due');
+        $response->assertSee('Business Split');
     }
 
     /** @test */

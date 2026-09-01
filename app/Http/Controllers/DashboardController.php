@@ -198,17 +198,25 @@ class DashboardController extends Controller
         $weekHotspot = HotspotSale::whereBetween('sale_date', [$weekStart->toDateString(), Carbon::now()->toDateString()])->sum('amount');
         $weekCollection = (float) $weekPppoe + (float) $weekHotspot;
 
+        $mfsKeywords = ['bkash', 'nagad', 'rocket', 'upay', 'sslcommerz', 'mobile', 'mfs', 'sms', 'banking'];
         $mfsCollection = (float) CollectionSummary::whereBetween('collection_date', [$monthStart, $monthEnd])
-            ->where(function ($q) {
-                $q->whereRaw("LOWER(COALESCE(payment_method,'')) REGEXP 'bkash|nagad|rocket|upay|sslcommerz|mobile|mfs|sms|banking'")
-                  ->orWhereRaw("LOWER(COALESCE(payment_type,'')) REGEXP 'bkash|nagad|rocket|upay|sslcommerz|mobile|mfs|sms|banking'");
+            ->where(function ($q) use ($mfsKeywords) {
+                foreach ($mfsKeywords as $keyword) {
+                    $pattern = '%' . $keyword . '%';
+                    $q->orWhereRaw("LOWER(COALESCE(payment_method,'')) LIKE ?", [$pattern])
+                        ->orWhereRaw("LOWER(COALESCE(payment_type,'')) LIKE ?", [$pattern]);
+                }
             })->sum('collection_amount');
 
         $resellerDue = max(0, (float) Reseller::sum('balance'));
         $recentTransactions = CollectionSummary::with('customer')->latest('collection_date')->latest('id')->limit(8)->get();
         $newConnections = CustomersInfo::where('created_at', '>=', Carbon::now()->subMonths(11)->startOfMonth())
-            ->selectRaw('YEAR(created_at) as y, MONTH(created_at) as m, COUNT(*) as total')
-            ->groupBy('y','m')->get()->keyBy(fn($r) => sprintf('%04d-%02d', $r->y, $r->m));
+            ->get(['created_at'])
+            ->groupBy(fn ($customer) => Carbon::parse($customer->created_at)->format('Y-m'))
+            ->map(function ($customers, $key) {
+                [$year, $month] = array_map('intval', explode('-', $key));
+                return (object) ['y' => $year, 'm' => $month, 'total' => $customers->count()];
+            });
         $hotspotCustomers = HotspotSale::whereBetween('sale_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
             ->whereNotNull('username')->distinct()->count('username');
         $hotspotCardStock = \App\Models\HotspotVoucher::whereIn('status', ['unused', 'active'])->count();
