@@ -39,24 +39,26 @@
       <select name="status" class="form-select form-select-sm" style="max-width:160px"><option value="online">Online</option><option value="offline">Offline</option><option value="unknown">Unknown</option></select>
       <button class="btn btn-sm btn-outline-primary">Apply to selected</button>
     </div>
+  </form>
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between"><strong>{{ $devices->total() }} devices</strong><span class="text-muted">Search, edit and manage inventory</span></div>
     <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.inventory-select').forEach(e=>e.checked=this.checked)"></th><th>Name</th><th>IP</th><th>Vendor / Model</th><th>Status</th><th>Health</th><th>Location</th><th>Action</th></tr></thead><tbody>
       @forelse($devices as $device)
         <tr>
           <td><input class="inventory-select" type="checkbox" name="device_ids[]" value="{{ $device->id }}"></td>
-          <td><form method="POST" action="{{ route('network-inventory.devices.update', [$type, $device->id]) }}" class="row g-2"><div class="col-12"><input name="name" value="{{ $device->name }}" class="form-control form-control-sm"></div></td>
-          <td><input name="ip_address" value="{{ $device->ip_address }}" class="form-control form-control-sm"></td>
-          <td><div class="d-flex gap-1"><input name="vendor" value="{{ $device->vendor }}" class="form-control form-control-sm" placeholder="Vendor"><input name="model" value="{{ $device->model }}" class="form-control form-control-sm" placeholder="Model"></div></td>
-          <td><select name="status" class="form-select form-select-sm"><option value="online" @selected($device->status==='online')>Online</option><option value="offline" @selected($device->status==='offline')>Offline</option><option value="unknown" @selected($device->status==='unknown')>Unknown</option></select></td>
-          <td><div class="input-group input-group-sm"><input name="health_port" value="{{ $device->health_port }}" class="form-control" placeholder="Port"><span class="input-group-text">{{ $device->health_status }}</span></div><div class="form-check mt-1"><input name="monitor_enabled" value="1" type="checkbox" class="form-check-input" id="mon-{{ $device->id }}" @checked($device->monitor_enabled)><label class="form-check-label small" for="mon-{{ $device->id }}">Monitor</label></div></td>
-          <td><input name="location" value="{{ $device->location }}" class="form-control form-control-sm"></td>
-          <td class="text-nowrap">@csrf @method('PUT')<input type="hidden" name="notes" value="{{ $device->notes }}"><input type="hidden" name="monitor_enabled" value="0"><button class="btn btn-sm btn-outline-primary">Save</button></form>
+          <td><input class="form-control form-control-sm" value="{{ $device->name }}" readonly></td>
+          <td>{{ $device->ip_address ?: '—' }}</td>
+          <td>{{ trim(($device->vendor ?: '—').' / '.($device->model ?: '—')) }}</td>
+          <td><span class="badge {{ $device->status==='online'?'bg-success':($device->status==='offline'?'bg-danger':'bg-secondary') }}">{{ ucfirst($device->status ?: 'unknown') }}</span></td>
+          <td><span class="badge {{ in_array($device->health_status,['ready','up','online'])?'bg-success':($device->health_status?'bg-warning text-dark':'bg-secondary') }}">{{ ucfirst($device->health_status ?: 'not checked') }}</span><div class="small text-muted mt-1">{{ $device->health_port ? 'Port '.$device->health_port : 'No port' }} · Monitor {{ $device->monitor_enabled ? 'On' : 'Off' }}</div></td>
+          <td>{{ $device->location ?: '—' }}</td>
+          <td class="text-nowrap">
+            <a class="btn btn-sm btn-outline-primary" href="{{ route('network-inventory.devices', [$type,'q'=>$device->name]) }}">Edit</a>
             <form method="POST" action="{{ route('network-inventory.devices.destroy', [$type, $device->id]) }}" class="d-inline" onsubmit="return confirm('Delete this inventory record?')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Delete</button></form>
           </td>
         </tr>
       @empty
-        <tr><td colspan="7" class="text-center text-muted py-4">No {{ strtolower($label) }} records match the current filter.</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4">No {{ strtolower($label) }} records match the current filter.</td></tr>
       @endforelse
     </tbody></table></div>
     <div class="card-footer">{{ $devices->links() }}</div>

@@ -490,19 +490,11 @@ Route::middleware([
             return back()->with('diagnostic_message',$ok?'Connectivity check passed on '.$host.':'.$port.'.':'Connectivity check failed on '.$host.':'.$port.' — '.($err?:'connection refused').'. Health Port '.$device->health_port.' is reserved for health/SNMP monitoring.');
         })->name('network-inventory.olt.diagnostic-check');
 
-        Route::get('/network-inventory/switch-management', fn () => view('xlink.device-management', [
-            'title' => 'Switch Management', 'icon' => 'bi-ethernet',
-            'description' => 'Switch inventory and port health management.', 'status' => 'Integration ready',
-            'stats' => [['Total Switches',(int) config('app.network_inventory_switch_total',0)],['Online',(int) config('app.network_inventory_switch_online',0)],['Offline',max(0,(int) config('app.network_inventory_switch_total',0)-(int) config('app.network_inventory_switch_online',0))]],
-            'links' => [['network-inventory','Network Inventory','Back to device overview'],['network-map','Topology','View network topology']],
-        ]))->name('network-inventory.switches');
+        Route::get('/network-inventory/switch-management', fn () => redirect()->route('network-inventory.devices', ['type' => 'switch']))
+            ->name('network-inventory.switches');
 
-        Route::get('/network-inventory/access-point-management', fn () => view('xlink.device-management', [
-            'title' => 'Access Point Management', 'icon' => 'bi-wifi',
-            'description' => 'Wireless access point inventory and availability management.', 'status' => 'Integration ready',
-            'stats' => [['Total APs',(int) config('app.network_inventory_ap_total',0)],['Online',(int) config('app.network_inventory_ap_online',0)],['Offline',max(0,(int) config('app.network_inventory_ap_total',0)-(int) config('app.network_inventory_ap_online',0))]],
-            'links' => [['network-inventory','Network Inventory','Back to device overview'],['device-watcher','Device Watcher','Monitor reachability']],
-        ]))->name('network-inventory.access-points');
+        Route::get('/network-inventory/access-point-management', fn () => redirect()->route('network-inventory.devices', ['type' => 'access-point']))
+            ->name('network-inventory.access-points');
 
         Route::get('/stock-inventory', function () {
             $requests = \App\Models\PackagePurchaseRequest::query();
