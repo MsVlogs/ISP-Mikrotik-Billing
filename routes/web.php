@@ -657,6 +657,45 @@ Route::middleware([
 
         Route::get('/submit-comment', CommentSubmit::class)->name('submit.comment');
 
+        // Billing & Finance reference-aligned reporting pages
+        Route::get('/billing-finance', function () {
+            return view('billing.finance-hub');
+        })->name('billing.finance');
+
+        Route::get('/income-summary', function () {
+            $from = request('from', now()->startOfMonth()->toDateString());
+            $to = request('to', now()->endOfMonth()->toDateString());
+            $rows = \App\Models\CollectionSummary::with('customer')
+                ->whereBetween('collection_date', [$from, $to])
+                ->latest('collection_date')->latest('id')->get();
+            $own = $rows->whereNull('customer.reseller_id')->sum('collection_amount');
+            $reseller = $rows->filter(fn($r) => optional($r->customer)->reseller_id !== null)->sum('collection_amount');
+            return view('billing.income-summary', compact('rows','from','to','own','reseller'));
+        })->name('income-summary');
+
+        Route::get('/ledger-summary', function () {
+            $from = request('from', now()->startOfMonth()->toDateString());
+            $to = request('to', now()->endOfMonth()->toDateString());
+            $credits = \App\Models\CollectionSummary::with('customer')
+                ->whereBetween('collection_date', [$from, $to])->latest('collection_date')->limit(100)->get();
+            $debits = \App\Models\IspExpense::with('addedBy')
+                ->whereBetween('expense_date', [$from, $to])->latest('expense_date')->limit(100)->get();
+            $creditTotal = $credits->sum('collection_amount');
+            $debitTotal = $debits->sum('amount');
+            return view('billing.ledger-summary', compact('credits','debits','creditTotal','debitTotal','from','to'));
+        })->name('ledger-summary');
+
+        Route::get('/extra-charges', function () {
+            $from = request('from', now()->startOfMonth()->toDateString());
+            $to = request('to', now()->endOfMonth()->toDateString());
+            $rows = \App\Models\BillingInfo::with('customer')
+                ->whereBetween('created_at', [$from, $to])
+                ->where('additional_charge', '>', 0)
+                ->latest('created_at')->limit(100)->get();
+            $total = $rows->sum('additional_charge');
+            return view('billing.extra-charges', compact('rows','total','from','to'));
+        })->name('extra-charges');
+
         // Admin Reseller Management
         Route::prefix('admin')->name('admin.')->group(function () {
             Route::resource('resellers', ResellerController::class)->except(['show']);
