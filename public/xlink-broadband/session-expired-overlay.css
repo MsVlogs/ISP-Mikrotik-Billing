@@ -1,4 +1,4 @@
-/* Sweet Billing v2.1.1 — in-place session expired overlay */
+/* X-Link Billing v2.1.1 — in-place session expired overlay */
 body.sb-session-expired-open{overflow:hidden!important}
 .sb-session-expired-overlay[hidden]{display:none!important}
 .sb-session-expired-overlay{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:18px;background:rgba(4,9,18,.54);backdrop-filter:blur(3px) saturate(.9);-webkit-backdrop-filter:blur(3px) saturate(.9);animation:sbSessionBackdrop .2s ease both}

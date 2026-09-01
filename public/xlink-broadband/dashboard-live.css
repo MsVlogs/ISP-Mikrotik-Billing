@@ -1,4 +1,4 @@
-/* Sweet Billing dashboard live activity — compact resilient UI */
+/* X-Link Billing dashboard live activity — compact resilient UI */
 .dashboard-live-pill{height:42px;min-width:190px;max-width:245px;display:flex;align-items:center;gap:9px;border:1px solid var(--bs-border-color);border-radius:11px;background:var(--bs-body-bg);color:var(--bs-body-color);padding:5px 9px;box-shadow:0 4px 14px rgba(15,23,42,.07)}
 .dashboard-live-pill:hover{border-color:var(--brand-accent,#2563eb);color:var(--bs-emphasis-color)}
 .dashboard-live-copy{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;white-space:nowrap}.dashboard-live-copy small{font-size:.59rem;text-transform:uppercase;letter-spacing:.08em;color:var(--bs-secondary-color);font-weight:800}.dashboard-live-copy strong{font-size:.88rem}.dashboard-live-pill canvas{width:104px!important;height:30px!important;display:block}

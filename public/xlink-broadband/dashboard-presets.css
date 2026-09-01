@@ -33,7 +33,7 @@
 .preset-soft-business .tone-blue,.preset-soft-business .tone-cyan{--tone:#38bdf8}.preset-soft-business .tone-green,.preset-soft-business .tone-emerald,.preset-soft-business .tone-teal{--tone:#34d399}.preset-soft-business .tone-red,.preset-soft-business .tone-rose{--tone:#fb7185}.preset-soft-business .tone-amber,.preset-soft-business .tone-orange{--tone:#fbbf24}.preset-soft-business .tone-purple,.preset-soft-business .tone-indigo{--tone:#a78bfa}.preset-soft-business .tone-slate{--tone:#64748b}
 .preset-soft-business .dashboard-panel{border-radius:10px;box-shadow:var(--db-shadow)}
 
-/* v2.0.51 — ISP Color Cards: reference-inspired color tiles in Sweet Billing styling */
+/* v2.0.51 — ISP Color Cards: reference-inspired color tiles in X-Link Billing styling */
 .preset-isp-color-cards{--db-radius:12px;--db-gap:11px;--db-shadow:0 7px 18px rgba(15,23,42,.12)}
 .preset-isp-color-cards .dashboard-card{min-height:112px;padding:0 0 25px;display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:0;color:#fff;border:0;border-radius:12px;background:linear-gradient(135deg,#1caed0,#16b9c4);box-shadow:var(--db-shadow);isolation:isolate}
 .preset-isp-color-cards .dashboard-card:hover{transform:translateY(-2px);box-shadow:0 11px 24px rgba(15,23,42,.17)}
