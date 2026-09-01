@@ -1,0 +1,78 @@
+(function(){
+  'use strict';
+  var payload=window.DashboardAnalyticsV63||{},analytics=payload.analytics||{};
+  function el(id){return document.getElementById(id);}
+  function values(obj){return Object.keys(obj||{}).map(function(k){return Number(obj[k]||0);});}
+  function labels(obj){return Object.keys(obj||{});}
+  function chart(id,config){var canvas=el(id);if(!canvas||!window.Chart)return null;return new Chart(canvas,config);}
+  function axisColor(){return getComputedStyle(document.documentElement).getPropertyValue('--bs-secondary-color').trim()||'#64748b';}
+  function gridColor(){return getComputedStyle(document.documentElement).getPropertyValue('--bs-border-color').trim()||'rgba(148,163,184,.18)';}
+  function baseScales(beginAtZero){return{x:{ticks:{color:axisColor(),maxRotation:0},grid:{display:false}},y:{beginAtZero:beginAtZero!==false,ticks:{color:axisColor(),precision:0},grid:{color:gridColor()}}};}
+  function noLegend(){return{legend:{display:false}};}
+
+  function animateCounts(){
+    document.querySelectorAll('.js-count').forEach(function(node){
+      var finalText=node.textContent.trim(),match=finalText.match(/-?[0-9][0-9,]*(?:\.[0-9]+)?/);if(!match)return;
+      var target=parseFloat(match[0].replace(/,/g,''));if(!isFinite(target))return;
+      var start=performance.now(),duration=520,dec=Math.abs(target)%1?2:0;
+      node.textContent=finalText.replace(match[0],'0');
+      function tick(now){var p=Math.min(1,(now-start)/duration),v=target*(1-Math.pow(1-p,3));node.textContent=finalText.replace(match[0],v.toLocaleString(undefined,{minimumFractionDigits:dec,maximumFractionDigits:dec}));if(p<1)requestAnimationFrame(tick);else node.textContent=finalText;}
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function renderCharts(){
+    var collection=payload.collection||[];
+    chart('collectionChart',{type:'line',data:{labels:collection.map(function(r){return r.label;}),datasets:[{label:'Broadband',data:collection.map(function(r){return Number(r.broadband||0);}),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.11)',tension:.32,fill:true,borderWidth:3,pointRadius:2},{label:'Hotspot',data:collection.map(function(r){return Number(r.hotspot||0);}),borderColor:'#f97316',backgroundColor:'rgba(249,115,22,.08)',tension:.32,fill:true,borderWidth:3,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:baseScales(true)}});
+
+    var customerLabels=payload.customerLabels||[],customerValues=payload.customerValues||[],customerColors=payload.customerColors||[];
+    var total=Math.max(1,Number(customerValues[0]||1));
+    var customerDatasets=customerValues.map(function(v,i){return{label:customerLabels[i],data:[Number(v||0),Math.max(0,total-Number(v||0))],backgroundColor:[customerColors[i]||'#2563eb','rgba(148,163,184,.14)'],borderWidth:0,hoverOffset:2};});
+    var ring=chart('customerRingChart',{type:'doughnut',data:{labels:['Value','Remaining'],datasets:customerDatasets},options:{responsive:true,maintainAspectRatio:false,cutout:'27%',rotation:-100,circumference:300,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+Number(ctx.raw||0).toLocaleString();}}}}}});
+    var metrics=Array.prototype.slice.call(document.querySelectorAll('.ring-metric')),selectedLabel=el('ringSelectedLabel'),selectedValue=el('ringSelectedValue'),selected=0,timer=null;
+    function selectRing(index){if(!metrics.length)return;selected=(index+metrics.length)%metrics.length;metrics.forEach(function(item,i){item.classList.toggle('active',i===selected);});if(selectedLabel)selectedLabel.textContent=customerLabels[selected]||'';if(selectedValue)selectedValue.textContent=Number(customerValues[selected]||0).toLocaleString();if(ring){ring.setActiveElements([{datasetIndex:selected,index:0}]);ring.update('none');}}
+    metrics.forEach(function(item,i){item.addEventListener('mouseenter',function(){selectRing(i);});item.addEventListener('focus',function(){selectRing(i);});});
+    if(metrics.length){timer=setInterval(function(){selectRing(selected+1);},2600);document.addEventListener('visibilitychange',function(){if(timer)clearInterval(timer);if(!document.hidden)timer=setInterval(function(){selectRing(selected+1);},2600);});}
+
+    chart('revenueMixChart',{type:'bar',data:{labels:['Broadband','Hotspot'],datasets:[{label:'Collection',data:[Number(payload.monthBroadband||0),Number(payload.monthHotspot||0)],backgroundColor:['#2563eb','#f97316'],borderRadius:10,maxBarThickness:72}]},options:{responsive:true,maintainAspectRatio:false,plugins:noLegend(),scales:baseScales(true)}});
+
+    var ticketStatuses=analytics.ticket_statuses||{};
+    chart('ticketStatusChart',{type:'doughnut',data:{labels:labels(ticketStatuses),datasets:[{data:values(ticketStatuses),backgroundColor:['#3b82f6','#14b8a6','#f59e0b','#64748b'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'64%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,usePointStyle:true,padding:10}}}}});
+
+    var nc=analytics.new_connections||{};
+    chart('newConnectionChart',{type:'line',data:{labels:nc.labels||[],datasets:[{label:'Broadband',data:nc.broadband||[],borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.10)',fill:true,tension:.35,borderWidth:3,pointRadius:2},{label:'Hotspot',data:nc.hotspot||[],borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',fill:true,tension:.35,borderWidth:3,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:baseScales(true)}});
+
+    var expiry=analytics.expiry_forecast||{};
+    chart('expiryForecastChart',{type:'bar',data:{labels:expiry.labels||[],datasets:[{label:'Customers',data:expiry.values||[],backgroundColor:'#f59e0b',borderRadius:7,maxBarThickness:42}]},options:{responsive:true,maintainAspectRatio:false,plugins:noLegend(),scales:baseScales(true)}});
+
+    var kyc=analytics.kyc||{};
+    chart('kycOverviewChart',{type:'doughnut',data:{labels:labels(kyc),datasets:[{data:values(kyc),backgroundColor:['#f59e0b','#10b981','#ef4444'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,usePointStyle:true}}}}});
+
+    var packages=analytics.packages||[];
+    chart('packageDistributionChart',{type:'bar',data:{labels:packages.map(function(r){return r.name;}),datasets:[{label:'Customers',data:packages.map(function(r){return Number(r.total||0);}),backgroundColor:'#6366f1',borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:noLegend(),scales:{x:{beginAtZero:true,ticks:{color:axisColor(),precision:0},grid:{color:gridColor()}},y:{ticks:{color:axisColor()},grid:{display:false}}}}});
+
+    var pops=analytics.pops||[];
+    chart('popDistributionChart',{type:'bar',data:{labels:pops.map(function(r){return r.name;}),datasets:[{label:'Customers',data:pops.map(function(r){return Number(r.total||0);}),backgroundColor:'#0ea5e9',borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:noLegend(),scales:{x:{beginAtZero:true,ticks:{color:axisColor(),precision:0},grid:{color:gridColor()}},y:{ticks:{color:axisColor()},grid:{display:false}}}}});
+
+    var channels=analytics.payment_channels||[];
+    chart('paymentChannelChart',{type:'doughnut',data:{labels:channels.map(function(r){return r.label;}),datasets:[{data:channels.map(function(r){return Number(r.total||0);}),backgroundColor:['#2563eb','#10b981','#f59e0b','#8b5cf6','#06b6d4','#f43f5e','#64748b','#14b8a6','#f97316','#84cc16'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,usePointStyle:true,padding:10}}}}});
+
+    var sales=analytics.sales||{};
+    chart('salesPipelineChart',{type:'bar',data:{labels:labels(sales),datasets:[{label:'Leads',data:values(sales),backgroundColor:['#3b82f6','#06b6d4','#f59e0b','#8b5cf6','#10b981','#ef4444'],borderRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:noLegend(),scales:baseScales(true)}});
+  }
+
+  function layoutMasonry(){
+    var grid=el('dashboardMasonryPanels');if(!grid)return;
+    var style=getComputedStyle(grid),row=parseFloat(style.getPropertyValue('grid-auto-rows'))||8,gap=parseFloat(style.getPropertyValue('row-gap'))||12;
+    grid.querySelectorAll('.dashboard-masonry-item').forEach(function(item){
+      item.style.gridRowEnd='auto';
+      var height=item.getBoundingClientRect().height;
+      item.style.gridRowEnd='span '+Math.max(1,Math.ceil((height+gap)/(row+gap)));
+    });
+  }
+
+  function boot(){animateCounts();renderCharts();requestAnimationFrame(function(){layoutMasonry();setTimeout(layoutMasonry,180);setTimeout(layoutMasonry,650);});}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+  var resizeTimer=null;window.addEventListener('resize',function(){clearTimeout(resizeTimer);resizeTimer=setTimeout(layoutMasonry,120);});
+  document.addEventListener('shown.bs.collapse',function(){setTimeout(layoutMasonry,80);});
+})();

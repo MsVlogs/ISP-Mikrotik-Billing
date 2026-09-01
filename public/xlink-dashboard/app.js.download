@@ -1,0 +1,364 @@
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+  var themeButton = document.getElementById('themeToggle');
+  var themeIcon = document.getElementById('themeToggleIcon');
+  var configuredTheme = root.getAttribute('data-theme-default') || 'light';
+  var themeRevision = root.getAttribute('data-theme-revision') || '1';
+  if (localStorage.getItem('isp-theme-revision') !== themeRevision) {
+    localStorage.removeItem('isp-theme');
+    localStorage.setItem('isp-theme-revision', themeRevision);
+  }
+  function systemTheme() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function initialTheme() {
+    var saved = localStorage.getItem('isp-theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    if (configuredTheme === 'system') return systemTheme();
+    return configuredTheme === 'dark' ? 'dark' : 'light';
+  }
+  function applyTheme(theme, remember) {
+    theme = theme === 'dark' ? 'dark' : 'light';
+    root.setAttribute('data-bs-theme', theme);
+    if (remember !== false) localStorage.setItem('isp-theme', theme);
+    if (themeIcon) themeIcon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+    if (themeButton) themeButton.setAttribute('title', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    window.dispatchEvent(new CustomEvent('isp-theme-change', { detail: { theme: theme } }));
+  }
+  applyTheme(initialTheme(), false);
+  if (themeButton) themeButton.addEventListener('click', function () { applyTheme(root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark', true); });
+  if (configuredTheme === 'system' && window.matchMedia) {
+    var media = window.matchMedia('(prefers-color-scheme: dark)');
+    var onSystemTheme = function () { if (!localStorage.getItem('isp-theme')) applyTheme(systemTheme(), false); };
+    if (media.addEventListener) media.addEventListener('change', onSystemTheme); else if (media.addListener) media.addListener(onSystemTheme);
+  }
+
+  document.querySelectorAll('[data-confirm]').forEach(function (el) {
+    el.addEventListener('click', function (event) {
+      if (!window.confirm(el.getAttribute('data-confirm') || 'Are you sure?')) event.preventDefault();
+    });
+  });
+
+  document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var selector = button.getAttribute('data-password-toggle');
+      var input = selector ? document.querySelector(selector) : null;
+      if (!input) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+      var icon = button.querySelector('i');
+      if (icon) { var visible=input.type==='text'; icon.classList.toggle('bi-eye',!visible); icon.classList.toggle('bi-eye-slash',visible); }
+    });
+  });
+
+  var toggle = document.getElementById('sidebarToggle');
+  var body = document.body;
+  var sidebar = document.querySelector('.app-sidebar');
+  var overlay = document.querySelector('.mobile-sidebar-overlay');
+  var desktopBreakpoint = 992;
+  function isMobile() { return window.innerWidth < desktopBreakpoint; }
+  function mobileOpen() { return body.classList.contains('sidebar-mobile-open'); }
+  function setMobileSidebar(open) {
+    body.classList.toggle('sidebar-mobile-open', !!open);
+    body.classList.remove('sidebar-open');
+    if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (overlay) overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+  function setDesktopCollapsed(collapsed) {
+    body.classList.toggle('sidebar-collapse', !!collapsed);
+    localStorage.setItem('isp-sidebar-collapsed', collapsed ? '1' : '0');
+  }
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'mobile-sidebar-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    body.appendChild(overlay);
+  }
+  var lastMobileState = isMobile();
+  if (lastMobileState) {
+    body.classList.remove('sidebar-collapse');
+    setMobileSidebar(false);
+  } else {
+    setDesktopCollapsed(localStorage.getItem('isp-sidebar-collapsed') === '1');
+  }
+  body.classList.add('sidebar-ready');
+  if (toggle) toggle.addEventListener('click', function (event) {
+    event.preventDefault();
+    if (isMobile()) setMobileSidebar(!mobileOpen());
+    else setDesktopCollapsed(!body.classList.contains('sidebar-collapse'));
+  });
+  overlay.addEventListener('click', function () { setMobileSidebar(false); });
+  document.addEventListener('keydown', function (event) { if (event.key === 'Escape') setMobileSidebar(false); });
+
+  function directTree(parent) {
+    if (!parent) return null;
+    for (var i = 0; i < parent.children.length; i++) {
+      var child = parent.children[i];
+      if (child.tagName === 'UL' && child.classList.contains('nav-treeview')) return child;
+    }
+    return null;
+  }
+  function directLink(parent) {
+    if (!parent) return null;
+    for (var i = 0; i < parent.children.length; i++) {
+      var child = parent.children[i];
+      if (child.tagName === 'A' && child.classList.contains('nav-link')) return child;
+    }
+    return null;
+  }
+  function setMenuOpen(parent, open) {
+    var link = directLink(parent), tree = directTree(parent);
+    if (!link || !tree) return;
+    parent.classList.toggle('menu-open', !!open);
+    link.setAttribute('aria-expanded', open ? 'true' : 'false');
+    tree.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+  if (sidebar) {
+    var menu = sidebar.querySelector('.sidebar-menu');
+    var parents = [];
+    // v1.3.0.62: stale localStorage used to reopen the last menu group on
+    // unrelated pages (especially Dashboard). Keep only the active page group.
+    localStorage.removeItem('isp-sidebar-open-menu');
+    if (menu) Array.prototype.forEach.call(menu.children, function (parent) {
+      if (parent.classList && parent.classList.contains('nav-item') && directTree(parent) && directLink(parent)) parents.push(parent);
+    });
+    var activeParent = null;
+    parents.forEach(function (parent) { if (parent.querySelector('.nav-treeview .nav-link.active')) activeParent = parent; });
+    parents.forEach(function (parent) {
+      setMenuOpen(parent, parent === activeParent);
+      directLink(parent).addEventListener('click', function (event) {
+        event.preventDefault();
+        var opening = !parent.classList.contains('menu-open');
+        parents.forEach(function (other) { if (other !== parent) setMenuOpen(other, false); });
+        setMenuOpen(parent, opening);
+        if (!isMobile() && body.classList.contains('sidebar-collapse')) setDesktopCollapsed(false);
+      });
+    });
+    sidebar.querySelectorAll('a.nav-link[href]').forEach(function (link) {
+      link.addEventListener('click', function () {
+        var href = (link.getAttribute('href') || '').trim();
+        var parent = link.closest('[data-menu-key]');
+        var isGroupToggle = href === '#' && parent && directTree(parent);
+        if (isGroupToggle) return;
+        if (isMobile() && href !== '' && href !== '#') setMobileSidebar(false);
+      });
+    });
+  }
+  window.addEventListener('resize', function () {
+    var nowMobile = isMobile();
+    // Mobile browsers resize the viewport when the on-screen keyboard opens.
+    // Do not treat that as a breakpoint change, otherwise tapping sidebar search closes the menu.
+    if (nowMobile === lastMobileState) return;
+    lastMobileState = nowMobile;
+    if (nowMobile) {
+      body.classList.remove('sidebar-collapse');
+      setMobileSidebar(false);
+    } else {
+      setMobileSidebar(false);
+      setDesktopCollapsed(localStorage.getItem('isp-sidebar-collapsed') === '1');
+    }
+  });
+
+  var sidebarSearch = document.getElementById('sidebarCustomerSearch');
+  var sidebarSearchResults = document.getElementById('sidebarSearchResults');
+  var sidebarSearchClear = document.getElementById('sidebarSearchClear');
+  var sidebarSearchHost = document.querySelector('.sidebar-live-search');
+  var sidebarSearchTimer = null;
+  var sidebarSearchController = null;
+  function escapeSearchHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]; });
+  }
+  function closeSidebarSearch() { if (sidebarSearchResults) { sidebarSearchResults.hidden = true; sidebarSearchResults.innerHTML = ''; } }
+  function showSidebarSearchMessage(message) { if (!sidebarSearchResults) return; sidebarSearchResults.innerHTML = '<div class="sidebar-search-empty">'+escapeSearchHtml(message)+'</div>'; sidebarSearchResults.hidden = false; }
+  async function runSidebarSearch() {
+    if (!sidebarSearch || !sidebarSearchResults || !sidebarSearchHost) return;
+    var q = sidebarSearch.value.trim();
+    if (sidebarSearchClear) sidebarSearchClear.classList.toggle('d-none', q.length === 0);
+    if (q.length < 2) { closeSidebarSearch(); return; }
+    if (sidebarSearchController && window.AbortController) sidebarSearchController.abort();
+    sidebarSearchController = window.AbortController ? new AbortController() : null;
+    showSidebarSearchMessage('Searching…');
+    try {
+      var url = sidebarSearchHost.getAttribute('data-search-url') + (sidebarSearchHost.getAttribute('data-search-url').indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(q);
+      var response = await fetch(url, {cache:'no-store', headers:{'X-Requested-With':'XMLHttpRequest'}, signal:sidebarSearchController ? sidebarSearchController.signal : undefined});
+      var data = await response.json();
+      if (!data.ok || !data.results || !data.results.length) { showSidebarSearchMessage('No customer found'); return; }
+      sidebarSearchResults.innerHTML = data.results.map(function (row) {
+        return '<a class="sidebar-search-item" href="'+escapeSearchHtml(row.url)+'"><span class="sidebar-search-status '+(row.online?'online':'offline')+'"></span><span class="min-w-0"><strong>#'+escapeSearchHtml(row.cid)+' '+escapeSearchHtml(row.name)+'</strong><small>'+escapeSearchHtml(row.username)+(row.phone?' • '+escapeSearchHtml(row.phone):'')+'</small></span></a>';
+      }).join('');
+      sidebarSearchResults.hidden = false;
+    } catch (error) { if (!error || error.name !== 'AbortError') showSidebarSearchMessage('Search unavailable'); }
+  }
+  if (sidebarSearch) {
+    sidebarSearch.addEventListener('focus', function () { if (isMobile()) setMobileSidebar(true); });
+    sidebarSearch.addEventListener('input', function () { clearTimeout(sidebarSearchTimer); sidebarSearchTimer = setTimeout(runSidebarSearch, 220); });
+  }
+  if (sidebarSearchClear) sidebarSearchClear.addEventListener('click', function () { if (!sidebarSearch) return; sidebarSearch.value=''; sidebarSearch.focus(); sidebarSearchClear.classList.add('d-none'); closeSidebarSearch(); });
+  document.addEventListener('click', function (event) { if (sidebarSearchHost && !sidebarSearchHost.contains(event.target)) closeSidebarSearch(); });
+
+
+  function sortableValue(cell) {
+    if (!cell) return '';
+    var explicit = cell.getAttribute('data-sort-value');
+    if (explicit !== null) return explicit.trim();
+    return (cell.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  function parseSortableValue(value) {
+    var clean = String(value || '').replace(/[,৳$€£]/g, '').trim();
+    if (/^-?\d+(?:\.\d+)?$/.test(clean)) return {type:'number', value:parseFloat(clean)};
+    var date = Date.parse(clean);
+    if (!isNaN(date) && /\d/.test(clean) && /[-/:]|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(clean)) return {type:'number', value:date};
+    return {type:'text', value:clean.toLocaleLowerCase()};
+  }
+  function initSortableTables() {
+    document.querySelectorAll('table.table:not([data-no-sort-table])').forEach(function (table) {
+      var headRow = table.tHead && table.tHead.rows.length ? table.tHead.rows[table.tHead.rows.length - 1] : null;
+      var tbody = table.tBodies && table.tBodies.length ? table.tBodies[0] : null;
+      if (!headRow || !tbody || headRow.cells.length < 2) return;
+      table.classList.add('is-sortable-table');
+      Array.prototype.forEach.call(headRow.cells, function (th, index) {
+        var label = (th.textContent || '').trim().toLowerCase();
+        if (th.hasAttribute('data-no-sort') || label === '' || label === 'action' || label === 'actions' || th.querySelector('input,button,select')) {
+          th.setAttribute('data-no-sort','1');
+          if (label === 'action' || label === 'actions' || label === '') th.setAttribute('data-action-column','1');
+          return;
+        }
+        th.setAttribute('data-sortable-col', String(index));
+        th.setAttribute('role','button');
+        th.setAttribute('tabindex','0');
+        function sortColumn() {
+          var direction = th.getAttribute('data-sort-direction') === 'asc' ? 'desc' : 'asc';
+          Array.prototype.forEach.call(headRow.cells, function (other) { if (other !== th) other.removeAttribute('data-sort-direction'); });
+          th.setAttribute('data-sort-direction', direction);
+          var rows = Array.prototype.slice.call(tbody.rows).filter(function (row) { return row.cells.length === headRow.cells.length && !row.querySelector('td[colspan]'); });
+          rows.sort(function (a,b) {
+            var av = parseSortableValue(sortableValue(a.cells[index]));
+            var bv = parseSortableValue(sortableValue(b.cells[index]));
+            var result;
+            if (av.type === 'number' && bv.type === 'number') result = av.value - bv.value;
+            else result = String(av.value).localeCompare(String(bv.value), undefined, {numeric:true,sensitivity:'base'});
+            return direction === 'asc' ? result : -result;
+          });
+          rows.forEach(function (row) { tbody.appendChild(row); });
+        }
+        th.addEventListener('click', sortColumn);
+        th.addEventListener('keydown', function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); sortColumn(); } });
+      });
+    });
+  }
+  initSortableTables();
+})();
+
+(function () {
+  'use strict';
+  var memory = Object.create(null);
+  var pending = Object.create(null);
+  var queue = Promise.resolve();
+
+  function vendorKey(mac) {
+    var hex = String(mac || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
+    return hex.length >= 6 ? hex.slice(0, Math.min(12, hex.length)) : '';
+  }
+  function endpoint(mac) {
+    var url = new URL(window.location.href);
+    url.hash = '';
+    url.search = '';
+    url.searchParams.set('page', 'api-mac-vendor');
+    url.searchParams.set('mac', mac);
+    return url.toString();
+  }
+  function targets(key) {
+    return Array.prototype.slice.call(document.querySelectorAll('.mac-vendor[data-mac]')).filter(function (el) {
+      return vendorKey(el.getAttribute('data-mac')) === key;
+    });
+  }
+  function paint(prefix, vendor, ok) {
+    memory[prefix] = vendor || 'Unknown vendor';
+    targets(prefix).forEach(function (el) {
+      el.textContent = memory[prefix];
+      el.classList.toggle('text-danger', !ok && memory[prefix] !== 'Private / Randomized MAC');
+      el.classList.toggle('text-secondary', ok || memory[prefix] === 'Private / Randomized MAC');
+      el.setAttribute('title', 'MAC vendor / OUI: ' + memory[prefix]);
+    });
+  }
+  function lookup(prefix) {
+    if (!prefix) return Promise.resolve();
+    if (memory[prefix]) { paint(prefix, memory[prefix], memory[prefix] !== 'Unknown vendor'); return Promise.resolve(); }
+    if (pending[prefix]) return pending[prefix];
+    pending[prefix] = queue = queue.then(function () {
+      targets(prefix).forEach(function (el) { if (!el.textContent.trim() || el.textContent.indexOf('pending') >= 0) el.textContent = 'Finding vendor…'; });
+      return fetch(endpoint(prefix), {cache:'force-cache', headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function (response) { return response.json().catch(function () { return {ok:false,vendor:'Unknown vendor'}; }); })
+        .then(function (data) { paint(prefix, data.vendor || 'Unknown vendor', !!data.ok); })
+        .catch(function () { paint(prefix, 'Vendor lookup unavailable', false); })
+        .then(function () { return new Promise(function (resolve) { setTimeout(resolve, 120); }); });
+    }).finally(function () { delete pending[prefix]; });
+    return pending[prefix];
+  }
+  function scan(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var seen = Object.create(null);
+    scope.querySelectorAll('.mac-vendor[data-mac]').forEach(function (el) {
+      var prefix = vendorKey(el.getAttribute('data-mac'));
+      if (!prefix) { el.textContent = '—'; return; }
+      if (memory[prefix]) paint(prefix, memory[prefix], true);
+      else if (!seen[prefix]) { seen[prefix] = true; lookup(prefix); }
+    });
+  }
+  window.refreshMacVendors = function () { scan(document); };
+  window.setMacVendorTarget = function (el, mac) {
+    if (!el) return;
+    el.setAttribute('data-mac', mac || '');
+    el.textContent = mac ? 'Finding vendor…' : '—';
+    var prefix = vendorKey(mac);
+    if (prefix) lookup(prefix);
+  };
+  scan(document);
+})();
+
+(function () {
+  'use strict';
+  var expiredMeta=document.querySelector('meta[name="sb-session-expired-url"]');
+  var stateMeta=document.querySelector('meta[name="sb-session-state-url"]');
+  var expiredUrl=expiredMeta?String(expiredMeta.getAttribute('content')||''):'';
+  var stateUrl=stateMeta?String(stateMeta.getAttribute('content')||''):'';
+  var overlay=document.getElementById('sbSessionExpiredOverlay');
+  var login=document.getElementById('sbSessionExpiredLogin');
+  if(typeof window.fetch!=='function')return;
+  var nativeFetch=window.fetch.bind(window);
+  var shown=false,pinging=false,timer=null;
+  function currentReturn(){return String(location.pathname||'/')+String(location.search||'');}
+  function stateEndpoint(){if(!stateUrl)return '';return stateUrl+(stateUrl.indexOf('?')>=0?'&':'?')+'return='+encodeURIComponent(currentReturn());}
+  function syncReturn(){var endpoint=stateEndpoint();if(!endpoint)return;nativeFetch(endpoint,{credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},cache:'no-store'}).catch(function(){});}
+  function showOverlay(){
+    if(shown)return;shown=true;
+    try{sessionStorage.removeItem('sb-show-session-expired');}catch(e){}
+    syncReturn();
+    if(login){var href=String(login.getAttribute('data-login-url')||login.getAttribute('href')||'');login.setAttribute('href',href);}
+    if(overlay){overlay.hidden=false;overlay.setAttribute('aria-hidden','false');document.body.classList.add('sb-session-expired-open');setTimeout(function(){try{login&&login.focus({preventScroll:true});}catch(e){}},80);return;}
+    if(expiredUrl)window.location.replace(expiredUrl);
+  }
+  window.SweetBillingSessionExpired={show:showOverlay};
+  window.fetch=function(){
+    return nativeFetch.apply(window,arguments).then(function(response){
+      if(!shown&&response&&response.status===401){
+        try{var clone=response.clone();clone.json().then(function(data){if(data&&data.error==='session_expired')showOverlay();}).catch(function(){});}catch(e){}
+      }
+      return response;
+    });
+  };
+  function ping(){
+    if(shown||pinging||document.hidden||!stateUrl)return;
+    pinging=true;
+    nativeFetch(stateEndpoint(),{credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},cache:'no-store'})
+      .then(function(response){if(response.status===401)showOverlay();})
+      .catch(function(){})
+      .finally(function(){pinging=false;});
+  }
+  function restoreFlag(){try{if(sessionStorage.getItem('sb-show-session-expired')==='1')showOverlay();}catch(e){}}
+  restoreFlag();
+  window.addEventListener('pageshow',restoreFlag);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)ping();});
+  timer=setInterval(ping,45000);
+})();

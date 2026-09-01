@@ -1,0 +1,162 @@
+/* ISP Billing v0.9.9 — fixed desktop/mobile shell, reliable mini sidebar and sortable tables. */
+:root{
+  --isp-sidebar-width:260px;
+  --isp-sidebar-mini-width:76px;
+  --isp-header-height:58px;
+  --lte-sidebar-width:260px;
+}
+html,body{width:100%;min-height:100%;margin:0;overflow-x:hidden}
+body.adminlte-classic{min-height:100vh;background:var(--admin-bg,#f4f6f9)}
+body.adminlte-classic .app-wrapper{display:block!important;width:100%!important;min-height:100vh!important;background:var(--admin-bg,#f4f6f9);overflow:visible!important}
+body.adminlte-classic .app-sidebar{
+  position:fixed!important;top:0!important;bottom:0!important;left:0!important;right:auto!important;
+  width:var(--isp-sidebar-width)!important;min-width:var(--isp-sidebar-width)!important;max-width:var(--isp-sidebar-width)!important;
+  height:100vh!important;height:100dvh!important;display:flex!important;flex-direction:column!important;
+  overflow:hidden!important;margin:0!important;z-index:1045!important;
+  transition:width .22s ease,min-width .22s ease,max-width .22s ease,transform .22s ease,visibility .22s ease!important;
+}
+body.adminlte-classic .app-sidebar .sidebar-brand,body.adminlte-classic .app-sidebar .sidebar-live-search{flex:0 0 auto}
+body.adminlte-classic .app-sidebar .sidebar-wrapper{flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable;padding-bottom:1rem}
+body.adminlte-classic .app-header{
+  position:fixed!important;top:0!important;left:var(--isp-sidebar-width)!important;right:0!important;
+  width:calc(100% - var(--isp-sidebar-width))!important;height:var(--isp-header-height)!important;margin:0!important;z-index:1040!important;
+  transition:left .22s ease,width .22s ease!important;
+}
+body.adminlte-classic .app-main{
+  display:flex!important;flex-direction:column!important;margin-left:var(--isp-sidebar-width)!important;
+  width:calc(100% - var(--isp-sidebar-width))!important;padding-top:var(--isp-header-height)!important;
+  min-width:0!important;min-height:calc(100vh - var(--isp-header-height))!important;
+  background:var(--admin-bg,#f4f6f9)!important;overflow:visible!important;
+  transition:margin-left .22s ease,width .22s ease!important;
+}
+body.adminlte-classic .app-content{flex:1 1 auto;min-width:0}
+body.adminlte-classic .app-content-header,body.adminlte-classic .app-content{width:100%;background:var(--admin-bg,#f4f6f9)}
+body.adminlte-classic .app-content>.container-fluid,body.adminlte-classic .app-content-header>.container-fluid{width:100%;max-width:100%;min-width:0}
+body.adminlte-classic .app-footer{position:relative!important;inset:auto!important;width:calc(100% - var(--isp-sidebar-width))!important;margin-left:var(--isp-sidebar-width)!important;min-width:0!important;z-index:1!important;transition:margin-left .22s ease,width .22s ease!important}
+body.adminlte-classic .card,body.adminlte-classic .table-responsive{min-width:0;max-width:100%}
+body.adminlte-classic .table-responsive{overflow-x:auto;overscroll-behavior-x:contain}
+
+.sidebar-live-search{padding:.72rem .68rem .78rem!important}.sidebar-search-hint{margin-top:.22rem}
+.sidebar-menu>.nav-item>.nav-treeview{overflow:hidden}.sidebar-menu>.nav-item.menu-open>.nav-treeview{display:block!important}
+.sidebar-menu .nav-link{transition:background-color .15s ease,color .15s ease,padding .15s ease}
+
+/* Universal current-page table sorting. */
+table.is-sortable-table thead th[data-sortable-col]{cursor:pointer;user-select:none;position:relative;padding-right:1.65rem!important}
+table.is-sortable-table thead th[data-sortable-col]::after{content:"↕";position:absolute;right:.48rem;top:50%;transform:translateY(-50%);font-size:.66rem;opacity:.32}
+table.is-sortable-table thead th[data-sort-direction="asc"]::after{content:"↑";opacity:.85;color:var(--brand-accent)}
+table.is-sortable-table thead th[data-sort-direction="desc"]::after{content:"↓";opacity:.85;color:var(--brand-accent)}
+table.is-sortable-table thead th[data-no-sort],table.is-sortable-table thead th:last-child[data-action-column]{cursor:default;padding-right:.5rem!important}
+table.is-sortable-table thead th[data-no-sort]::after,table.is-sortable-table thead th[data-action-column]::after{display:none}
+
+/* New online/OLT utility cards. */
+.online-stat-card,.olt-template-card{border:1px solid var(--bs-border-color);background:var(--bs-body-bg);border-radius:.65rem;padding:1rem;box-shadow:0 .15rem .55rem rgba(17,24,39,.06)}
+.online-stat-card span{display:block;color:var(--bs-secondary-color);font-size:.8rem}.online-stat-card strong{display:block;font-size:1.65rem;margin-top:.15rem}
+.online-stat-card.online{border-left:4px solid #198754}.online-stat-card.offline{border-left:4px solid #dc3545}.online-stat-card.unmatched{border-left:4px solid #f59f00}
+.olt-template-card{transition:transform .15s ease,box-shadow .15s ease}.olt-template-card:hover{transform:translateY(-2px);box-shadow:0 .5rem 1.2rem rgba(17,24,39,.10)}
+
+@media(min-width:992px){
+  body.adminlte-classic.sidebar-collapse{--lte-sidebar-width:var(--isp-sidebar-mini-width)}
+  body.adminlte-classic.sidebar-collapse .app-sidebar{
+    width:var(--isp-sidebar-mini-width)!important;min-width:var(--isp-sidebar-mini-width)!important;max-width:var(--isp-sidebar-mini-width)!important;
+  }
+  body.adminlte-classic.sidebar-collapse .app-header{left:var(--isp-sidebar-mini-width)!important;width:calc(100% - var(--isp-sidebar-mini-width))!important}
+  body.adminlte-classic.sidebar-collapse .app-main,body.adminlte-classic.sidebar-collapse .app-footer{margin-left:var(--isp-sidebar-mini-width)!important;width:calc(100% - var(--isp-sidebar-mini-width))!important}
+  body.adminlte-classic.sidebar-collapse .app-sidebar .brand-text,
+  body.adminlte-classic.sidebar-collapse .app-sidebar .sidebar-live-search,
+  body.adminlte-classic.sidebar-collapse .app-sidebar .sidebar-menu .nav-link p,
+  body.adminlte-classic.sidebar-collapse .app-sidebar .nav-header{display:none!important}
+  body.adminlte-classic.sidebar-collapse .app-sidebar .brand-link,
+  body.adminlte-classic.sidebar-collapse .app-sidebar .sidebar-menu>.nav-item>.nav-link{justify-content:center!important;padding-left:.55rem!important;padding-right:.55rem!important}
+  body.adminlte-classic.sidebar-collapse .app-sidebar .sidebar-menu>.nav-item>.nav-link .nav-icon{margin:0!important;font-size:1.15rem!important}
+  body.adminlte-classic.sidebar-collapse .app-sidebar .sidebar-menu .nav-treeview{display:none!important}
+  /* Do not auto-expand on hover; the hamburger is the single predictable control. */
+  body.adminlte-classic.sidebar-collapse .app-sidebar:hover{width:var(--isp-sidebar-mini-width)!important;min-width:var(--isp-sidebar-mini-width)!important;max-width:var(--isp-sidebar-mini-width)!important}
+}
+@media(max-width:1199.98px) and (min-width:992px){.app-content>.container-fluid,.app-content-header>.container-fluid{padding-left:.8rem!important;padding-right:.8rem!important}}
+@media(max-width:991.98px){
+  body.adminlte-classic .app-header{left:0!important;width:100%!important}
+  body.adminlte-classic .app-main{margin-left:0!important;width:100%!important;padding-top:var(--isp-header-height)!important;min-height:100vh!important}
+  body.adminlte-classic .app-footer{margin-left:0!important;width:100%!important}
+  body.adminlte-classic .app-sidebar{width:min(310px,90vw)!important;min-width:min(310px,90vw)!important;max-width:min(310px,90vw)!important;transform:translateX(-100%)!important;visibility:hidden!important;box-shadow:.6rem 0 1.5rem rgba(0,0,0,.25)!important}
+  body.adminlte-classic.sidebar-mobile-open .app-sidebar,body.adminlte-classic.sidebar-open .app-sidebar{transform:translateX(0)!important;visibility:visible!important}
+  body.adminlte-classic .app-sidebar .brand-text,body.adminlte-classic .app-sidebar .sidebar-live-search,body.adminlte-classic .app-sidebar .sidebar-menu .nav-link p{display:flex!important}
+  .page-title-wrap{display:none!important}
+}
+@media(max-width:575.98px){.app-content-header{padding:.72rem 0 .45rem!important}.app-content>.container-fluid,.app-content-header>.container-fluid{padding-left:.6rem!important;padding-right:.6rem!important}.header-icon-btn{width:36px;height:36px}.user-menu-link .user-avatar{width:30px;height:30px}.online-stat-card{padding:.8rem}.online-stat-card strong{font-size:1.35rem}}
+@media print{body.adminlte-classic .app-main{margin:0!important;width:100%!important;padding:0!important}.app-footer{margin:0!important;width:100%!important}}
+
+/* ISP Billing v1.0.0 — advanced map, maintenance and hardened mobile navigation. */
+.advanced-network-map{
+  width:100%;height:72vh;min-height:560px;border:1px solid var(--bs-border-color);
+  border-radius:.75rem;overflow:hidden;background:#e9eef5;box-shadow:0 .15rem .55rem rgba(17,24,39,.08)
+}
+.network-map-div-icon{background:transparent!important;border:0!important}
+.network-node-icon{
+  width:38px;height:38px;border-radius:10px;background:var(--node-color,#6c757d);color:#fff;
+  border:3px solid rgba(255,255,255,.92);box-shadow:0 5px 14px rgba(17,24,39,.3);
+  display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;letter-spacing:.02em;text-transform:uppercase
+}
+.network-node-icon span{line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.map-device-list{max-height:72vh;overflow:auto;overscroll-behavior:contain}
+.map-device-row{border:1px solid var(--bs-border-color);border-radius:.65rem;padding:.75rem;background:var(--bs-body-bg);transition:border-color .15s ease,box-shadow .15s ease}
+.map-device-row:hover{border-color:rgba(var(--bs-primary-rgb),.55);box-shadow:0 .2rem .7rem rgba(17,24,39,.08)}
+.maintenance-stat{border-left:4px solid var(--brand-accent,#2563eb)}
+.backup-file-name{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* The local treeview script is the only source of truth on every screen size. */
+.sidebar-menu>.nav-item>.nav-treeview{display:none!important;height:auto!important;visibility:visible!important;opacity:1!important}
+.sidebar-menu>.nav-item.menu-open>.nav-treeview{display:block!important}
+body.sidebar-mobile-open{overflow:hidden!important;touch-action:none}
+body.sidebar-mobile-open .app-sidebar{touch-action:pan-y}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:1042;display:none}
+body.sidebar-mobile-open .sidebar-overlay,body.sidebar-open .sidebar-overlay{display:block}
+
+@media(max-width:991.98px){
+  body.adminlte-classic .app-sidebar{will-change:transform;overflow:hidden!important}
+  body.adminlte-classic .app-sidebar .sidebar-wrapper{-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important}
+  body.adminlte-classic .sidebar-menu .nav-link{min-height:44px;align-items:center}
+  body.adminlte-classic .sidebar-menu .nav-treeview .nav-link{padding-left:2.65rem!important}
+  .advanced-network-map{height:64vh;min-height:430px;border-radius:.55rem}
+  .map-device-list{max-height:none}
+}
+@media(max-width:575.98px){
+  .advanced-network-map{height:58vh;min-height:380px}
+  .backup-file-name{max-width:190px}
+}
+
+/* v1.1.8: keep the mobile dimmer behind the sidebar so menu links remain tappable. */
+@media(max-width:991.98px){
+  body.adminlte-classic .app-sidebar{z-index:1070!important;pointer-events:auto!important}
+  body.adminlte-classic .app-sidebar .sidebar-brand,
+  body.adminlte-classic .app-sidebar .sidebar-live-search,
+  body.adminlte-classic .app-sidebar .sidebar-wrapper,
+  body.adminlte-classic .app-sidebar a,
+  body.adminlte-classic .app-sidebar button,
+  body.adminlte-classic .app-sidebar input{pointer-events:auto!important}
+  .mobile-sidebar-overlay{z-index:1060!important}
+}
+
+
+/* v1.2.85.58.1 menu recovery */
+body.adminlte-classic .app-sidebar{overflow:hidden!important}
+body.adminlte-classic .app-sidebar .sidebar-wrapper{flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;scrollbar-gutter:stable!important;-webkit-overflow-scrolling:touch!important}
+body.adminlte-classic .app-sidebar .sidebar-menu{padding-bottom:5rem!important}
+
+
+/* v1.3.0.5 organized menu + portal-style admin toggle */
+body.adminlte-classic .admin-portal-sidebar-toggle{
+  width:42px!important;height:42px!important;min-width:42px!important;padding:0!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  border:1px solid var(--bs-border-color)!important;border-radius:12px!important;
+  background:color-mix(in srgb,var(--bs-body-bg) 88%,var(--brand-accent) 12%)!important;
+  color:var(--bs-emphasis-color)!important;box-shadow:none!important;
+}
+body.adminlte-classic .admin-portal-sidebar-toggle:hover{
+  border-color:color-mix(in srgb,var(--brand-accent) 55%,var(--bs-border-color))!important;
+  background:color-mix(in srgb,var(--brand-accent) 18%,var(--bs-body-bg))!important;
+  color:var(--brand-accent)!important;
+}
+body.adminlte-classic .admin-portal-sidebar-toggle i{font-size:1.05rem!important;line-height:1!important}
+body.adminlte-classic .v1305-related-tabs{box-shadow:none!important}
+body.adminlte-classic .v1305-related-tabs .module-tabs-title{font-size:.86rem!important}
+@media(max-width:767.98px){body.adminlte-classic .admin-portal-sidebar-toggle{width:40px!important;height:40px!important;min-width:40px!important;border-radius:11px!important}}

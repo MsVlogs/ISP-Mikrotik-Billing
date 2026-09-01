@@ -1,0 +1,19 @@
+.notification-offcanvas{--bs-offcanvas-width:min(560px,98vw)}
+.notification-offcanvas .offcanvas-body{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.notification-center{display:flex;flex-direction:column;min-height:0;height:100%}
+.notification-toolbar{display:flex;align-items:center;gap:.55rem;padding:.75rem 1rem;border-bottom:1px solid var(--bs-border-color);background:var(--bs-body-bg);position:sticky;top:0;z-index:3}
+.notification-toolbar .form-check{margin:0}.notification-toolbar .btn{white-space:nowrap}
+.notification-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1rem;scrollbar-width:thin}
+.notification-list{display:flex;flex-direction:column;gap:.65rem}
+.notification-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:.7rem;border:1px solid var(--bs-border-color);border-radius:15px;padding:.75rem;background:var(--bs-body-bg);transition:opacity .16s,transform .16s,border-color .16s,box-shadow .16s}
+.notification-item:hover{border-color:var(--brand-accent,#2563eb);box-shadow:0 8px 22px rgba(15,23,42,.09)}
+.notification-item.is-marking{opacity:0;transform:translateX(18px)}
+.notification-select{padding-top:.7rem}.notification-check{width:1.05rem;height:1.05rem;cursor:pointer}
+.notification-open{display:grid;grid-template-columns:44px minmax(0,1fr);gap:.7rem;text-decoration:none;color:inherit;min-width:0}
+.notification-icon{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:1.05rem}
+.notification-copy{min-width:0}.notification-title{font-weight:800;line-height:1.25;overflow-wrap:anywhere}.notification-sub{font-size:.78rem;color:var(--bs-secondary-color);line-height:1.38;margin-top:.2rem;overflow-wrap:anywhere}.notification-time{font-size:.69rem;color:var(--bs-secondary-color);white-space:nowrap;margin-top:.2rem}
+.notification-mark-one{border:0;background:transparent;color:var(--bs-secondary-color);padding:.25rem;border-radius:.5rem}.notification-mark-one:hover{color:var(--bs-success);background:var(--bs-success-bg-subtle)}
+.notification-footer{padding:.75rem 1rem;border-top:1px solid var(--bs-border-color);background:var(--bs-body-bg);display:grid;grid-template-columns:1fr 1fr;gap:.5rem;position:sticky;bottom:0;z-index:3}
+[data-bs-theme=dark] .notification-item{background:rgba(30,41,59,.78);border-color:rgba(148,163,184,.2)}
+[data-bs-theme=dark] .notification-item:hover{box-shadow:0 8px 24px rgba(0,0,0,.28)}
+@media(max-width:575.98px){.notification-offcanvas{--bs-offcanvas-width:100vw}.notification-toolbar{flex-wrap:wrap}.notification-footer{grid-template-columns:1fr}.notification-time{display:none}}

@@ -1,0 +1,333 @@
+(function () {
+    'use strict';
+    var _a;
+    const widget = document.querySelector('.sb-chat-widget');
+    const center = document.querySelector('.sb-comm-center');
+    const source = widget || center;
+    if (!source)
+        return;
+    const endpoint = source.dataset.chatEndpoint || source.dataset.endpoint || (center === null || center === void 0 ? void 0 : center.dataset.endpoint) || '';
+    const csrf = source.dataset.csrf || (center === null || center === void 0 ? void 0 : center.dataset.csrf) || ((_a = document.querySelector('meta[name="csrf-token"]')) === null || _a === void 0 ? void 0 : _a.content) || '';
+    if (!endpoint)
+        return;
+    const state = { call: null, lastSignal: 0, local: null, localMode: 'voice', peers: new Map(), queuedIce: new Map(), muted: false, cameraOff: false, polling: false, pickerContacts: [], pickerOpen: false, pickerSelected: new Set(), pickerSearch: '', groupLimit: 6, startedAt: 0, timer: null };
+    const esc = s => String(s !== null && s !== void 0 ? s : '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+    async function api(action, opt = {}) { const method = opt.method || 'GET'; let url = endpoint + (endpoint.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action); if (opt.query)
+        url += '&' + new URLSearchParams(opt.query).toString(); const cfg = { method, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }; if (method !== 'GET') {
+        const body = new URLSearchParams(opt.body || {});
+        body.set('csrf_token', csrf);
+        cfg.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        cfg.body = body.toString();
+    } const r = await fetch(url, cfg); let d; try {
+        d = await r.json();
+    }
+    catch (e) {
+        throw new Error('Call server returned invalid data.');
+    } if (!r.ok || !d.ok)
+        throw new Error(d.message || 'Call request failed.'); return d; }
+    function ensureLayer() { let layer = document.querySelector('.sb-call-layer'); if (layer)
+        return layer; layer = document.createElement('div'); layer.className = 'sb-call-layer'; layer.innerHTML = '<div class="sb-call-video-stage" data-call-video-stage hidden><video data-call-remote-video autoplay playsinline></video><video data-call-local-video autoplay playsinline muted></video><div class="sb-call-video-wait" data-call-video-wait><i class="bi bi-camera-video"></i><span>Waiting for video…</span></div></div><div class="sb-call-card" data-call-card hidden></div><div class="sb-meeting-picker" data-meeting-picker hidden></div><div class="sb-call-audio-bank" data-call-audio-bank></div>'; document.body.appendChild(layer); return layer; }
+    const layer = ensureLayer(), card = () => layer.querySelector('[data-call-card]'), picker = () => layer.querySelector('[data-meeting-picker]'), videoStage = () => layer.querySelector('[data-call-video-stage]');
+    function initials(name) { var _a, _b; const parts = String(name || 'U').trim().split(/\s+/).filter(Boolean); return (((_a = parts[0]) === null || _a === void 0 ? void 0 : _a[0]) || 'U') + (parts.length > 1 ? (((_b = parts[parts.length - 1]) === null || _b === void 0 ? void 0 : _b[0]) || '') : ''); }
+    function participantHtml(p) { const visual = p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="">` : esc(p.avatar || initials(p.name)); return `<span class="sb-call-person ${p.status === 'joined' ? 'joined' : ''}"><span class="sb-call-avatar">${visual}</span><span><strong>${esc(p.name)}</strong><small>${esc(p.status === 'joined' ? 'Connected' : p.status === 'invited' ? 'Ringing' : p.status === 'declined' ? 'Declined' : p.status === 'left' ? 'Left' : p.status)}</small></span></span>`; }
+    function elapsed() { if (!state.startedAt)
+        return '00:00'; const seconds = Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000)), m = Math.floor(seconds / 60), s = seconds % 60; return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
+    function callLabel(c) { return (c === null || c === void 0 ? void 0 : c.call_type) === 'meeting' ? 'Group Voice Call' : (c === null || c === void 0 ? void 0 : c.call_type) === 'video' ? 'Video Call' : 'Voice Call'; }
+    function callIcon(c) { return (c === null || c === void 0 ? void 0 : c.call_type) === 'meeting' ? 'bi-people-fill' : (c === null || c === void 0 ? void 0 : c.call_type) === 'video' ? 'bi-camera-video-fill' : 'bi-telephone-fill'; }
+    function renderVideoStage() { const stage = videoStage(), c = state.call; if (!stage)
+        return; const show = !!c && c.call_type === 'video' && (String(c.my_status) === 'joined' || !c.incoming); stage.hidden = !show; if (!show) {
+        const remote = stage.querySelector('[data-call-remote-video]'), local = stage.querySelector('[data-call-local-video]');
+        if (remote)
+            remote.srcObject = null;
+        if (local)
+            local.srcObject = null;
+        return;
+    } const local = stage.querySelector('[data-call-local-video]'); if (local && state.local && local.srcObject !== state.local) {
+        local.srcObject = state.local;
+        local.play().catch(() => { });
+    } const remote = stage.querySelector('[data-call-remote-video]'), wait = stage.querySelector('[data-call-video-wait]'); if (wait)
+        wait.hidden = !!(remote === null || remote === void 0 ? void 0 : remote.srcObject); }
+    function renderCall() {
+        const el = card(), c = state.call;
+        if (!c) {
+            el.hidden = true;
+            el.innerHTML = '';
+            renderVideoStage();
+            return;
+        }
+        el.hidden = false;
+        const incoming = !!c.incoming, joined = String(c.my_status) === 'joined', participants = (c.participants || []).filter(p => Number(p.id) !== Number(c.me_id));
+        let mode = '';
+        if (incoming && !joined) {
+            mode = `<div class="sb-call-actions incoming"><button class="btn btn-success" data-call-accept><i class="bi ${c.call_type === 'video' ? 'bi-camera-video-fill' : 'bi-telephone-fill'}"></i> Accept</button><button class="btn btn-danger" data-call-decline><i class="bi bi-telephone-x-fill"></i> Decline</button></div>`;
+        }
+        else {
+            const camera = c.call_type === 'video' ? `<button class="btn btn-light ${state.cameraOff ? 'active' : ''}" data-call-camera title="Camera"><i class="bi ${state.cameraOff ? 'bi-camera-video-off-fill' : 'bi-camera-video-fill'}"></i></button>` : '';
+            mode = `<div class="sb-call-actions"><button class="btn btn-light ${state.muted ? 'active' : ''}" data-call-mute title="Mute"><i class="bi ${state.muted ? 'bi-mic-mute-fill' : 'bi-mic-fill'}"></i></button>${camera}<button class="btn btn-danger" data-call-end title="End call"><i class="bi bi-telephone-x-fill"></i></button></div>`;
+        }
+        const incomingLabel = c.call_type === 'meeting' ? 'Incoming group voice call' : c.call_type === 'video' ? 'Incoming video call' : 'Incoming voice call';
+        const subtitle = incoming && !joined ? incomingLabel : (c.status === 'pending' ? 'Calling…' : (c.status === 'active' ? elapsed() : 'Call ended'));
+        el.innerHTML = `<div class="sb-call-card-head"><span class="sb-call-mark"><i class="bi ${callIcon(c)}"></i></span><div><strong>${esc(c.title || callLabel(c))}</strong><small>${esc(subtitle)}</small></div></div><div class="sb-call-people">${participants.map(participantHtml).join('')}</div>${mode}`;
+        renderVideoStage();
+    }
+    function startTimer() { clearInterval(state.timer); state.timer = setInterval(() => { if (state.call && state.call.status === 'active')
+        renderCall(); }, 1000); }
+    function stopLocal() { if (state.local) {
+        state.local.getTracks().forEach(t => t.stop());
+        state.local = null;
+    } state.localMode = 'voice'; state.muted = false; state.cameraOff = false; }
+    async function localStream(mode = 'voice') { var _a; mode = mode === 'video' ? 'video' : 'voice'; if (state.local && state.localMode === mode)
+        return state.local; if (state.local)
+        stopLocal(); if (!((_a = navigator.mediaDevices) === null || _a === void 0 ? void 0 : _a.getUserMedia))
+        throw new Error('Calling is not supported in this browser.'); const constraints = { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: mode === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false }; try {
+        state.local = await navigator.mediaDevices.getUserMedia(constraints);
+        state.localMode = mode;
+        renderVideoStage();
+        return state.local;
+    }
+    catch (e) {
+        throw new Error(mode === 'video' ? 'Camera and microphone permission are required for video calling.' : 'Microphone permission is required for voice calling.');
+    } }
+    function rtcConfig() { return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }; }
+    function audioFor(userId) { const bank = layer.querySelector('[data-call-audio-bank]'); let a = bank.querySelector(`[data-call-audio="${Number(userId)}"]`); if (!a) {
+        a = document.createElement('audio');
+        a.autoplay = true;
+        a.playsInline = true;
+        a.dataset.callAudio = String(Number(userId));
+        bank.appendChild(a);
+    } return a; }
+    function mediaFor(userId) { var _a; if (((_a = state.call) === null || _a === void 0 ? void 0 : _a.call_type) === 'video') {
+        return videoStage().querySelector('[data-call-remote-video]');
+    } return audioFor(userId); }
+    function closePeer(userId) { var _a; const rec = state.peers.get(Number(userId)); if (rec) {
+        try {
+            rec.pc.close();
+        }
+        catch (e) { }
+        state.peers.delete(Number(userId));
+    } const a = layer.querySelector(`[data-call-audio="${Number(userId)}"]`); if (a)
+        a.remove(); if (((_a = state.call) === null || _a === void 0 ? void 0 : _a.call_type) === 'video') {
+        const remote = videoStage().querySelector('[data-call-remote-video]');
+        if (remote)
+            remote.srcObject = null;
+    } state.queuedIce.delete(Number(userId)); renderVideoStage(); }
+    async function sendSignal(to, type, payload) { if (!state.call)
+        return; await api('call-signal', { method: 'POST', body: { call_id: state.call.id, to_user_id: to, signal_type: type, payload: JSON.stringify(payload) } }); }
+    async function peerFor(userId) { var _a; userId = Number(userId); if (state.peers.has(userId))
+        return state.peers.get(userId); const stream = await localStream(((_a = state.call) === null || _a === void 0 ? void 0 : _a.call_type) === 'video' ? 'video' : 'voice'), pc = new RTCPeerConnection(rtcConfig()), rec = { pc, makingOffer: false, offered: false }; state.peers.set(userId, rec); stream.getTracks().forEach(track => pc.addTrack(track, stream)); pc.onicecandidate = e => { if (e.candidate)
+        sendSignal(userId, 'ice', e.candidate.toJSON ? e.candidate.toJSON() : e.candidate).catch(() => { }); }; pc.ontrack = e => { const media = mediaFor(userId); media.srcObject = e.streams[0] || new MediaStream([e.track]); media.play().catch(() => { }); renderVideoStage(); }; pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState))
+        closePeer(userId); }; return rec; }
+    async function flushIce(userId) { const rec = state.peers.get(Number(userId)), queue = state.queuedIce.get(Number(userId)) || []; if (!rec || !rec.pc.remoteDescription)
+        return; for (const cand of queue) {
+        try {
+            await rec.pc.addIceCandidate(cand);
+        }
+        catch (e) { }
+    } state.queuedIce.set(Number(userId), []); }
+    async function makeOffer(userId) { const rec = await peerFor(userId); if (rec.makingOffer || rec.offered || rec.pc.signalingState !== 'stable')
+        return; rec.makingOffer = true; try {
+        const offer = await rec.pc.createOffer();
+        await rec.pc.setLocalDescription(offer);
+        rec.offered = true;
+        await sendSignal(userId, 'offer', rec.pc.localDescription);
+    }
+    finally {
+        rec.makingOffer = false;
+    } }
+    async function handleSignal(sig) { const from = Number(sig.from_user_id); let payload; try {
+        payload = JSON.parse(sig.payload || '{}');
+    }
+    catch (e) {
+        return;
+    } if (sig.type === 'offer') {
+        const rec = await peerFor(from);
+        try {
+            if (rec.pc.signalingState !== 'stable')
+                await rec.pc.setLocalDescription({ type: 'rollback' });
+        }
+        catch (e) { }
+        await rec.pc.setRemoteDescription(payload);
+        await flushIce(from);
+        const answer = await rec.pc.createAnswer();
+        await rec.pc.setLocalDescription(answer);
+        await sendSignal(from, 'answer', rec.pc.localDescription);
+        return;
+    } if (sig.type === 'answer') {
+        const rec = await peerFor(from);
+        if (rec.pc.signalingState === 'have-local-offer') {
+            await rec.pc.setRemoteDescription(payload);
+            await flushIce(from);
+        }
+        return;
+    } if (sig.type === 'ice') {
+        const rec = await peerFor(from);
+        if (rec.pc.remoteDescription) {
+            try {
+                await rec.pc.addIceCandidate(payload);
+            }
+            catch (e) { }
+        }
+        else {
+            const q = state.queuedIce.get(from) || [];
+            q.push(payload);
+            state.queuedIce.set(from, q);
+        }
+    } }
+    async function syncPeers() { const c = state.call; if (!c || String(c.my_status) !== 'joined' || !['pending', 'active'].includes(String(c.status)))
+        return; const me = Number(c.me_id); for (const p of c.participants || []) {
+        const id = Number(p.id);
+        if (id === me)
+            continue;
+        if (p.status === 'joined') {
+            await peerFor(id);
+            if (me < id)
+                await makeOffer(id);
+        }
+        else if (['left', 'declined', 'missed'].includes(String(p.status)))
+            closePeer(id);
+    } }
+    function cleanupCall() { for (const id of [...state.peers.keys()])
+        closePeer(id); stopLocal(); state.call = null; state.lastSignal = 0; state.startedAt = 0; clearInterval(state.timer); renderCall(); }
+    async function poll() { if (state.polling || document.hidden)
+        return; state.polling = true; try {
+        const query = {};
+        if (state.call) {
+            query.call_id = state.call.id;
+            query.after_signal_id = state.lastSignal || 0;
+        }
+        const d = await api('call-poll', { query }), previous = state.call;
+        state.call = d.call || null;
+        state.lastSignal = Number(d.last_signal_id || state.lastSignal || 0);
+        if (state.call) {
+            if (!previous || Number(previous.id) !== Number(state.call.id)) {
+                state.lastSignal = Number(d.last_signal_id || 0);
+                state.startedAt = Date.now();
+                startTimer();
+            }
+            if (state.call.answered_at && !(previous === null || previous === void 0 ? void 0 : previous.answered_at))
+                state.startedAt = new Date(String(state.call.answered_at).replace(' ', 'T')).getTime() || Date.now();
+            for (const sig of d.signals || [])
+                await handleSignal(sig);
+            await syncPeers();
+            if (['ended', 'declined', 'missed'].includes(String(state.call.status)) || ['left', 'declined', 'missed'].includes(String(state.call.my_status))) {
+                setTimeout(cleanupCall, 700);
+            }
+            else
+                renderCall();
+        }
+        else if (previous) {
+            cleanupCall();
+        }
+    }
+    catch (e) {
+        console.warn('Sweet Call:', e.message);
+    }
+    finally {
+        state.polling = false;
+    } }
+    async function startDirect(conversation, mediaType = 'voice') { if (!conversation || conversation.type !== 'direct')
+        throw new Error('Calling is available for direct internal chats.'); mediaType = mediaType === 'video' ? 'video' : 'voice'; await localStream(mediaType); try {
+        const d = await api('call-start', { method: 'POST', body: { conversation_id: conversation.id, meeting: '0', media_type: mediaType, title: conversation.title || '' } });
+        state.call = d.call;
+        state.lastSignal = 0;
+        state.startedAt = Date.now();
+        startTimer();
+        renderCall();
+    }
+    catch (e) {
+        stopLocal();
+        throw e;
+    } }
+    async function startVideo(conversation) { return startDirect(conversation, 'video'); }
+    async function accept() { if (!state.call)
+        return; await localStream(state.call.call_type === 'video' ? 'video' : 'voice'); const d = await api('call-accept', { method: 'POST', body: { call_id: state.call.id } }); state.call = d.call; state.startedAt = Date.now(); startTimer(); renderCall(); await syncPeers(); }
+    async function decline() { if (!state.call)
+        return; await api('call-decline', { method: 'POST', body: { call_id: state.call.id } }); cleanupCall(); }
+    async function end() { if (!state.call)
+        return; const id = state.call.id; cleanupCall(); try {
+        await api('call-leave', { method: 'POST', body: { call_id: id } });
+    }
+    catch (e) { } }
+    function renderPicker() { const el = picker(); if (!state.pickerOpen) {
+        el.hidden = true;
+        el.innerHTML = '';
+        return;
+    } el.hidden = false; const rows = state.pickerContacts.map(c => { const id = Number(c.id), checked = state.pickerSelected.has(id) ? 'checked' : ''; return `<label data-meeting-row data-search="${esc(String(c.name || '') + ' ' + String(c.role_label || '') + ' ' + String(c.node_label || ''))}"><input type="checkbox" value="${id}" data-meeting-person ${checked}><span>${c.avatar_url ? `<img src="${esc(c.avatar_url)}" alt="">` : `<b>${esc(c.avatar || initials(c.name))}</b>`}<span><strong>${esc(c.name)}</strong><small>${esc((c.role_label || '') + (c.node_label ? ' · ' + c.node_label : ''))}</small></span><i class="bi bi-check2-circle"></i></span></label>`; }).join(''); el.innerHTML = `<div class="sb-meeting-picker-card"><header><div class="sb-group-call-title"><span class="sb-group-call-icon"><i class="bi bi-people-fill"></i></span><span><strong>Group Voice Call</strong><small>Up to ${Number(state.groupLimit) || 6} people including you</small></span></div><button type="button" class="btn btn-light" data-meeting-close title="Close"><i class="bi bi-x-lg"></i></button></header><div class="sb-meeting-tools"><div class="sb-meeting-search"><i class="bi bi-search"></i><input class="form-control" data-meeting-search value="${esc(state.pickerSearch)}" placeholder="Search people"></div><input class="form-control" data-meeting-title maxlength="160" placeholder="Call name (optional)"></div><div class="sb-meeting-list">${rows || '<div class="p-3 text-secondary">No contacts available.</div>'}</div><footer><span data-meeting-count>${state.pickerSelected.size} selected</span><button class="btn btn-primary" data-meeting-start ${state.pickerSelected.size ? '' : 'disabled'}><i class="bi bi-telephone-fill me-1"></i> Start Group Call</button></footer></div>`; filterMeetingRows(); }
+    async function openMeeting(preselectUserId = 0) { var _a; if (state.call)
+        throw new Error('Finish the current call before starting another call.'); const d = await api('state'); if (((_a = d.features) === null || _a === void 0 ? void 0 : _a.group_call) === false)
+        throw new Error('Group calling is disabled for your account.'); state.groupLimit = Math.max(2, Number(d.group_call_limit || 6)); state.pickerContacts = (d.contacts || []).filter(function (c) { return !c.call_features || c.call_features.group_call !== false; }); state.pickerSelected = new Set(); state.pickerSearch = ''; const pre = Number(preselectUserId || 0); if (pre > 0 && state.pickerContacts.some(c => Number(c.id) === pre))
+        state.pickerSelected.add(pre); state.pickerOpen = true; renderPicker(); }
+    async function startMeeting() { var _a; const el = picker(), ids = [...state.pickerSelected]; if (!ids.length)
+        return; await localStream('voice'); try {
+        const title = ((_a = el.querySelector('[data-meeting-title]')) === null || _a === void 0 ? void 0 : _a.value) || '', d = await api('call-start', { method: 'POST', body: { meeting: '1', media_type: 'voice', participant_ids: ids.join(','), title } });
+        state.call = d.call;
+        state.lastSignal = 0;
+        state.startedAt = Date.now();
+        state.pickerOpen = false;
+        state.pickerSelected = new Set();
+        state.pickerSearch = '';
+        renderPicker();
+        startTimer();
+        renderCall();
+    }
+    catch (e) {
+        stopLocal();
+        throw e;
+    } }
+    function updateMeetingCount(changed = null) { const el = picker(); if (changed) {
+        const id = Number(changed.value);
+        if (changed.checked)
+            state.pickerSelected.add(id);
+        else
+            state.pickerSelected.delete(id);
+        const maxInvite = Math.max(1, (Number(state.groupLimit) || 6) - 1);
+        if (state.pickerSelected.size > maxInvite) {
+            state.pickerSelected.delete(id);
+            changed.checked = false;
+        }
+    } const n = state.pickerSelected.size, count = el.querySelector('[data-meeting-count]'), start = el.querySelector('[data-meeting-start]'); if (count)
+        count.textContent = n + ' selected'; if (start)
+        start.disabled = n < 1; }
+    function filterMeetingRows() { const el = picker(); if (!el)
+        return; const q = String(state.pickerSearch || '').trim().toLowerCase(); el.querySelectorAll('[data-meeting-row]').forEach(row => { row.hidden = !!q && !String(row.dataset.search || '').toLowerCase().includes(q); }); }
+    layer.addEventListener('click', e => { if (e.target.closest('[data-call-accept]'))
+        accept().catch(x => alert(x.message)); if (e.target.closest('[data-call-decline]'))
+        decline().catch(x => alert(x.message)); if (e.target.closest('[data-call-end]'))
+        end(); if (e.target.closest('[data-call-mute]') && state.local) {
+        state.muted = !state.muted;
+        state.local.getAudioTracks().forEach(t => t.enabled = !state.muted);
+        renderCall();
+    } if (e.target.closest('[data-call-camera]') && state.local) {
+        state.cameraOff = !state.cameraOff;
+        state.local.getVideoTracks().forEach(t => t.enabled = !state.cameraOff);
+        renderCall();
+    } if (e.target.closest('[data-meeting-close]')) {
+        state.pickerOpen = false;
+        state.pickerSelected = new Set();
+        state.pickerSearch = '';
+        renderPicker();
+    } if (e.target.closest('[data-meeting-start]'))
+        startMeeting().catch(x => alert(x.message)); });
+    layer.addEventListener('change', e => { if (e.target.matches('[data-meeting-person]'))
+        updateMeetingCount(e.target); });
+    layer.addEventListener('input', e => { if (e.target.matches('[data-meeting-search]')) {
+        state.pickerSearch = e.target.value || '';
+        filterMeetingRows();
+    } });
+    document.addEventListener('click', e => { const video = e.target.closest('.sb-chat-video-call-btn,.sbc-video-call-btn'); if (video) {
+        const id = Number(video.dataset.conversationId || 0), title = video.dataset.callTitle || '';
+        startVideo({ id, type: 'direct', title }).catch(x => alert(x.message));
+        return;
+    } const call = e.target.closest('.sb-chat-call-btn,.sbc-call-btn'); if (call) {
+        const id = Number(call.dataset.conversationId || 0), title = call.dataset.callTitle || '';
+        startDirect({ id, type: 'direct', title }, 'voice').catch(x => alert(x.message));
+        return;
+    } const group = e.target.closest('.sb-chat-group-call-btn,.sbc-group-call-btn,.sb-chat-meeting-btn,.sbc-meeting-btn'); if (group) {
+        openMeeting(Number(group.dataset.preselectUser || 0)).catch(x => alert(x.message));
+    } });
+    window.SweetChatCalls = { startDirect, startVideo, openMeeting, openGroupCall: openMeeting, poll };
+    setInterval(poll, 900);
+    poll();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden)
+        poll(); });
+})();

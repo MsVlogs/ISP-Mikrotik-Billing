@@ -1,4 +1,13 @@
 <x-app-layout>
+
+    @push('styles')
+        <link rel="stylesheet" href="{{ asset('xlink-dashboard/dashboard-presets.css') }}">
+        <link rel="stylesheet" href="{{ asset('xlink-dashboard/dashboard-live.css') }}">
+        <link rel="stylesheet" href="{{ asset('xlink-dashboard/layout-fixes.css') }}">
+        <link rel="stylesheet" href="{{ asset('xlink-dashboard/report-ux.css') }}">
+        <link rel="stylesheet" href="{{ asset('xlink-dashboard/ui-polish-20260826.css') }}">
+        <link rel="stylesheet" href="{{ asset('xlink-dashboard/sidebar-presets.css') }}">
+    @endpush
     <x-slot name="header">
         <div class="d-flex align-items-center justify-content-between w-100 gap-2">
             <span>{{ __('Dashboard') }}</span>

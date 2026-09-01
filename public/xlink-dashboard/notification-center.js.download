@@ -1,0 +1,64 @@
+(function(){
+  'use strict';
+  function ready(fn){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',fn):fn();}
+  ready(function(){
+    var center=document.getElementById('notificationCenter');
+    if(!center)return;
+    var endpoint=center.getAttribute('data-endpoint')||'';
+    var csrf=(document.querySelector('meta[name="csrf-token"]')||{}).content||'';
+    var list=center.querySelector('.notification-list');
+    var countText=document.getElementById('notificationCountText');
+    var badge=document.getElementById('notificationCountBadge');
+    var selectAll=document.getElementById('notificationSelectAll');
+    var markSelected=document.getElementById('notificationMarkSelected');
+    var markAll=document.getElementById('notificationMarkAll');
+
+    function items(){return Array.prototype.slice.call(center.querySelectorAll('.notification-item[data-key]'));}
+    function selectedKeys(){return Array.prototype.slice.call(center.querySelectorAll('.notification-check:checked')).map(function(x){return x.value;});}
+    function refreshToolbar(){
+      var all=items(), selected=selectedKeys();
+      if(markSelected)markSelected.disabled=selected.length===0;
+      if(markAll)markAll.disabled=all.length===0;
+      if(selectAll){selectAll.checked=all.length>0&&selected.length===all.length;selectAll.indeterminate=selected.length>0&&selected.length<all.length;}
+    }
+    function updateCount(count){
+      count=Math.max(0,parseInt(count||0,10));
+      if(countText)countText.textContent=count.toLocaleString()+' item(s) need attention';
+      if(badge){badge.textContent=count>99?'99+':String(count);badge.hidden=count===0;}
+    }
+    function showEmpty(){
+      if(items().length||!list)return;
+      list.innerHTML='<div class="notification-empty text-center text-secondary py-5"><i class="bi bi-check2-circle display-5 d-block mb-2 text-success"></i>No pending notification.</div>';
+      refreshToolbar();
+    }
+    function removeKeys(keys){
+      keys.forEach(function(key){
+        var el=center.querySelector('.notification-item[data-key="'+CSS.escape(key)+'"]');
+        if(el){el.classList.add('is-marking');setTimeout(function(){el.remove();showEmpty();refreshToolbar();},160);}
+      });
+    }
+    function post(keys,after){
+      keys=Array.from(new Set((keys||[]).filter(Boolean)));
+      if(!endpoint||!keys.length){if(after)after();return;}
+      var body=new URLSearchParams();body.set('csrf_token',csrf);keys.forEach(function(k){body.append('keys[]',k);});
+      fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','X-Requested-With':'XMLHttpRequest'},body:body.toString(),credentials:'same-origin'})
+        .then(function(r){return r.json().catch(function(){return {ok:false};});})
+        .then(function(data){if(data&&data.ok){removeKeys(keys);updateCount(data.count);}if(after)after();})
+        .catch(function(){if(after)after();});
+    }
+    center.addEventListener('change',function(e){if(e.target.classList.contains('notification-check'))refreshToolbar();});
+    if(selectAll)selectAll.addEventListener('change',function(){items().forEach(function(item){var cb=item.querySelector('.notification-check');if(cb)cb.checked=selectAll.checked;});refreshToolbar();});
+    if(markSelected)markSelected.addEventListener('click',function(){post(selectedKeys());});
+    if(markAll)markAll.addEventListener('click',function(){post(items().map(function(x){return x.getAttribute('data-key');}));});
+    center.addEventListener('click',function(e){
+      var one=e.target.closest('.notification-mark-one');
+      if(one){e.preventDefault();e.stopPropagation();post([one.getAttribute('data-key')]);return;}
+      var link=e.target.closest('.notification-open');
+      if(link){
+        if(e.target.closest('input,button'))return;
+        e.preventDefault();var href=link.href;var key=link.getAttribute('data-key');post([key],function(){window.location.href=href;});
+      }
+    });
+    refreshToolbar();
+  });
+})();

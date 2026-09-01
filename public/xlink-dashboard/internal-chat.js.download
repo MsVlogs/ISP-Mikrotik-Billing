@@ -1,0 +1,359 @@
+(function () {
+    'use strict';
+    var _a;
+    const page = document.querySelector('.sb-chat-page');
+    const centerPage = document.querySelector('.sb-comm-center');
+    const widget = document.querySelector('.sb-chat-widget');
+    if (!page && !widget)
+        return;
+    const root = page || widget;
+    const endpoint = root.dataset.chatEndpoint || (widget === null || widget === void 0 ? void 0 : widget.dataset.chatEndpoint) || '';
+    const csrf = root.dataset.csrf || (widget === null || widget === void 0 ? void 0 : widget.dataset.csrf) || ((_a = document.querySelector('meta[name="csrf-token"]')) === null || _a === void 0 ? void 0 : _a.content) || '';
+    const chatUrl = root.dataset.chatUrl || (widget === null || widget === void 0 ? void 0 : widget.dataset.chatUrl) || '';
+    if (!endpoint)
+        return;
+    const state = { conversations: [], contacts: [], platformContact: null, conversation: null, messages: [], unread: 0, tab: 'chats', search: '', loading: false, lastMessageId: 0, typingTimer: null, typingSent: false, mediaRecorder: null, mediaChunks: [], pollTimer: null, bootTimer: null, mode: 'internal', features: { chat: true, attachments: true, voice_message: true, voice_call: true, group_call: true, video_call: true }, groupCallLimit: 6 };
+    const esc = s => String(s !== null && s !== void 0 ? s : '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+    const nl = s => esc(s).replace(/\n/g, '<br>');
+    const prettyTime = value => { if (!value)
+        return ''; const d = new Date(String(value).replace(' ', 'T')); if (Number.isNaN(d.getTime()))
+        return ''; const now = new Date(), same = now.toDateString() === d.toDateString(); return same ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { day: '2-digit', month: 'short' }); };
+    const humanSize = n => { n = Number(n || 0); if (n < 1024)
+        return n + ' B'; if (n < 1048576)
+        return (n / 1024).toFixed(1) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; };
+    async function api(action, opts = {}) { const method = opts.method || 'GET'; let url = endpoint + (endpoint.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action); if (opts.query)
+        url += '&' + new URLSearchParams(opts.query).toString(); const config = { method, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } }; if (method !== 'GET') {
+        let body = opts.body;
+        if (body instanceof FormData) {
+            if (!body.has('csrf_token'))
+                body.append('csrf_token', csrf);
+            config.body = body;
+        }
+        else {
+            const params = new URLSearchParams(body || {});
+            params.set('csrf_token', csrf);
+            config.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            config.body = params.toString();
+        }
+    } const response = await fetch(url, config); let data; try {
+        data = await response.json();
+    }
+    catch (e) {
+        throw new Error('Chat server returned an invalid response.');
+    } if (!response.ok || !data.ok)
+        throw new Error(data.message || 'Chat request failed.'); return data; }
+    function avatar(user, online = false) { var _a; const visual = user.avatar_url ? `<img src="${esc(user.avatar_url)}" alt="">` : esc(user.avatar || ((_a = user.name) === null || _a === void 0 ? void 0 : _a.charAt(0)) || 'U'); return `<span class="sb-chat-avatar">${visual}<i class="presence ${online ? 'online' : ''}"></i></span>`; }
+    function updateBadge() { document.querySelectorAll('[data-chat-unread-badge]').forEach(el => { const n = Number(state.unread || 0); el.textContent = n > 99 ? '99+' : String(n); el.hidden = !n; }); }
+    function filteredContacts() { const q = state.search.trim().toLowerCase(); return state.contacts.filter(c => !q || (`${c.name} ${c.username} ${c.role_label} ${c.node_label}`).toLowerCase().includes(q)); }
+    function filteredConversations() { const q = state.search.trim().toLowerCase(); return state.conversations.filter(c => !q || (`${c.title} ${c.subtitle} ${c.last_message}`).toLowerCase().includes(q)); }
+    function rowConversation(c) { return `<button type="button" class="sb-chat-row ${state.conversation && Number(state.conversation.id) === Number(c.id) ? 'active' : ''}" data-open-conversation="${Number(c.id)}">${avatar(c, !!c.online)}<span class="sb-chat-row-copy"><span class="sb-chat-row-top"><strong>${esc(c.title)}</strong><time>${prettyTime(c.last_message_at)}</time></span><span class="sb-chat-row-bottom"><span>${c.typing ? 'typing…' : esc(c.last_message || c.subtitle || 'Conversation')}</span>${c.unread ? '<b class="sb-chat-unread-dot">1</b>' : ''}</span></span></button>`; }
+    function rowContact(c) { return `<button type="button" class="sb-chat-row" data-open-user="${Number(c.id)}">${avatar(c, false)}<span class="sb-chat-row-copy"><span class="sb-chat-row-top"><strong>${esc(c.name)}</strong></span><span class="sb-chat-row-bottom"><span>${esc(c.role_label)} · ${esc(c.node_label)}</span></span></span></button>`; }
+    function rowPlatform(c) { return `<button type="button" class="sb-chat-row ${state.mode === 'platform' && state.conversation ? 'active' : ''}" data-open-platform="1">${avatar(c, false)}<span class="sb-chat-row-copy"><span class="sb-chat-row-top"><strong>${esc(c.title || 'Owner')}</strong></span><span class="sb-chat-row-bottom"><span>${esc(c.subtitle || 'Owner Support')}</span>${c.unread ? '<b class="sb-chat-unread-dot">1</b>' : ''}</span></span></button>`; }
+    function listHtml() { const conversations = filteredConversations(), contacts = filteredContacts(); if (state.tab === 'people') {
+        if (!contacts.length)
+            return '<div class="sb-chat-no-results">No people found in your chat hierarchy.</div>';
+        let out = '', lastNode = '';
+        contacts.forEach(c => { if (c.node_label !== lastNode) {
+            lastNode = c.node_label;
+            out += `<div class="sb-chat-section-label">${esc(lastNode)}</div>`;
+        } out += rowContact(c); });
+        return out;
+    } let out = ''; if (state.platformContact)
+        out += '<div class="sb-chat-section-label">Owner Support</div>' + rowPlatform(state.platformContact); if (conversations.length)
+        out += conversations.map(rowConversation).join(''); if (out)
+        return out; if (contacts.length)
+        return '<div class="sb-chat-section-label">Start a conversation</div>' + contacts.slice(0, 25).map(rowContact).join(''); return '<div class="sb-chat-no-results">No chat contacts are available for this account.</div>'; }
+    function renderLists() { document.querySelectorAll('[data-chat-list]').forEach(el => el.innerHTML = listHtml()); document.querySelectorAll('.sb-chat-mini-tab').forEach(b => b.classList.toggle('active', b.dataset.chatTab === state.tab)); }
+    function feature(name) { var _a; return state.mode !== 'internal' || ((_a = state.features) === null || _a === void 0 ? void 0 : _a[name]) !== false; }
+    function roomHeader(c, isFull, isWidget) { if (!c)
+        return ''; const status = c.typing ? 'typing…' : (c.online ? 'Online' : (c.last_seen_at ? 'Last seen ' + prettyTime(c.last_seen_at) : c.subtitle)); const back = isWidget ? '<button type="button" class="btn btn-light sb-chat-pop-back" title="Back"><i class="bi bi-arrow-left"></i></button>' : (isFull ? '<button type="button" class="btn btn-light sb-chat-back" title="Back"><i class="bi bi-arrow-left"></i></button>' : ''); let actions = ''; if (state.mode === 'internal' && c.type === 'direct') {
+        const cf = c.call_features || {};
+        const voice = feature('voice_call') && cf.voice_call !== false ? `<button type="button" class="btn btn-light sb-chat-call-btn" data-conversation-id="${Number(c.id)}" data-call-title="${esc(c.title)}" title="Voice Call" aria-label="Voice Call"><i class="bi bi-telephone-fill"></i></button>` : '';
+        const video = feature('video_call') && cf.video_call !== false ? `<button type="button" class="btn btn-light sb-chat-video-call-btn" data-conversation-id="${Number(c.id)}" data-call-title="${esc(c.title)}" title="Video Call" aria-label="Video Call"><i class="bi bi-camera-video-fill"></i></button>` : '';
+        const group = feature('group_call') && cf.group_call !== false ? `<button type="button" class="btn btn-light sb-chat-group-call-btn" data-preselect-user="${Number(c.other_user_id || 0)}" title="Group Voice Call" aria-label="Group Voice Call"><i class="bi bi-people-fill"></i></button>` : '';
+        actions = (voice || video || group) ? `<div class="sb-chat-room-actions">${voice}${video}${group}</div>` : '';
+    } return `${back}${avatar(c, !!c.online)}<div class="sb-chat-room-copy"><strong>${esc(c.title)}</strong><span>${esc(status)}</span></div>${actions}`; }
+    function messageHtml(m) { let content = ''; if (m.type === 'image' && m.attachment_url) {
+        content = `<a href="${esc(m.attachment_url)}" target="_blank" rel="noopener"><img class="sb-chat-attachment-image" src="${esc(m.attachment_url)}" alt="${esc(m.attachment_name || 'Photo')}"></a>`;
+    }
+    else if (m.type === 'voice' && m.attachment_url) {
+        content = `<audio controls preload="metadata" src="${esc(m.attachment_url)}"></audio>`;
+    }
+    else if (m.type === 'file' && m.attachment_url) {
+        content = `<a class="sb-chat-file-card" href="${esc(m.attachment_url)}"><i class="bi bi-file-earmark-arrow-down"></i><span><strong>${esc(m.attachment_name || 'File')}</strong><small>${humanSize(m.attachment_size)}</small></span></a>`;
+    }
+    else {
+        content = nl(m.body || '');
+    } const ticks = m.mine ? (m.delivery === 'seen' ? '<i class="bi bi-check2-all"></i>' : '<i class="bi bi-check2"></i>') : ''; return `<div class="sb-chat-message ${m.mine ? 'mine' : ''}" data-message-id="${Number(m.id)}">${!m.mine && m.sender_avatar_url ? `<span class="sb-chat-message-avatar"><img src="${esc(m.sender_avatar_url)}" alt=""></span>` : ''}<div class="sb-chat-bubble">${content}</div><div class="sb-chat-message-meta"><span>${prettyTime(m.created_at)}</span>${ticks}</div></div>`; }
+    function composerHtml() { const attach = feature('attachments') ? `<button type="button" class="btn btn-light sb-chat-attach-btn" title="Send photo or file"><i class="bi bi-paperclip"></i></button><input type="file" class="d-none sb-chat-file-input" accept="image/*,.pdf,.zip,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx">` : ''; const voice = feature('voice_message') ? `<button type="button" class="btn btn-light sb-chat-voice-btn" title="Record voice"><i class="bi bi-mic"></i></button>` : ''; return `<button type="button" class="btn btn-light sb-chat-emoji-btn" title="Emoji"><i class="bi bi-emoji-smile"></i></button>${attach}<textarea class="form-control sb-chat-text" rows="1" maxlength="4000" placeholder="Write a message"></textarea>${voice}<button type="button" class="btn send-btn sb-chat-send-btn" title="Send"><i class="bi bi-send-fill"></i></button>`; }
+    function renderRoom() {
+        var _a, _b, _c, _d, _e;
+        const c = state.conversation;
+        if (!c)
+            return;
+        document.querySelectorAll('[data-room-header]').forEach(el => el.innerHTML = roomHeader(c, !!el.closest('.sb-chat-page'), !!el.closest('.sb-chat-popover')));
+        document.querySelectorAll('[data-chat-messages]').forEach(el => { const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 90; el.innerHTML = state.messages.map(messageHtml).join(''); if (nearBottom || !el.dataset.loaded) {
+            el.scrollTop = el.scrollHeight;
+            el.dataset.loaded = '1';
+        } });
+        document.querySelectorAll('[data-typing-line]').forEach(el => el.textContent = c.typing ? c.title + ' is typing…' : '');
+        document.querySelectorAll('[data-chat-composer]').forEach(el => { if (!el.querySelector('.sb-chat-text'))
+            el.innerHTML = composerHtml(); });
+        if (page) {
+            (_a = page.querySelector('[data-chat-empty]')) === null || _a === void 0 ? void 0 : _a.classList.add('d-none');
+            (_b = page.querySelector('[data-chat-room]')) === null || _b === void 0 ? void 0 : _b.classList.remove('d-none');
+            (_c = page.querySelector('.sb-chat-main')) === null || _c === void 0 ? void 0 : _c.classList.add('has-room');
+        }
+        if (widget) {
+            (_d = widget.querySelector('.sb-chat-pop-home')) === null || _d === void 0 ? void 0 : _d.classList.add('d-none');
+            (_e = widget.querySelector('.sb-chat-pop-room')) === null || _e === void 0 ? void 0 : _e.classList.remove('d-none');
+        }
+    }
+    function closeRoom() { var _a, _b, _c, _d, _e; state.conversation = null; state.messages = []; state.lastMessageId = 0; state.mode = 'internal'; sendTyping(false); if (page) {
+        (_a = page.querySelector('[data-chat-room]')) === null || _a === void 0 ? void 0 : _a.classList.add('d-none');
+        (_b = page.querySelector('[data-chat-empty]')) === null || _b === void 0 ? void 0 : _b.classList.remove('d-none');
+        (_c = page.querySelector('.sb-chat-main')) === null || _c === void 0 ? void 0 : _c.classList.remove('has-room');
+    } if (widget) {
+        (_d = widget.querySelector('.sb-chat-pop-room')) === null || _d === void 0 ? void 0 : _d.classList.add('d-none');
+        (_e = widget.querySelector('.sb-chat-pop-home')) === null || _e === void 0 ? void 0 : _e.classList.remove('d-none');
+    } renderLists(); }
+    async function boot(keepConversation = true) { if (state.loading)
+        return; state.loading = true; try {
+        const query = {};
+        if (keepConversation && state.conversation && state.mode === 'internal')
+            query.conversation_id = state.conversation.id;
+        const data = await api('state', { query });
+        state.conversations = data.conversations || [];
+        state.contacts = data.contacts || [];
+        state.features = { ...state.features, ...(data.features || {}) };
+        state.groupCallLimit = Number(data.group_call_limit || state.groupCallLimit || 6);
+        state.platformContact = data.platform_contact || null;
+        state.unread = Number(data.unread || 0);
+        if (state.mode === 'internal' && data.conversation) {
+            state.conversation = data.conversation;
+            state.messages = data.messages || [];
+            state.lastMessageId = state.messages.length ? Number(state.messages[state.messages.length - 1].id) : 0;
+        }
+        updateBadge();
+        renderLists();
+        if (state.conversation)
+            renderRoom();
+    }
+    catch (e) {
+        console.warn('Sweet Chat:', e.message);
+    }
+    finally {
+        state.loading = false;
+    } }
+    async function openUser(id) { try {
+        const data = await api('open', { method: 'POST', body: { user_id: id } });
+        state.mode = 'internal';
+        state.conversation = data.conversation;
+        state.messages = data.messages || [];
+        state.unread = Number(data.unread || 0);
+        state.lastMessageId = state.messages.length ? Number(state.messages[state.messages.length - 1].id) : 0;
+        updateBadge();
+        renderRoom();
+        renderLists();
+    }
+    catch (e) {
+        alert(e.message);
+    } }
+    async function openConversation(id) { try {
+        const data = await api('messages', { query: { conversation_id: id } });
+        state.mode = 'internal';
+        state.conversation = data.conversation;
+        state.messages = data.messages || [];
+        state.unread = Number(data.unread || 0);
+        state.lastMessageId = state.messages.length ? Number(state.messages[state.messages.length - 1].id) : 0;
+        updateBadge();
+        renderRoom();
+        renderLists();
+    }
+    catch (e) {
+        alert(e.message);
+    } }
+    async function openPlatform() { var _a, _b; try {
+        const data = await api('platform-state');
+        state.mode = 'platform';
+        state.conversation = data.conversation;
+        state.messages = data.messages || [];
+        state.unread = Number((_b = (_a = data.total_unread) !== null && _a !== void 0 ? _a : data.unread) !== null && _b !== void 0 ? _b : state.unread);
+        state.lastMessageId = state.messages.length ? Number(state.messages[state.messages.length - 1].id) : 0;
+        if (state.platformContact && state.conversation)
+            state.platformContact = { ...state.platformContact, ...state.conversation, unread: false };
+        updateBadge();
+        renderRoom();
+        renderLists();
+    }
+    catch (e) {
+        alert(e.message);
+    } }
+    async function pollMessages() { var _a; if (!state.conversation)
+        return; try {
+        const data = state.mode === 'platform' ? await api('platform-messages', { query: { after_id: state.lastMessageId || 0 } }) : await api('messages', { query: { conversation_id: state.conversation.id, after_id: state.lastMessageId || 0 } });
+        state.conversation = data.conversation || state.conversation;
+        const incoming = data.messages || [];
+        if (incoming.length) {
+            const seen = new Set(state.messages.map(m => Number(m.id)));
+            incoming.forEach(m => { if (!seen.has(Number(m.id)))
+                state.messages.push(m); });
+            state.lastMessageId = Number(((_a = state.messages[state.messages.length - 1]) === null || _a === void 0 ? void 0 : _a.id) || state.lastMessageId);
+            renderRoom();
+        }
+        else {
+            renderRoom();
+        }
+        state.unread = Number(data.unread || 0);
+        updateBadge();
+    }
+    catch (e) {
+        if (/conversation|hierarchy/i.test(e.message))
+            closeRoom();
+    } }
+    async function sendText() { const inputs = [...document.querySelectorAll('.sb-chat-text')].filter(el => el.offsetParent !== null); const input = inputs[0]; if (!input || !state.conversation)
+        return; const body = input.value.trim(); if (!body)
+        return; input.disabled = true; try {
+        const data = state.mode === 'platform' ? await api('platform-send', { method: 'POST', body: { body } }) : await api('send', { method: 'POST', body: { conversation_id: state.conversation.id, body } });
+        input.value = '';
+        autoGrow(input);
+        state.messages.push(data.message);
+        state.lastMessageId = Number(data.message.id);
+        state.unread = Number(data.unread || 0);
+        updateBadge();
+        renderRoom();
+        await boot(true);
+    }
+    catch (e) {
+        alert(e.message);
+    }
+    finally {
+        input.disabled = false;
+        input.focus();
+    } }
+    async function uploadFile(file, voice = false) { if (!file || !state.conversation)
+        return; const fd = new FormData(); if (state.mode !== 'platform')
+        fd.append('conversation_id', state.conversation.id); fd.append('voice', voice ? '1' : '0'); fd.append('file', file, file.name || ('voice-' + Date.now() + '.webm')); try {
+        const data = await api(state.mode === 'platform' ? 'platform-upload' : 'upload', { method: 'POST', body: fd });
+        state.messages.push(data.message);
+        state.lastMessageId = Number(data.message.id);
+        renderRoom();
+        await boot(true);
+    }
+    catch (e) {
+        alert(e.message);
+    } }
+    function emojiPanel(button) { var _a; document.querySelectorAll('.sb-chat-emoji-panel').forEach(p => p.remove()); const emojis = ['😀', '😁', '😂', '😊', '😍', '😘', '😎', '🤔', '😢', '😭', '😡', '👍', '👎', '👏', '🙏', '👌', '❤️', '💙', '🔥', '🎉', '✅', '❌', '💯', '🙂', '😄', '😉', '🤝']; const panel = document.createElement('div'); panel.className = 'sb-chat-emoji-panel'; panel.innerHTML = emojis.map(x => `<button type="button">${x}</button>`).join(''); panel.addEventListener('click', e => { const b = e.target.closest('button'); if (!b)
+        return; const composer = button.closest('.sb-chat-composer'); const input = composer === null || composer === void 0 ? void 0 : composer.querySelector('.sb-chat-text'); if (input) {
+        input.value += b.textContent;
+        input.focus();
+        sendTyping(true);
+    } panel.remove(); }); (_a = button.closest('.sb-chat-composer')) === null || _a === void 0 ? void 0 : _a.appendChild(panel); }
+    function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(100, el.scrollHeight) + 'px'; }
+    function sendTyping(on) { if (!state.conversation || state.mode === 'platform')
+        return; if (on && state.typingSent) {
+        clearTimeout(state.typingTimer);
+        state.typingTimer = setTimeout(() => sendTyping(false), 3500);
+        return;
+    } state.typingSent = on; api('typing', { method: 'POST', body: { conversation_id: state.conversation.id, typing: on ? '1' : '0' } }).catch(() => { }); clearTimeout(state.typingTimer); if (on)
+        state.typingTimer = setTimeout(() => sendTyping(false), 3500); }
+    async function toggleVoice(button) { if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
+        state.mediaRecorder.stop();
+        return;
+    } if (!navigator.mediaDevices || !window.MediaRecorder) {
+        alert('Voice recording is not supported in this browser.');
+        return;
+    } try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        let options = {};
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+            options = { mimeType: 'audio/webm;codecs=opus' };
+        state.mediaChunks = [];
+        state.mediaRecorder = new MediaRecorder(stream, options);
+        state.mediaRecorder.ondataavailable = e => { if (e.data && e.data.size)
+            state.mediaChunks.push(e.data); };
+        state.mediaRecorder.onstop = () => { button.classList.remove('sb-chat-recording'); stream.getTracks().forEach(t => t.stop()); const mime = state.mediaRecorder.mimeType || 'audio/webm'; const blob = new Blob(state.mediaChunks, { type: mime }); if (blob.size) {
+            const ext = mime.includes('ogg') ? 'ogg' : 'webm';
+            const file = new File([blob], 'voice-' + Date.now() + '.' + ext, { type: mime });
+            uploadFile(file, true);
+        } state.mediaRecorder = null; state.mediaChunks = []; };
+        state.mediaRecorder.start();
+        button.classList.add('sb-chat-recording');
+    }
+    catch (e) {
+        alert('Microphone permission is required to send a voice message.');
+    } }
+    document.addEventListener('click', e => { var _a, _b, _c, _d, _e; const launch = e.target.closest('.sb-chat-launcher'); if (launch && widget) {
+        (_a = widget.querySelector('.sb-chat-popover')) === null || _a === void 0 ? void 0 : _a.classList.toggle('is-open');
+        if ((_b = widget.querySelector('.sb-chat-popover')) === null || _b === void 0 ? void 0 : _b.classList.contains('is-open'))
+            boot(true);
+        return;
+    } if (e.target.closest('.sb-chat-pop-close') && widget) {
+        (_c = widget.querySelector('.sb-chat-popover')) === null || _c === void 0 ? void 0 : _c.classList.remove('is-open');
+        sendTyping(false);
+        return;
+    } if (e.target.closest('.sb-chat-pop-back') || e.target.closest('.sb-chat-back')) {
+        closeRoom();
+        return;
+    } const tab = e.target.closest('.sb-chat-mini-tab'); if (tab) {
+        state.tab = tab.dataset.chatTab || 'chats';
+        renderLists();
+        return;
+    } const platform = e.target.closest('[data-open-platform]'); if (platform) {
+        openPlatform();
+        return;
+    } const conv = e.target.closest('[data-open-conversation]'); if (conv) {
+        openConversation(Number(conv.dataset.openConversation));
+        return;
+    } const user = e.target.closest('[data-open-user]'); if (user) {
+        openUser(Number(user.dataset.openUser));
+        return;
+    } if (e.target.closest('.sb-chat-new-contact')) {
+        state.tab = 'people';
+        renderLists();
+        return;
+    } const emoji = e.target.closest('.sb-chat-emoji-btn'); if (emoji) {
+        emojiPanel(emoji);
+        return;
+    } const attach = e.target.closest('.sb-chat-attach-btn'); if (attach) {
+        (_e = (_d = attach.closest('.sb-chat-composer')) === null || _d === void 0 ? void 0 : _d.querySelector('.sb-chat-file-input')) === null || _e === void 0 ? void 0 : _e.click();
+        return;
+    } if (e.target.closest('.sb-chat-send-btn')) {
+        sendText();
+        return;
+    } const voice = e.target.closest('.sb-chat-voice-btn'); if (voice) {
+        toggleVoice(voice);
+        return;
+    } if (!e.target.closest('.sb-chat-emoji-panel'))
+        document.querySelectorAll('.sb-chat-emoji-panel').forEach(p => p.remove()); });
+    document.addEventListener('input', e => { if (e.target.matches('.sb-chat-search')) {
+        state.search = e.target.value;
+        document.querySelectorAll('.sb-chat-search').forEach(x => { if (x !== e.target)
+            x.value = state.search; });
+        renderLists();
+    } if (e.target.matches('.sb-chat-text')) {
+        autoGrow(e.target);
+        sendTyping(e.target.value.trim() !== '');
+    } });
+    document.addEventListener('keydown', e => { if (e.target.matches('.sb-chat-text') && e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendText();
+    } });
+    document.addEventListener('change', e => { var _a; if (e.target.matches('.sb-chat-file-input')) {
+        const file = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
+        if (file)
+            uploadFile(file, false);
+        e.target.value = '';
+    } });
+    if ((page || centerPage) && widget) {
+        widget.style.display = 'none';
+    }
+    boot(false);
+    state.pollTimer = setInterval(() => { var _a; if (state.conversation)
+        pollMessages();
+    else if (page || ((_a = widget === null || widget === void 0 ? void 0 : widget.querySelector('.sb-chat-popover')) === null || _a === void 0 ? void 0 : _a.classList.contains('is-open')))
+        boot(false); }, 1200);
+    state.bootTimer = setInterval(() => { boot(!!state.conversation); api('pulse', { method: 'POST', body: {} }).then(d => { state.unread = Number(d.unread || state.unread); updateBadge(); }).catch(() => { }); }, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden)
+        boot(true); });
+})();
