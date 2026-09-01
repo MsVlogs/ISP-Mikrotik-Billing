@@ -1,0 +1,146 @@
+/* v1.3.0.66 — company-wide visual synchronization.
+   The root Administrator chooses one dashboard/menu policy. Dashboard, staff,
+   reseller and module summary cards share the same preset in light or dark. */
+body.global-visual-sync{
+  --panel-card-radius:16px;
+  --panel-card-bg:var(--bs-body-bg);
+  --panel-card-border:var(--bs-border-color);
+  --panel-card-shadow:0 10px 26px rgba(15,23,42,.07);
+  --panel-card-header:color-mix(in srgb,var(--bs-tertiary-bg) 72%,transparent);
+  --panel-page-gap:14px;
+}
+body.visual-preset-classic-tiles{--panel-card-radius:10px;--panel-card-shadow:0 4px 14px rgba(15,23,42,.06)}
+body.visual-preset-executive-finance{--panel-card-radius:16px;--panel-card-shadow:0 12px 30px rgba(31,41,55,.07)}
+body.visual-preset-noc-dark{--panel-card-radius:10px;--panel-card-shadow:0 8px 24px rgba(2,8,23,.16)}
+body.visual-preset-compact-analytics{--panel-card-radius:10px;--panel-card-shadow:none;--panel-page-gap:9px}
+[data-bs-theme=dark] body.global-visual-sync{
+  --panel-card-bg:#151d29;
+  --panel-card-border:rgba(148,163,184,.19);
+  --panel-card-shadow:0 12px 28px rgba(0,0,0,.24);
+  --panel-card-header:rgba(30,41,59,.72);
+}
+[data-bs-theme=dark] body.visual-preset-noc-dark{
+  --panel-card-bg:#071525;
+  --panel-card-border:#18324a;
+  --panel-card-header:#0a1b2b;
+}
+[data-bs-theme=light] body.visual-preset-executive-finance{--panel-card-header:linear-gradient(110deg,#f8fafc,#eef2ff)}
+[data-bs-theme=light] body.visual-preset-noc-dark{--panel-card-bg:#f8fbff;--panel-card-border:#cbdceb;--panel-card-header:#edf6fc;--panel-card-shadow:0 8px 24px rgba(14,45,70,.08)}
+
+/* Safe generic card polish across the panel without changing data or layout. */
+body.global-visual-sync .app-main .card:not(.dashboard-card){
+  border-color:var(--panel-card-border);
+  border-radius:var(--panel-card-radius);
+  background:var(--panel-card-bg);
+  box-shadow:var(--panel-card-shadow);
+  overflow:hidden;
+}
+body.global-visual-sync .app-main .card:not(.dashboard-card)>.card-header,
+body.global-visual-sync .app-main .card:not(.dashboard-card)>.card-footer{
+  border-color:var(--panel-card-border);
+  background:var(--panel-card-header);
+}
+body.visual-preset-compact-analytics .app-main .card:not(.dashboard-card){box-shadow:none}
+body.visual-preset-classic-tiles .app-main .card:not(.dashboard-card){border-left-width:3px}
+body.visual-preset-executive-finance .app-main .card:not(.dashboard-card)>.card-header{font-weight:750}
+[data-bs-theme=dark] body.global-visual-sync .app-main .list-group-item{
+  background:transparent;
+  color:var(--bs-body-color);
+  border-color:var(--panel-card-border);
+}
+[data-bs-theme=dark] body.global-visual-sync .app-main .list-group-item-action:hover{background:rgba(96,165,250,.08);color:var(--bs-emphasis-color)}
+
+/* Shared page shell. */
+.visual-sync-page{position:relative}
+.visual-page-heading{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  margin-bottom:var(--panel-page-gap);padding:14px 16px;border:1px solid var(--panel-card-border);
+  border-radius:var(--panel-card-radius);background:var(--panel-card-bg);box-shadow:var(--panel-card-shadow)
+}
+.visual-page-heading>div:first-child{min-width:0}
+.visual-page-heading span{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.11em;font-weight:850;color:var(--brand-accent)}
+.visual-page-heading h2{font-size:1.28rem;margin:2px 0 3px;font-weight:850}
+.visual-page-heading p{margin:0;color:var(--bs-secondary-color);font-size:.82rem}
+.visual-content-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:var(--panel-page-gap)}
+.visual-data-panel{min-width:0;background:var(--panel-card-bg)!important;border-color:var(--panel-card-border)!important;border-radius:var(--panel-card-radius)!important;box-shadow:var(--panel-card-shadow)!important}
+.visual-data-panel>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--panel-card-border)}
+.visual-data-panel>header span:not(.badge){display:block;font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;font-weight:800;color:var(--bs-secondary-color)}
+.visual-data-panel>header h3{font-size:1rem;margin:2px 0 0}
+.visual-list-group .list-group-item{border-left:0;border-right:0}
+.visual-list-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:0 0 42px;background:rgba(239,68,68,.12);color:#ef4444}
+.visual-notice{border:1px solid color-mix(in srgb,var(--brand-accent) 24%,var(--panel-card-border));background:color-mix(in srgb,var(--brand-accent) 7%,var(--panel-card-bg));border-radius:var(--panel-card-radius);padding:13px 16px;margin-bottom:var(--panel-page-gap)}
+.staff-dashboard-content{grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr)}
+.reseller-actionbar.visual-page-heading{padding:13px 15px}
+.support-summary-deck,.network-inventory-card-deck{margin-bottom:var(--panel-page-gap)}
+.support-visual-dashboard .support-filter{padding:2px}
+.support-visual-dashboard .support-table,.support-visual-dashboard .kyc-mini-table{--bs-table-bg:transparent}
+
+/* Company-wide size policy also applies to Staff, Reseller and module cards. */
+body.visual-size-compact .visual-sync-page{--db-card-min:102px;--db-gap:9px}
+body.visual-size-large .visual-sync-page{--db-card-min:164px;--db-gap:17px}
+body.visual-size-compact .visual-sync-page .dashboard-card{padding:13px}
+body.visual-size-large .visual-sync-page .dashboard-card{padding:23px}
+
+/* The Executive preset had a light-only title bar. */
+[data-bs-theme=dark] .preset-executive-finance .dashboard-controlbar,
+[data-bs-theme=dark] .preset-executive-finance .visual-page-heading{
+  background:linear-gradient(110deg,#182333,#111827);border-color:rgba(148,163,184,.18);color:#e5e7eb
+}
+[data-bs-theme=dark] .preset-executive-finance .dashboard-card{
+  background:#151d29;color:#e5e7eb;border-color:rgba(148,163,184,.19)
+}
+[data-bs-theme=dark] .preset-executive-finance .dashboard-card-label,
+[data-bs-theme=dark] .preset-executive-finance .dashboard-card-sub{color:#94a3b8}
+[data-bs-theme=dark] .preset-classic-tiles .dashboard-card,
+[data-bs-theme=dark] .preset-compact-analytics .dashboard-card{
+  background:#151d29;color:#e5e7eb;border-color:rgba(148,163,184,.19)
+}
+[data-bs-theme=dark] .preset-classic-tiles .dashboard-card-sub,
+[data-bs-theme=dark] .preset-compact-analytics .dashboard-card-sub{color:#94a3b8}
+
+/* NOC preset now has a real light variant instead of forcing a dark island. */
+[data-bs-theme=light] .preset-noc-dark{
+  --db-panel-bg:#f8fbff;--db-panel-border:#cbdceb;--db-shadow:0 8px 24px rgba(14,45,70,.08);
+  background:linear-gradient(145deg,#f4f9fd,#eaf4fb);color:#152333
+}
+[data-bs-theme=light] .preset-noc-dark .dashboard-controlbar,
+[data-bs-theme=light] .preset-noc-dark .visual-page-heading{color:#152333;background:#f8fbff;border-color:#cbdceb}
+[data-bs-theme=light] .preset-noc-dark .dashboard-controlbar p,
+[data-bs-theme=light] .preset-noc-dark .visual-page-heading p{color:#5b7083}
+[data-bs-theme=light] .preset-noc-dark .dashboard-card{background:#fff;color:#152333;border-color:#cbdceb;box-shadow:0 5px 16px rgba(14,45,70,.07)}
+[data-bs-theme=light] .preset-noc-dark .dashboard-card-label{color:#43647f}
+[data-bs-theme=light] .preset-noc-dark .dashboard-card-value{color:#102a43}
+[data-bs-theme=light] .preset-noc-dark .dashboard-card-sub{color:#5b7083}
+[data-bs-theme=light] .preset-noc-dark .dashboard-card-icon{background:color-mix(in srgb,var(--tone,#0ea5e9) 10%,#fff);border-color:color-mix(in srgb,var(--tone,#0ea5e9) 28%,#d7e5ef)}
+[data-bs-theme=light] .preset-noc-dark .dashboard-panel{background:#fff;border-color:#cbdceb}
+[data-bs-theme=light] .preset-noc-dark .dashboard-panel>header{border-color:#cbdceb}
+[data-bs-theme=light] .preset-noc-dark .dashboard-panel>header h3{color:#102a43}
+[data-bs-theme=light] .preset-noc-dark .dashboard-panel>header span{color:#5b7083}
+[data-bs-theme=light] .preset-noc-dark .table{--bs-table-bg:transparent;--bs-table-color:#243b53;--bs-table-hover-bg:#edf6fc;--bs-table-hover-color:#102a43;--bs-table-border-color:#d7e5ef}
+[data-bs-theme=light] .preset-noc-dark .analysis-metric-list a,
+[data-bs-theme=light] .preset-noc-dark .operation-grid a{background:#fff;border-color:#cbdceb;color:#243b53}
+[data-bs-theme=light] .preset-noc-dark .analysis-metric-list span,
+[data-bs-theme=light] .preset-noc-dark .operation-grid span{color:#5b7083}
+
+/* Dark-mode surfaces for panels and settings stay visually consistent. */
+[data-bs-theme=dark] .dashboard-panel,
+[data-bs-theme=dark] .visual-page-heading,
+[data-bs-theme=dark] .visual-data-panel{
+  background:var(--panel-card-bg);border-color:var(--panel-card-border);box-shadow:var(--panel-card-shadow)
+}
+[data-bs-theme=dark] .dashboard-panel>header{border-color:var(--panel-card-border)}
+[data-bs-theme=dark] .dashboard-controlbar .btn-outline-secondary,
+[data-bs-theme=dark] .visual-page-heading .btn-outline-secondary{color:#cbd5e1;border-color:#526174}
+[data-bs-theme=dark] .dashboard-controlbar .btn-outline-secondary:hover,
+[data-bs-theme=dark] .visual-page-heading .btn-outline-secondary:hover{background:#334155;color:#fff}
+
+/* List and carousel modes are shared by the module dashboards as well. */
+.visual-sync-page.view-list .dashboard-card-deck{grid-template-columns:1fr!important}
+.visual-sync-page.view-carousel .dashboard-card-deck{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:10px}
+.visual-sync-page.view-carousel .dashboard-card{min-width:min(320px,82vw);scroll-snap-align:start}
+
+@media(max-width:1199px){.visual-content-grid,.staff-dashboard-content{grid-template-columns:1fr}.visual-page-heading{align-items:flex-start}}
+@media(max-width:767px){.visual-page-heading{padding:12px}.visual-page-heading .btn{flex:1 1 auto}.visual-content-grid{gap:10px}}
+@media(max-width:575px){.visual-page-heading h2{font-size:1.12rem}.visual-page-heading p{font-size:.76rem}.visual-page-heading>div:last-child{width:100%}.visual-page-heading>div:last-child .btn{flex:1 1 auto}}
+body.visual-preset-informative-isp{--panel-card-radius:8px;--panel-card-shadow:0 3px 10px rgba(15,23,42,.06);--panel-page-gap:10px}
+body.visual-preset-soft-business{--panel-card-radius:10px;--panel-card-shadow:0 6px 18px rgba(15,23,42,.055);--panel-page-gap:11px}

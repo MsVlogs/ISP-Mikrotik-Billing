@@ -1,0 +1,5 @@
+<x-app-layout>
+@push('styles')<link rel="stylesheet" href="{{ asset('xlink-broadband/customer-form-ui.css') }}"><link rel="stylesheet" href="{{ asset('xlink-broadband/ui-polish-20260826.css') }}">@endpush
+<div class="container-fluid py-2"><div class="d-flex justify-content-between align-items-center mb-3"><div><span class="text-uppercase small text-muted fw-semibold">Broadband</span><h3 class="mb-0">Customer & Package Import</h3><small class="text-muted">Prepare MikroTik Customer Import</small></div><a class="btn btn-outline-secondary" href="{{ route('mikrotik-server-import') }}">Open MikroTik Import</a></div>
+<div class="card shadow-sm border-0"><div class="card-body"><div class="alert alert-info">Use the existing MikroTik import workflow so the manual MikroTik → Customer Form → Client List process remains intact.</div><a class="btn btn-primary" href="{{ route('mikrotik-server-import') }}"><i class="bi bi-cloud-download me-1"></i>Load MikroTik Customer List</a></div></div></div>
+</x-app-layout>

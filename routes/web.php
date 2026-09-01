@@ -176,6 +176,30 @@ Route::middleware([
         Route::get('/sms', SMSSetup::class)->name('sms-setup');
         Route::get('/create-customer', NewCustomer::class)->name('new-customer');
 
+        // Broadband module — reference-aligned customer, package and import operations
+        Route::prefix('broadband')->group(function () {
+            Route::get('/customer-add', NewCustomer::class)->name('customer-add');
+            Route::get('/customers', [\App\Http\Controllers\BroadbandController::class, 'list'])->name('broadband-customers');
+            Route::get('/customer-search', [\App\Http\Controllers\BroadbandController::class, 'search'])->name('broadband-customer-search');
+            Route::get('/online-customers', [\App\Http\Controllers\BroadbandController::class, 'list'])->defaults('status','online')->name('broadband-online-customers');
+            Route::get('/due-customers', [\App\Http\Controllers\BroadbandController::class, 'due'])->name('broadband-due-customers');
+            Route::get('/inactive-customers', [\App\Http\Controllers\BroadbandController::class, 'inactive'])->name('broadband-inactive-customers');
+            Route::get('/new-customers', [\App\Http\Controllers\BroadbandController::class, 'newCustomers'])->name('broadband-new-customers');
+            Route::get('/unverified-customers', [\App\Http\Controllers\BroadbandController::class, 'unverified'])->name('broadband-unverified-customers');
+            Route::get('/packages', [\App\Http\Controllers\BroadbandController::class, 'packages'])->name('broadband-packages');
+            Route::get('/customer-package-import', [\App\Http\Controllers\BroadbandController::class, 'import'])->name('broadband-customer-package-import');
+        });
+        // Compatibility aliases matching the reference navigation
+        Route::get('/customer-add', fn () => redirect()->route('customer-add'))->name('customer-add-alias');
+        Route::get('/customer-search', fn () => redirect()->route('broadband-customer-search'))->name('customer-search');
+        Route::get('/online-customers', fn () => redirect()->route('broadband-online-customers'))->name('online-customers');
+        Route::get('/due-customers', fn () => redirect()->route('broadband-due-customers'))->name('due-customers');
+        Route::get('/inactive-customers', fn () => redirect()->route('broadband-inactive-customers'))->name('inactive-customers');
+        Route::get('/new-customers', fn () => redirect()->route('broadband-new-customers'))->name('new-customers');
+        Route::get('/unverified-customers', fn () => redirect()->route('broadband-unverified-customers'))->name('unverified-customers');
+        Route::get('/broadband-packages', fn () => redirect()->route('broadband-packages'))->name('broadband-packages-alias');
+        Route::get('/customer-package-import', fn () => redirect()->route('broadband-customer-package-import'))->name('customer-package-import');
+
         // payment routes
         Route::get('/payment-collection', PaymentCollection::class)->name('payment-collection');
         Route::get('/payment-collection-edit', CollectionEdit::class)->name('collection-edit');

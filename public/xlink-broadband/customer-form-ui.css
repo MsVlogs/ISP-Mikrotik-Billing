@@ -1,0 +1,764 @@
+/* Sweet Billing customer create forms — shared Broadband + Hotspot UI */
+.customer-form-ui {
+    --cf-radius: 14px;
+    --cf-control-radius: 9px;
+    --cf-control-height: 44px;
+    --cf-section-bg: rgba(var(--bs-primary-rgb), .055);
+    --cf-section-border: rgba(var(--bs-primary-rgb), .22);
+    width: 100%;
+}
+
+.customer-form-ui.card,
+.customer-form-ui > .card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--cf-radius);
+    background: var(--bs-body-bg);
+    box-shadow: 0 7px 22px rgba(0, 0, 0, .07) !important;
+}
+
+.customer-form-ui.card {
+    overflow: hidden;
+}
+
+.customer-form-ui > .card {
+    overflow: hidden;
+    margin-bottom: 16px !important;
+}
+
+.customer-form-ui .card-header {
+    min-height: 52px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--cf-section-bg);
+    box-shadow: inset 3px 0 0 var(--bs-primary);
+}
+
+.customer-form-ui.card > .card-header.border-top {
+    border-top: 1px solid var(--bs-border-color) !important;
+}
+
+.customer-form-ui .card-title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.35;
+    font-weight: 750;
+    letter-spacing: .01em;
+    color: var(--bs-body-color);
+}
+
+.customer-form-ui .card-body {
+    padding: 18px;
+}
+
+.customer-form-ui .card-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+}
+
+.customer-form-ui .row {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: .95rem;
+}
+
+.customer-form-ui .form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: .83rem;
+    line-height: 1.25;
+    font-weight: 700;
+    color: var(--bs-body-color);
+}
+
+.customer-form-ui .form-control,
+.customer-form-ui .form-select,
+.customer-form-ui .input-group-text,
+.customer-form-ui .input-group > .btn {
+    min-height: var(--cf-control-height);
+    border-color: var(--bs-border-color);
+}
+
+.customer-form-ui .form-control,
+.customer-form-ui .form-select {
+    border-radius: var(--cf-control-radius);
+    background-color: var(--bs-body-bg);
+    font-size: .94rem;
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.customer-form-ui textarea.form-control {
+    min-height: 82px;
+    resize: vertical;
+}
+
+.customer-form-ui .form-control:hover,
+.customer-form-ui .form-select:hover {
+    border-color: rgba(var(--bs-primary-rgb), .48);
+}
+
+.customer-form-ui .form-control:focus,
+.customer-form-ui .form-select:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .13);
+}
+
+.customer-form-ui .input-group > .form-control:not(:last-child),
+.customer-form-ui .input-group > .form-select:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.customer-form-ui .input-group-text,
+.customer-form-ui .input-group > .btn {
+    border-radius: 0 var(--cf-control-radius) var(--cf-control-radius) 0;
+    background: var(--bs-tertiary-bg);
+}
+
+.customer-form-ui .form-hint,
+.customer-form-ui .form-text {
+    margin-top: 5px;
+    font-size: .75rem;
+    line-height: 1.35;
+    color: var(--bs-secondary-color);
+}
+
+.customer-form-ui .form-check {
+    padding: 12px 14px 12px 44px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    background: var(--bs-tertiary-bg);
+}
+
+.customer-form-ui .form-check-input {
+    margin-top: .16rem;
+}
+
+.customer-form-ui .alert {
+    border-radius: 10px;
+    font-size: .86rem;
+    line-height: 1.45;
+}
+
+.customer-form-ui .badge {
+    padding: .48rem .68rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.customer-form-ui .btn,
+.customer-form-toolbar .btn,
+.customer-form-actions .btn {
+    min-height: 42px;
+    padding: .58rem .95rem;
+    border-radius: 9px;
+    font-weight: 700;
+}
+
+.customer-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    padding-top: 2px;
+}
+
+.customer-form-toolbar {
+    flex-wrap: wrap;
+}
+
+.customer-form-ui--hotspot .card-header:first-child {
+    border-top: 0;
+}
+
+.customer-form-ui--hotspot .card-body + .card-header {
+    margin-top: 0;
+}
+
+.customer-form-ui--hotspot .card-footer .btn-primary,
+.customer-form-actions .btn-primary {
+    min-width: 155px;
+}
+
+@media (min-width: 1200px) {
+    .customer-form-ui .card-body {
+        padding: 20px;
+    }
+
+    .customer-form-ui > .card {
+        margin-bottom: 18px !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .customer-form-ui {
+        --cf-radius: 12px;
+        --cf-control-height: 43px;
+    }
+
+    .customer-form-ui > .card {
+        margin-bottom: 12px !important;
+    }
+
+    .customer-form-ui .card-header {
+        min-height: 48px;
+        padding: 11px 13px;
+        align-items: flex-start !important;
+        gap: 8px;
+    }
+
+    .customer-form-ui .card-title {
+        font-size: .94rem;
+    }
+
+    .customer-form-ui .card-body,
+    .customer-form-ui .card-footer {
+        padding: 13px;
+    }
+
+    .customer-form-ui .row {
+        --bs-gutter-x: .75rem;
+        --bs-gutter-y: .8rem;
+    }
+
+    .customer-form-ui .form-label {
+        font-size: .8rem;
+    }
+
+    .customer-form-ui .form-control,
+    .customer-form-ui .form-select {
+        font-size: .9rem;
+    }
+
+    .customer-form-toolbar {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px !important;
+    }
+
+    .customer-form-toolbar .btn {
+        width: 100%;
+    }
+
+    .customer-form-actions,
+    .customer-form-ui .card-footer {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px !important;
+    }
+
+    .customer-form-actions .btn,
+    .customer-form-ui .card-footer .btn {
+        width: 100%;
+        min-width: 0;
+        margin: 0 !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .customer-form-toolbar,
+    .customer-form-actions,
+    .customer-form-ui .card-footer {
+        grid-template-columns: 1fr;
+    }
+
+    .customer-form-ui .card-header .badge {
+        white-space: normal;
+        text-align: right;
+    }
+}
+
+
+/* Final financial confirmation shared by Broadband and Hotspot */
+.financial-confirm-modal .modal-content {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 18px 55px rgba(0, 0, 0, .22);
+}
+
+.financial-confirm-modal .modal-header,
+.financial-confirm-modal .modal-footer {
+    background: var(--bs-tertiary-bg);
+    border-color: var(--bs-border-color);
+}
+
+.financial-confirm-modal .modal-title {
+    font-weight: 800;
+}
+
+.financial-summary-list,
+.financial-status-box {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bs-body-bg);
+}
+
+.financial-summary-list > div,
+.financial-status-box > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.financial-summary-list > div:last-child,
+.financial-status-box > div:last-child {
+    border-bottom: 0;
+}
+
+.financial-summary-list span,
+.financial-status-box span {
+    color: var(--bs-secondary-color);
+    font-size: .86rem;
+    font-weight: 650;
+}
+
+.financial-summary-list strong,
+.financial-status-box strong {
+    white-space: nowrap;
+    font-size: .95rem;
+}
+
+.financial-summary-list .financial-total {
+    background: rgba(var(--bs-primary-rgb), .08);
+}
+
+.financial-summary-list .financial-total span,
+.financial-summary-list .financial-total strong {
+    color: var(--bs-primary);
+    font-weight: 800;
+}
+
+.financial-choice {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.financial-choice-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    background: var(--bs-body-bg);
+    cursor: pointer;
+    font-weight: 750;
+}
+
+.financial-choice-item:has(input:checked) {
+    border-color: var(--bs-primary);
+    background: rgba(var(--bs-primary-rgb), .08);
+}
+
+.financial-choice-item input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+}
+
+.financial-confirm-modal .form-control,
+.financial-confirm-modal .form-select {
+    min-height: 44px;
+    border-radius: 9px;
+}
+
+.financial-confirm-modal .modal-footer .btn {
+    min-width: 125px;
+    border-radius: 9px;
+    font-weight: 750;
+}
+
+@media (max-width: 575.98px) {
+    .financial-confirm-modal .modal-dialog {
+        margin: .65rem;
+    }
+
+    .financial-confirm-modal .modal-body,
+    .financial-confirm-modal .modal-header,
+    .financial-confirm-modal .modal-footer {
+        padding: 13px;
+    }
+
+    .financial-choice {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .financial-confirm-modal .modal-footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .financial-confirm-modal .modal-footer .btn {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+    }
+}
+
+/* Sweet Billing v1.7.8.6.9 — Hotspot customer create refinements */
+.customer-form-ui--hotspot .hotspot-linked-customer {
+    position: relative;
+}
+
+.customer-form-ui--hotspot .hotspot-linked-results {
+    position: absolute;
+    z-index: 1080;
+    top: calc(100% - 2px);
+    left: calc(var(--bs-gutter-x) * .5);
+    right: calc(var(--bs-gutter-x) * .5);
+    max-height: 290px;
+    overflow-y: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    background: var(--bs-body-bg);
+}
+
+.customer-form-ui--hotspot .hotspot-linked-results .list-group-item {
+    border-left: 0;
+    border-right: 0;
+    padding: 10px 12px;
+    text-align: left;
+}
+
+.customer-form-ui--hotspot .hotspot-linked-results .list-group-item:first-child {
+    border-top: 0;
+}
+
+.customer-form-ui--hotspot .hotspot-linked-results .list-group-item:last-child {
+    border-bottom: 0;
+}
+
+.customer-form-ui--hotspot .hotspot-linked-result-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-weight: 750;
+}
+
+.customer-form-ui--hotspot .hotspot-linked-result-meta {
+    margin-top: 2px;
+    color: var(--bs-secondary-color);
+    font-size: .78rem;
+}
+
+.customer-form-ui--hotspot .hotspot-unique-state {
+    min-width: 43px;
+    justify-content: center;
+    font-size: 1.05rem;
+    transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+
+.customer-form-ui--hotspot .hotspot-unique-state.is-checking {
+    color: var(--bs-secondary-color);
+}
+
+.customer-form-ui--hotspot .hotspot-unique-state.is-valid {
+    color: var(--bs-success);
+    border-color: rgba(var(--bs-success-rgb), .45);
+    background: rgba(var(--bs-success-rgb), .09);
+}
+
+.customer-form-ui--hotspot .hotspot-unique-state.is-invalid {
+    color: var(--bs-danger);
+    border-color: rgba(var(--bs-danger-rgb), .45);
+    background: rgba(var(--bs-danger-rgb), .09);
+}
+
+.customer-form-ui--hotspot .hotspot-unique-state.is-warning {
+    color: var(--bs-warning-text-emphasis);
+    border-color: rgba(var(--bs-warning-rgb), .45);
+    background: rgba(var(--bs-warning-rgb), .12);
+}
+
+.customer-form-ui--hotspot .hotspot-financial-context {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 12px;
+    padding: 12px 13px;
+    background: rgba(var(--bs-primary-rgb), .035);
+}
+
+.customer-form-ui--hotspot .hotspot-financial-context strong {
+    color: var(--bs-emphasis-color);
+}
+
+@media (max-width: 767.98px) {
+    .customer-form-ui--hotspot .hotspot-linked-results {
+        max-height: 240px;
+    }
+}
+
+
+/* Sweet Billing v2.0.47 — Broadband Add Customer compact UI + live finance quote */
+.customer-form-ui--broadband {
+    --cf-control-height: 42px;
+}
+
+.customer-form-ui--broadband > .card {
+    margin-bottom: 12px !important;
+}
+
+.customer-form-ui--broadband .card-header {
+    min-height: 44px;
+    padding: 10px 15px;
+    background: rgba(var(--bs-primary-rgb), .035);
+}
+
+.customer-form-ui--broadband .card-body {
+    padding: 14px 15px;
+}
+
+.customer-form-ui--broadband .row {
+    --bs-gutter-x: .85rem;
+    --bs-gutter-y: .75rem;
+}
+
+.customer-form-ui--broadband .form-label {
+    margin-bottom: 4px;
+}
+
+.customer-form-ui--broadband .form-hint,
+.customer-form-ui--broadband .form-text {
+    margin-top: 3px;
+}
+
+.customer-form-ui--broadband .cf-subsection {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid var(--bs-border-color);
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    font-weight: 800;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+}
+
+.customer-form-ui--broadband .cf-location-details {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    background: var(--bs-tertiary-bg);
+}
+
+.customer-form-ui--broadband .cf-location-details > summary {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 12px;
+    cursor: pointer;
+    list-style: none;
+    font-size: .83rem;
+    font-weight: 750;
+}
+
+.customer-form-ui--broadband .cf-location-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.customer-form-ui--broadband .cf-location-details > summary::after {
+    content: '+';
+    margin-left: auto;
+    color: var(--bs-secondary-color);
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.customer-form-ui--broadband .cf-location-details[open] > summary::after {
+    content: '−';
+}
+
+.customer-form-ui--broadband .cf-location-details > summary span {
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+    font-weight: 600;
+}
+
+.customer-form-ui--broadband .cf-location-details > .row {
+    margin: 0;
+    padding: 0 12px 12px !important;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.customer-form-ui--broadband .cf-inline-switch {
+    min-height: 42px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.customer-form-ui--broadband .billing-quote-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    background: var(--bs-tertiary-bg);
+}
+
+.customer-form-ui--broadband .billing-quote-strip > div {
+    min-width: 0;
+    padding: 9px 11px;
+    border-right: 1px solid var(--bs-border-color);
+}
+
+.customer-form-ui--broadband .billing-quote-strip > div:last-child {
+    border-right: 0;
+}
+
+.customer-form-ui--broadband .billing-quote-strip span,
+.financial-summary-grid span,
+.financial-status-grid span {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.customer-form-ui--broadband .billing-quote-strip strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .88rem;
+}
+
+.financial-confirm-modal .financial-dialog {
+    max-width: 650px;
+}
+
+.financial-confirm-modal .modal-header,
+.financial-confirm-modal .modal-footer {
+    padding: 11px 15px;
+}
+
+.financial-confirm-modal .modal-body {
+    padding: 13px 15px;
+}
+
+.financial-confirm-modal .modal-title {
+    font-size: 1rem;
+}
+
+.financial-summary-grid,
+.financial-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 11px;
+    background: var(--bs-body-bg);
+}
+
+.financial-summary-grid > div,
+.financial-status-grid > div {
+    min-width: 0;
+    padding: 9px 11px;
+    border-right: 1px solid var(--bs-border-color);
+}
+
+.financial-summary-grid > div:last-child,
+.financial-status-grid > div:last-child {
+    border-right: 0;
+}
+
+.financial-summary-grid strong,
+.financial-status-grid strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .93rem;
+}
+
+.financial-summary-grid .financial-total {
+    background: rgba(var(--bs-primary-rgb), .075);
+}
+
+.financial-summary-grid .financial-total span,
+.financial-summary-grid .financial-total strong {
+    color: var(--bs-primary);
+    font-weight: 800;
+}
+
+.financial-confirm-modal .financial-choice {
+    gap: 6px;
+}
+
+.financial-confirm-modal .financial-choice-item {
+    min-height: 40px;
+    padding: 7px 9px;
+    border-radius: 9px;
+    font-size: .84rem;
+}
+
+.financial-confirm-modal .form-label {
+    margin-bottom: 4px;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.financial-confirm-modal .form-control,
+.financial-confirm-modal .form-select {
+    min-height: 40px;
+}
+
+.financial-confirm-modal .row {
+    --bs-gutter-y: .6rem;
+}
+
+.financial-confirm-modal .modal-footer .btn {
+    min-height: 40px;
+    padding-top: .45rem;
+    padding-bottom: .45rem;
+}
+
+@media (max-width: 767.98px) {
+    .customer-form-ui--broadband .billing-quote-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .customer-form-ui--broadband .billing-quote-strip > div:nth-child(2) {
+        border-right: 0;
+    }
+
+    .customer-form-ui--broadband .billing-quote-strip > div:nth-child(-n+2) {
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .financial-summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .financial-summary-grid > div:nth-child(2) {
+        border-right: 0;
+    }
+
+    .financial-summary-grid .financial-total {
+        grid-column: 1 / -1;
+        border-top: 1px solid var(--bs-border-color);
+        border-right: 0;
+    }
+
+    .financial-status-grid > div {
+        padding: 8px;
+    }
+
+    .financial-status-grid span {
+        font-size: .68rem;
+    }
+
+    .financial-status-grid strong {
+        font-size: .84rem;
+    }
+}
