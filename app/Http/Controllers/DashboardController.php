@@ -168,9 +168,9 @@ class DashboardController extends Controller
         $weekStart = Carbon::now()->subDays(6)->startOfDay();
 
         $activeCustomers = CustomersInfo::where('status', 'active');
-        $activeCustomerTotal = (clone $activeCustomers)->count();
         $activeCompany = (clone $activeCustomers)->whereNull('reseller_id')->count();
         $activeReseller = (clone $activeCustomers)->whereNotNull('reseller_id')->count();
+        $activeCustomerTotal = $activeCompany + $activeReseller;
         $onlineNow = PPPSecrets::where('status', 'online')->count();
 
         // Expired means active accounts whose billing disable/expiry date has passed.
@@ -212,7 +212,7 @@ class DashboardController extends Controller
         $hotspotCustomers = HotspotSale::whereBetween('sale_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
             ->whereNotNull('username')->distinct()->count('username');
         $hotspotCardStock = \App\Models\HotspotVoucher::whereIn('status', ['unused', 'active'])->count();
-        $attendanceTotal = \App\Models\User::where('is_active', true)->count();
+        $attendanceTotal = \App\Models\User::count();
         $attendanceToday = 0;
         $deviceStats = [
             'routers_total' => \App\Models\RouterList::count(),
