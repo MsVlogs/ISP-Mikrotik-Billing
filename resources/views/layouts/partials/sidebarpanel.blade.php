@@ -377,8 +377,18 @@
                     <a wire:navigate.hover class="nav-link" href="{{ route('bandwidth-tickets') }}">{{ __('Support Ticket') }}</a>
                 </div>
 
+                <a class="nav-link dropdown-indicator collapsed" href="#stockInventoryMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="stockInventoryMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-box-seam"></i></span><span class="nav-link-text ps-1">{{ __('Stock Inventory') }}</span></div>
+                </a>
+                <div class="collapse ps-4" id="stockInventoryMenu">
+                    <a wire:navigate.hover class="nav-link" href="{{ route('xlink.stock-inventory') }}">{{ __('Dashboard') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('stock-inventory.products') }}">{{ __('Products & Tracking') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('stock-inventory.movements') }}">{{ __('Stock / Issue / Sales') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('stock-inventory.warranty') }}">{{ __('Warranty') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('stock-inventory.damaged') }}">{{ __('Lost & Damaged') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('stock-inventory.settings') }}">{{ __('Settings') }}</a>
+                </div>
                 @foreach([
-                    ['xlink.stock-inventory','Stock Inventory','bi-box-seam','stockInventoryMenu'],
                     ['xlink.communication-center','Communication Center','bi-chat-dots','communicationCenterMenu'],
                     ['xlink.support-center','Support Center','bi-life-preserver','supportCenterMenu'],
                     ['xlink.team-access','Team & Access','bi-people','teamAccessMenu'],

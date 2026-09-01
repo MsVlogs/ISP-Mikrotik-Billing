@@ -497,20 +497,16 @@ Route::middleware([
             ->name('network-inventory.access-points');
 
         Route::get('/stock-inventory', function () {
-            $requests = \App\Models\PackagePurchaseRequest::query();
-            $pending = (clone $requests)->whereIn('status',['pending','requested'])->count();
-            $total = (clone $requests)->count();
-            $packages = \App\Models\PackageList::count();
-            return view('xlink.module', [
-                'title'=>'Stock Inventory','icon'=>'bi-box-seam','description'=>'Package catalog, stock requests and procurement workflow.',
-                'stats'=>[['label'=>'Packages','value'=>$packages],['label'=>'Pending Requests','value'=>$pending],['label'=>'Total Requests','value'=>$total]],
-                'links'=>[
-                    ['url'=>route('package-list-setup'),'label'=>'Package Catalog','hint'=>'Manage service packages'],
-                    ['url'=>route('admin.purchase-requests'),'label'=>'Purchase Requests','hint'=>'Review and process requests'],
-                    ['url'=>route('admin.vouchers'),'label'=>'Voucher Inventory','hint'=>'Voucher administration'],
-                ],
-            ]);
+            $products = \App\Models\StockInventoryProduct::orderBy('name')->paginate(20)->withQueryString();
+            return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,
+                'stats'=>[['Packages',\App\Models\PackageList::count()],['Products',\App\Models\StockInventoryProduct::count()],['Low Stock',\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count()],['Movements',\App\Models\StockInventoryMovement::count()]]]);
         })->name('xlink.stock-inventory');
+        Route::get('/stock-inventory/products', function () { $products=\App\Models\StockInventoryProduct::orderBy('name')->paginate(25)->withQueryString(); return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[]]); })->name('stock-inventory.products');
+        Route::post('/stock-inventory/products', function(\Illuminate\Http\Request $r){$d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku','name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','quantity'=>'required|integer|min:0','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryProduct::create($d); return back()->with('inventory_message','Product added.');})->name('stock-inventory.products.store');
+        Route::post('/stock-inventory/movements', function(\Illuminate\Http\Request $r){$d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','movement_type'=>'required|in:stock-in,issue,sale,adjustment','quantity'=>'required|integer|min:1','reference'=>'nullable|string|max:120','source'=>'nullable|string|max:120','destination'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); $p=\App\Models\StockInventoryProduct::findOrFail($d['product_id']); $delta=in_array($d['movement_type'],['stock-in','adjustment'],true)?$d['quantity']:-$d['quantity']; abort_if($delta<0 && $p->quantity < abs($delta),422,'Insufficient stock.'); $p->increment('quantity',$delta); \App\Models\StockInventoryMovement::create($d); return back()->with('inventory_message','Stock movement recorded.');})->name('stock-inventory.movements.store');
+        Route::get('/stock-inventory/movements', function(){ $movements=\App\Models\StockInventoryMovement::with('product')->latest()->paginate(30); return view('xlink.stock-inventory',['tab'=>'movements','movements'=>$movements,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.movements');
+        foreach ([['warranty','Warranty'],['damaged','Lost & Damaged'],['settings','Settings']] as [$slug,$title]) { Route::get('/stock-inventory/'.$slug, fn()=>view('xlink.stock-inventory',['tab'=>$slug,'title'=>$title,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[]]))->name('stock-inventory.'.$slug); }
+
         Route::get('/communication-center', function () {
             $templates = \App\Models\SmsTemplate::count();
             $notifications = \App\Models\NotificationLogs::count();
@@ -637,7 +633,6 @@ Route::middleware([
         Route::post('/bandwidth-tickets', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'storeTicket'])->name('bandwidth-tickets.store');
         Route::put('/bandwidth-tickets/{ticket}', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'updateTicket'])->name('bandwidth-tickets.update');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
-        Route::get('/stock-inventory', fn () => redirect()->route('admin.purchase-requests'))->name('xlink.stock-inventory');
         Route::get('/communication-center', fn () => redirect()->route('sms-bridge.index'))->name('xlink.communication-center');
         Route::get('/support-center', fn () => redirect()->route('admin-tickets'))->name('xlink.support-center');
         Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('xlink.team-access');
