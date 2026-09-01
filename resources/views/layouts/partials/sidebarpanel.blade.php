@@ -346,21 +346,52 @@
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.switches') }}"><span class="nav-link-text ps-1">{{ __('Switch Management') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.access-points') }}"><span class="nav-link-text ps-1">{{ __('Access Point Management') }}</span></a>
                 </div>
+                {{-- X-Link Billing parity modules: collapsed parents with click-to-open submenus --}}
+                <a class="nav-link dropdown-indicator collapsed" href="#mobileBankingMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="mobileBankingMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-phone"></i></span><span class="nav-link-text ps-1">{{ __('Mobile Banking') }}</span></div>
+                </a>
+                <div class="collapse ps-4" id="mobileBankingMenu">
+                    <a wire:navigate.hover class="nav-link" href="{{ route('xlink.mobile-banking') }}">{{ __('Overview') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('mobile-banking.logs') }}">{{ __('Mobile Banking LOG') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('mobile-banking.gateways') }}">{{ __('Payment Gateway') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('mobile-banking.methods') }}">{{ __('Payment Methods') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('mobile-banking.settings') }}">{{ __('Sync Settings') }}</a>
+                </div>
+
+                <a class="nav-link dropdown-indicator collapsed" href="#partnerNetworkMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="partnerNetworkMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-diagram-2"></i></span><span class="nav-link-text ps-1">{{ __('Partner Network') }}</span></div>
+                </a>
+                <div class="collapse ps-4" id="partnerNetworkMenu">
+                    <a wire:navigate.hover class="nav-link" href="{{ route('xlink.partner-network') }}">{{ __('Overview') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('reseller-cashflow') }}">{{ __('Reseller Cashflow') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('reseller-ledger') }}">{{ __('Reseller Ledger') }}</a>
+                </div>
+
+                <a class="nav-link dropdown-indicator collapsed" href="#bandwidthResellerMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="bandwidthResellerMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-speedometer2"></i></span><span class="nav-link-text ps-1">{{ __('Bandwidth Reseller') }}</span></div>
+                </a>
+                <div class="collapse ps-4" id="bandwidthResellerMenu">
+                    <a wire:navigate.hover class="nav-link" href="{{ route('xlink.bandwidth-reseller') }}">{{ __('Reseller Management') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('bandwidth-services') }}">{{ __('Services') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('bandwidth-invoices') }}">{{ __('Billing') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('bandwidth-tickets') }}">{{ __('Support Ticket') }}</a>
+                </div>
+
                 @foreach([
-                    ['xlink.mobile-banking','Mobile Banking','bi-phone'],
-                    ['xlink.partner-network','Partner Network','bi-diagram-2'],
-                    ['xlink.bandwidth-reseller','Bandwidth Reseller','bi-speedometer2'],
-                    ['xlink.stock-inventory','Stock Inventory','bi-box-seam'],
-                    ['xlink.communication-center','Communication Center','bi-chat-dots'],
-                    ['xlink.support-center','Support Center','bi-life-preserver'],
-                    ['xlink.team-access','Team & Access','bi-people'],
-                    ['xlink.system-settings','System Settings','bi-gear'],
-                    ['xlink.billing-helpline','Billing Helpline','bi-headset'],
-                    ['xlink.profile-security','Profile & Security','bi-shield-lock'],
-                ] as [$route,$label,$icon])
-                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">
+                    ['xlink.stock-inventory','Stock Inventory','bi-box-seam','stockInventoryMenu'],
+                    ['xlink.communication-center','Communication Center','bi-chat-dots','communicationCenterMenu'],
+                    ['xlink.support-center','Support Center','bi-life-preserver','supportCenterMenu'],
+                    ['xlink.team-access','Team & Access','bi-people','teamAccessMenu'],
+                    ['xlink.system-settings','System Settings','bi-gear','systemSettingsMenu'],
+                    ['xlink.billing-helpline','Billing Helpline','bi-headset','billingHelplineMenu'],
+                    ['xlink.profile-security','Profile & Security','bi-shield-lock','profileSecurityMenu'],
+                ] as [$route,$label,$icon,$menuId])
+                    <a class="nav-link dropdown-indicator collapsed" href="#{{ $menuId }}" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="{{ $menuId }}">
                         <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi {{ $icon }}"></i></span><span class="nav-link-text ps-1">{{ __($label) }}</span></div>
                     </a>
+                    <div class="collapse ps-4" id="{{ $menuId }}">
+                        <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
+                    </div>
                 @endforeach
 
             <li class="nav-item">
