@@ -32,7 +32,7 @@
             ];
         @endphp
         @foreach($cards as $card)
-            <a class="dashboard-card tone-{{ $card['tone'] }}" href="{{ match($card['label']) { 'Active Customers' => route('broadband-customers'), 'Online Now' => route('broadband-online-customers'), 'Expired' => route('broadband-due-customers'), 'Locked / Disabled' => route('broadband-inactive-customers'), 'This Month Collection' => route('income-summary'), 'Running Due' => route('broadband-due-customers'), 'Today Collection' => route('income-summary'), 'Weekly Collection' => route('income-summary'), 'Reseller Due' => route('reseller.dashboard'), 'Today Attendance' => route('dashboard'), 'MFS Collection' => route('income-summary'), 'Router Health' => route('device-watcher'), 'Hotspot Customers' => route('hotspot-dashboard'), 'Hotspot Card Stock' => route('hotspot-cards'), 'Hotspot Monthly' => route('hotspot-ledger'), 'Access Point Health' => route('network-inventory.access-points'), default => route('dashboard') }}">
+            <a class="dashboard-card tone-{{ $card['tone'] }}" href="#">
                 <span class="dashboard-card-icon"><i class="bi {{ $card['icon'] }}"></i></span>
                 <span class="dashboard-card-copy"><span class="dashboard-card-label">{{ __($card['label']) }}</span><strong class="dashboard-card-value">{{ $card['value'] }}</strong><small class="dashboard-card-sub">{{ __($card['sub']) }}</small></span>
                 <i class="bi bi-arrow-up-right dashboard-card-open"></i>

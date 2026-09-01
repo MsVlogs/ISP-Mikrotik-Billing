@@ -334,7 +334,7 @@
             <li class="nav-item">
                 <!-- X-Link Billing parity modules -->
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
-                    <div class="col-auto navbar-vertical-label">{{ __('X-Link Billing') }}</div>
+                    <div class="col-auto navbar-vertical-label">{{ __('Network Operations') }}</div>
                 </div>
                 <a class="nav-link dropdown-indicator collapsed" href="#networkInventoryMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="networkInventoryMenu">
                     <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-router"></i></span><span class="nav-link-text ps-1">{{ __('Devices Inventory') }}</span></div>
@@ -362,121 +362,6 @@
                         <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi {{ $icon }}"></i></span><span class="nav-link-text ps-1">{{ __($label) }}</span></div>
                     </a>
                 @endforeach
-
-                <!-- label-->
-                <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
-                    <div class="col-auto navbar-vertical-label">{{ __('Customers') }}</div>
-                    <div class="col ps-0">
-                        <hr class="mb-0 navbar-vertical-divider" />
-                    </div>
-                </div>
-                <!-- parent pages-->
-                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('new-customer') }}"
-                    role="button">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon">
-                            <i class="bi bi-person-fill-add"></i>
-                        </span>
-                        <span class="nav-link-text ps-1">{{ __('New Customer') }}</span>
-                    </div>
-                </a>
-                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('admin-tickets') }}"
-                    role="button">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon">
-                            <i class="bi bi-chat-left-text-fill"></i>
-                        </span>
-                        <span class="nav-link-text ps-1">{{ __('Support Tickets') }}</span>
-                    </div>
-                </a>
-                <!-- parent pages-->
-                <a class="nav-link dropdown-indicator collapsed" href="#collections" role="button"
-                    data-bs-toggle="collapse" aria-expanded="true" aria-controls="collections">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon">
-                            <i class="bi bi-cash-coin"></i>
-                        </span>
-                        <span class="nav-link-text ps-1">{{ __('Collection') }}</span>
-                    </div>
-                </a>
-                <ul class="nav collapse" id="collections" style="">
-                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link"
-                            href="{{ route('payment-collection') }}">
-                            <div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Payment Collection') }}</span></div>
-                        </a></li>
-                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link"
-                            href="{{ route('collection-edit') }}">
-                            <div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Collection Edit') }}</span></div>
-                        </a>
-                    </li>
-                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link"
-                            href="{{ route('payment-invoice') }}">
-                            <div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Payment Invoice') }}</span></div>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-            <li class="nav-item">
-                <!-- label-->
-                <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
-                    <div class="col-auto navbar-vertical-label">{{ __('Reports') }}</div>
-                    <div class="col ps-0">
-                        <hr class="mb-0 navbar-vertical-divider" />
-                    </div>
-                </div>
-                <!-- parent pages-->
-                <a class="nav-link dropdown-indicator collapsed" href="#reports" role="button"
-                    data-bs-toggle="collapse" aria-expanded="true" aria-controls="reports">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon">
-                            <i class="bi bi-journal-text"></i>
-                        </span>
-                        <span class="nav-link-text ps-1">{{ __('Reports') }}</span>
-                    </div>
-                </a>
-                <ul class="nav collapse" id="reports" style="">
-                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link"
-                            href="{{ route('collection-report.index') }}">
-                            <div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Collections Report') }}</span></div>
-                        </a></li>
-                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link"
-                            href="{{ route('customer-summary') }}">
-                            <div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('Customer Summary') }}</span></div>
-                        </a>
-                    </li>
-                    <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link"
-                            href="{{ route('dis-report') }}">
-                            <div class="d-flex align-items-center"><span class="nav-link-text ps-1">{{ __('DIS Summary') }}</span><span class="badge rounded-pill ms-2 badge-subtle-success">{{ __('New') }}</span>
-                            </div>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-            </li>
-
-            {{-- ── Finance ── --}}
-            <li class="nav-item">
-                <div class="row navbar-vertical-label-wrapper mt-3 mb-2">
-                    <div class="col-auto navbar-vertical-label">{{ __('Finance') }}</div>
-                    <div class="col ps-0">
-                        <hr class="mb-0 navbar-vertical-divider" />
-                    </div>
-                </div>
-                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('admin.expenses') }}"
-                    role="button">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon"><i class="bi bi-wallet2"></i></span>
-                        <span class="nav-link-text ps-1">{{ __('Expense Management') }}</span>
-                    </div>
-                </a>
-                <a wire:navigate.hover wire:current="active" class="nav-link"
-                    href="{{ route('admin.profit-summary') }}" role="button">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon"><i class="bi bi-graph-up-arrow text-success"></i></span>
-                        <span class="nav-link-text ps-1">{{ __('Profit & Loss') }}</span>
-                    </div>
-                </a>
-            </li>
 
             <li class="nav-item">
                 <!-- label-->
