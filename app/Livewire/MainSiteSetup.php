@@ -213,26 +213,36 @@ class MainSiteSetup extends Component implements HasActions, HasForms
             FileUpload::make('site_logo')
                 ->label('Main Site Logo')
                 ->image()
+                ->multiple()
+                ->maxFiles(1)
                 ->directory('brand')
                 ->helperText('Recommended: 190x53px transparent PNG'),
             FileUpload::make('site_icon')
                 ->label('Square App Icon')
                 ->image()
+                ->multiple()
+                ->maxFiles(1)
                 ->directory('brand')
                 ->helperText('Used for smaller UI elements (1:1 ratio)'),
             FileUpload::make('site_favicon')
                 ->label('Browser Favicon')
                 ->image()
+                ->multiple()
+                ->maxFiles(1)
                 ->directory('brand')
                 ->helperText('Standard browser tab icon (16x16 or 32x32)'),
             FileUpload::make('site_invoice_logo')
                 ->label('Invoice Logo')
                 ->image()
+                ->multiple()
+                ->maxFiles(1)
                 ->directory('invoices')
                 ->helperText('Logo displayed specifically on invoices.'),
             FileUpload::make('site_invoice_signature')
                 ->label('Authorized Signature')
                 ->image()
+                ->multiple()
+                ->maxFiles(1)
                 ->directory('invoices'),
             RichEditor::make('site_invoice_terms')
                 ->label('Terms & Conditions')
@@ -250,6 +260,8 @@ class MainSiteSetup extends Component implements HasActions, HasForms
         return $schema->components([
             FileUpload::make('btcl_tariff_pdf')
                 ->label('BTCL Tariff PDF')
+                ->multiple()
+                ->maxFiles(1)
                 ->acceptedFileTypes(['application/pdf'])
                 ->directory('documents')
                 ->helperText('Upload the BTCL Tariff PDF document.'),

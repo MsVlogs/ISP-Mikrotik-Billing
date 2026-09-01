@@ -25,3 +25,4 @@ yarn-error.log
 
 # Local backup / copy files
 * copy.php
+/backups/

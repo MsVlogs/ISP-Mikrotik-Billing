@@ -1,5 +1,6 @@
 <div class="zoom-in position-relative">
     <!-- Style tweaks for a premium look -->
+    @php $errors = $errors ?? (app('view')->shared('errors') ?: new \Illuminate\Support\ViewErrorBag()); @endphp
     <style>
         .glass-card {
             background: rgba(var(--bs-body-bg-rgb), 0.6) !important;
