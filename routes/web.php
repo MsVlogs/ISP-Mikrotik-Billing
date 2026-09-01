@@ -660,7 +660,7 @@ Route::middleware([
         // Billing & Finance reference-aligned reporting pages
         Route::get('/billing-finance', function () {
             return view('billing.finance-hub');
-        })->name('billing.finance');
+        })->name('billing-finance');
 
         Route::get('/income-summary', function () {
             $from = request('from', now()->startOfMonth()->toDateString());
