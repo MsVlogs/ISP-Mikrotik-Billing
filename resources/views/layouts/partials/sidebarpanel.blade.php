@@ -347,15 +347,6 @@
                         <span class="nav-link-text ps-1">{{ __('New Customer') }}</span>
                     </div>
                 </a>
-                <a wire:navigate.hover wire:current.exact="active" class="nav-link"
-                    href="{{ route('customers.index') }}" role="button">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon">
-                            <i class="bi bi-people-fill"></i>
-                        </span>
-                        <span class="nav-link-text ps-1">{{ __('Customers') }}</span>
-                    </div>
-                </a>
                 <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('admin-tickets') }}"
                     role="button">
                     <div class="d-flex align-items-center">
