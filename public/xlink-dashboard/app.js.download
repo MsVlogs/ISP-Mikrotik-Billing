@@ -339,7 +339,7 @@
     if(overlay){overlay.hidden=false;overlay.setAttribute('aria-hidden','false');document.body.classList.add('sb-session-expired-open');setTimeout(function(){try{login&&login.focus({preventScroll:true});}catch(e){}},80);return;}
     if(expiredUrl)window.location.replace(expiredUrl);
   }
-  window.SweetBillingSessionExpired={show:showOverlay};
+  window.XLinkBillingSessionExpired={show:showOverlay};
   window.fetch=function(){
     return nativeFetch.apply(window,arguments).then(function(response){
       if(!shown&&response&&response.status===401){
