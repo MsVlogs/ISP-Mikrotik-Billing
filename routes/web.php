@@ -161,6 +161,15 @@ Route::middleware([
             Route::get('/queue', QueueSetup::class)->name('mikrotik-queue-setup');
             Route::get('/firewall', FirewallSetup::class)->name('mikrotik-firewall-setup');
             Route::get('/hotspot', HotspotManager::class)->name('mikrotik-hotspot-setup'); // merged → HotspotManager
+        Route::get('/hotspot-dashboard', HotspotManager::class)->name('hotspot-dashboard');
+        Route::get('/hotspot-customer-add', HotspotManager::class)->name('hotspot-customer-add');
+        Route::get('/hotspot-customers', HotspotManager::class)->name('hotspot-customers');
+        Route::get('/hotspot-online-customers', HotspotManager::class)->name('hotspot-online-customers');
+        Route::get('/hotspot-ledger', HotspotManager::class)->name('hotspot-ledger');
+        Route::get('/hotspot-packages', HotspotManager::class)->name('hotspot-packages');
+        Route::get('/hotspot-cards', HotspotManager::class)->name('hotspot-cards');
+        Route::get('/hotspot-card-print-setup', HotspotManager::class)->name('hotspot-card-print-setup');
+        Route::get('/hotspot-page-setup', HotspotManager::class)->name('hotspot-page-setup');
             Route::get('/hotspot-manager', HotspotManager::class)->name('mikrotik-hotspot-manager');
             Route::get('/radius', RadiusSetup::class)->name('mikrotik-radius-setup');
             Route::get('/vpn', VpnSetup::class)->name('mikrotik-vpn-setup');

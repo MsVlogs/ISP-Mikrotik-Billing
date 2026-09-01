@@ -2,6 +2,9 @@
     <x-slot name="header">🛜 {{ __('Hotspot Manager') }}</x-slot>
 
     @push('styles')
+    <link rel="stylesheet" href="{{ asset('xlink-hotspot/hotspot-module.css') }}">
+    <link rel="stylesheet" href="{{ asset('xlink-hotspot/layout-fixes.css') }}">
+    <link rel="stylesheet" href="{{ asset('xlink-hotspot/ui-polish-20260826.css') }}">
     <style>
         /* ── Voucher Print Styles ── */
         @media print {

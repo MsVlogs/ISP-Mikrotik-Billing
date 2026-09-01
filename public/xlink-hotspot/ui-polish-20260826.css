@@ -1,0 +1,215 @@
+/* Sweet Billing targeted dark/light/mobile polish — 2026-08-26 */
+:root{
+  --sb-surface:var(--bs-body-bg);
+  --sb-surface-soft:var(--bs-tertiary-bg);
+  --sb-line:var(--bs-border-color);
+  --sb-text:var(--bs-body-color);
+  --sb-muted:var(--bs-secondary-color);
+  --sb-card-shadow:0 7px 22px rgba(15,23,42,.06);
+}
+[data-bs-theme="dark"]{
+  --sb-card-shadow:0 7px 22px rgba(0,0,0,.16);
+}
+
+/* Theme-safe surfaces on requested pages */
+.page-ledger-summary :is(.card,.finance-stat,.finance-filter-card,.finance-list-card),
+.page-billing-settings :is(.card,.billing-kpi,.billing-policy-card,.billing-dates-card),
+.page-income-summary :is(.card,.finance-card,.finance-filter,.finance-stat),
+.page-expense-input :is(.card,.expense-layout-card,.finance-list,.finance-filter,.finance-stat),
+.page-installation-charges :is(.card,.ic-kpi,.ic-filter),
+.page-digital-payments :is(.card,.payment-analysis-card,.payment-filter-panel,.payment-table-card),
+.page-mobile-banking-logs :is(.card,.mb-analysis-card,.mb-filter-panel,.mb-table-card),
+.page-payment-gateways :is(.card,.pgw-card,.pgw-form-card,.pgw-owner-strip),
+.page-mobile-banking-settings .card,
+.page-resellers :is(.pn-top,.pn-table,.pn-row,.pn-credit-modal .modal-content),
+.page-reseller-cashflow :is(.card,.rcf-kpi,.rcf-filter,.rcf-table-card),
+.page-reseller-ledger :is(.card,.rl-stat,.rl-filter-panel,.rl-table-card),
+.page-bandwidth-resellers :is(.card,.bw-stat,.bw-filter,.bw-table-card),
+.page-bandwidth-invoices :is(.card,.bwi-stat,.bwi-filter,.bwi-card),
+.page-bandwidth-tickets :is(.card,.bwt-filter,.bwt-card),
+.page-reseller-graphs .card,
+.page-pop-list .pop-card{
+  background:var(--sb-surface)!important;
+  color:var(--sb-text)!important;
+  border-color:var(--sb-line)!important;
+  box-shadow:var(--sb-card-shadow)!important;
+}
+
+:is(.page-ledger-summary,.page-billing-settings,.page-income-summary,.page-expense-input,.page-installation-charges,.page-digital-payments,.page-mobile-banking-logs,.page-payment-gateways,.page-mobile-banking-settings,.page-reseller-cashflow,.page-reseller-ledger,.page-bandwidth-resellers,.page-bandwidth-invoices,.page-bandwidth-tickets,.page-reseller-graphs,.page-pop-list) :is(.card-header,.card-footer){
+  background:var(--sb-surface)!important;
+  border-color:var(--sb-line)!important;
+  color:var(--sb-text)!important;
+}
+
+:is(.page-ledger-summary,.page-income-summary,.page-expense-input,.page-installation-charges,.page-digital-payments,.page-mobile-banking-logs,.page-reseller-cashflow,.page-reseller-ledger,.page-bandwidth-resellers,.page-bandwidth-invoices,.page-bandwidth-tickets,.page-pop-list) .table-responsive{
+  scrollbar-width:thin;
+  overscroll-behavior-inline:contain;
+}
+
+:is(.page-ledger-summary,.page-income-summary,.page-expense-input,.page-installation-charges,.page-digital-payments,.page-mobile-banking-logs,.page-reseller-cashflow,.page-reseller-ledger,.page-bandwidth-resellers,.page-bandwidth-invoices,.page-bandwidth-tickets,.page-pop-list) table thead th{
+  background:var(--sb-surface-soft)!important;
+  color:var(--sb-muted)!important;
+  border-color:var(--sb-line)!important;
+}
+:is(.page-ledger-summary,.page-income-summary,.page-expense-input,.page-installation-charges,.page-digital-payments,.page-mobile-banking-logs,.page-reseller-cashflow,.page-reseller-ledger,.page-bandwidth-resellers,.page-bandwidth-invoices,.page-bandwidth-tickets,.page-pop-list) table tbody td{
+  border-color:var(--sb-line)!important;
+}
+
+/* Customers / Online Customers: opaque sticky header and stable row geometry */
+.page-customers .customers-clean-scroll,
+.page-online-customers .online-noc-scroll{position:relative;isolation:isolate}
+.page-customers .customers-clean-table thead,
+.page-online-customers .online-noc-table thead{position:static!important}
+.page-customers .customers-clean-table thead th,
+.page-online-customers .online-noc-table thead th{
+  position:sticky!important;
+  top:0!important;
+  z-index:12!important;
+  background:var(--bs-tertiary-bg)!important;
+  background-clip:padding-box!important;
+  line-height:1.22!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding-top:.52rem!important;
+  padding-bottom:.52rem!important;
+  box-shadow:inset 0 -1px 0 var(--bs-border-color),0 1px 0 var(--bs-border-color)!important;
+}
+.page-customers .customers-clean-table tbody td,
+.page-online-customers .online-noc-table tbody td{
+  line-height:1.28!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding-top:.42rem!important;
+  padding-bottom:.42rem!important;
+}
+[data-bs-theme="dark"] .page-customers .customers-clean-table thead th,
+[data-bs-theme="dark"] .page-online-customers .online-noc-table thead th{
+  background:var(--bs-tertiary-bg)!important;
+  color:var(--bs-secondary-color)!important;
+}
+
+/* POP actions: fixed icon buttons in both themes */
+.page-pop-list .pop-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:5px!important;white-space:nowrap}
+.page-pop-list .pop-actions :is(.btn,button,a){
+  width:32px!important;height:32px!important;min-width:32px!important;padding:0!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  border-radius:8px!important;background:transparent;
+}
+.page-pop-list .pop-actions .btn i{line-height:1;font-size:.88rem}
+.page-pop-list .pop-actions form{display:inline-flex!important;margin:0!important}
+[data-bs-theme="dark"] .page-pop-list .pop-actions .btn-outline-secondary{color:var(--bs-secondary-color);border-color:var(--bs-border-color)}
+[data-bs-theme="dark"] .page-pop-list .pop-actions .btn:disabled{opacity:.35}
+
+/* Compact responsive KPI/card grids */
+.page-billing-settings .billing-settings-kpis,
+.page-bandwidth-resellers .bw-kpis,
+.page-reseller-ledger .rl-stats,
+.page-reseller-cashflow .rcf-kpis{gap:.65rem!important}
+.page-billing-settings .billing-kpi,
+.page-bandwidth-resellers .bw-stat,
+.page-reseller-ledger .rl-stat,
+.page-reseller-cashflow .rcf-kpi{padding:.72rem .8rem!important;border-radius:12px!important;min-height:72px}
+.page-installation-charges .ic-kpi,
+.page-bandwidth-invoices .bwi-stat,
+.page-bandwidth-tickets .card.shadow-sm.card-body{border:1px solid var(--sb-line)!important;background:var(--sb-surface)!important}
+
+/* Digital / MFS cards */
+.page-digital-payments .payment-analysis-card,
+.page-mobile-banking-logs .mb-analysis-card{background:var(--sb-surface)!important;border-color:var(--sb-line)!important;box-shadow:var(--sb-card-shadow)!important}
+.page-digital-payments .payment-analysis-card .value,
+.page-mobile-banking-logs .mb-analysis-card .value{color:var(--sb-text)!important}
+.page-digital-payments .payment-analysis-card :is(.label,.hint),
+.page-mobile-banking-logs .mb-analysis-card :is(.label,.hint){color:var(--sb-muted)!important}
+
+/* Payment gateways */
+.page-payment-gateways .pgw-owner-strip{background:var(--sb-surface-soft)!important}
+.page-payment-gateways .pgw-card,.page-payment-gateways .pgw-form-card{background:var(--sb-surface)!important}
+.page-payment-gateways .pgw-wallet,.page-payment-gateways .pgw-provider-option{background:var(--sb-surface-soft)!important}
+.page-payment-gateways .pgw-logo{background:#fff!important}
+.page-payment-gateways .pgw-actions{flex-wrap:wrap}
+.page-payment-gateways .pgw-actions .btn{min-height:32px}
+
+/* Mobile banking settings */
+.page-mobile-banking-settings .card{border:1px solid var(--sb-line)!important;border-radius:14px!important;box-shadow:var(--sb-card-shadow)!important}
+.page-mobile-banking-settings .card-body{padding:1rem!important}
+.page-mobile-banking-settings .form-text{color:var(--sb-muted)!important}
+.page-mobile-banking-settings .bg-body-tertiary{background:var(--sb-surface-soft)!important}
+
+/* Reseller pages */
+.page-resellers .pn-top,.page-resellers .pn-table{border-color:var(--sb-line)!important;background:var(--sb-surface)!important;color:var(--sb-text)!important}
+.page-resellers .pn-row{border-color:var(--sb-line)!important;background:var(--sb-surface)!important}
+.page-resellers .pn-row:hover{background:var(--sb-surface-soft)!important}
+.page-resellers .pn-actions{white-space:nowrap}
+.page-reseller-cashflow .rcf-table-card,
+.page-reseller-ledger .rl-table-card,
+.page-bandwidth-resellers .bw-table-card,
+.page-bandwidth-invoices .bwi-card,
+.page-bandwidth-tickets .bwt-card{overflow:hidden;background:var(--sb-surface)!important}
+
+/* NMS graphs */
+.page-reseller-graphs .nms-graph-card{border:1px solid var(--sb-line)!important;border-radius:14px!important;overflow:hidden;background:var(--sb-surface)!important}
+.page-reseller-graphs .nms-frame{background:var(--sb-surface-soft);border-radius:10px;overflow:hidden}
+.page-reseller-graphs iframe{background:var(--sb-surface-soft);border:0}
+.page-reseller-graphs .nms-refresh{min-height:210px;object-fit:contain;background:var(--sb-surface-soft)}
+
+/* Expense batch entry */
+.page-expense-input .expense-batch-card{border-radius:15px!important;overflow:hidden;margin-bottom:.85rem}
+.page-expense-input .expense-batch-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.page-expense-input .expense-entry-list{display:grid;gap:7px;padding:.8rem}
+.page-expense-input .expense-entry-row{display:grid;grid-template-columns:145px minmax(150px,1.15fr) 125px minmax(145px,1fr) minmax(140px,1fr) minmax(135px,.9fr) minmax(160px,1.25fr) 36px;gap:7px;align-items:end;padding:8px;border:1px solid var(--sb-line);border-radius:11px;background:var(--sb-surface-soft)}
+.page-expense-input .expense-entry-row .form-label{font-size:.66rem;margin-bottom:3px;color:var(--sb-muted);font-weight:700}
+.page-expense-input .expense-entry-row .form-control,.page-expense-input .expense-entry-row .form-select,.page-expense-input .expense-entry-row .input-group-text{min-height:36px;height:36px;font-size:.78rem}
+.page-expense-input .expense-entry-remove{width:34px;height:36px;display:grid;place-items:center;padding:0}
+.page-expense-input .expense-batch-actions{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.75rem .8rem;border-top:1px solid var(--sb-line);background:var(--sb-surface)}
+.page-expense-input .expense-history-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:.45rem;flex-wrap:wrap}
+
+/* Responsive behavior */
+@media(max-width:1199.98px){
+  .page-expense-input .expense-entry-row{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .page-expense-input .expense-entry-remove{align-self:end}
+}
+@media(max-width:991.98px){
+  .page-payment-gateways .pgw-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .page-billing-settings .billing-policy-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .page-reseller-graphs .col-xl-6{width:100%}
+}
+@media(max-width:767.98px){
+  .page-customers .customers-clean-table thead th,.page-online-customers .online-noc-table thead th{height:36px!important;min-height:36px!important;padding:.44rem .4rem!important}
+  .page-customers .customers-clean-table tbody td,.page-online-customers .online-noc-table tbody td{height:36px!important;min-height:36px!important;padding:.36rem .4rem!important}
+  .page-pop-list .pop-toolbar{align-items:flex-start!important}
+  .page-pop-list .pop-counts{width:100%;overflow-x:auto;flex-wrap:nowrap!important;padding-bottom:2px}
+  .page-pop-list .pop-counts .badge{white-space:nowrap}
+  .page-billing-settings .billing-settings-kpis,.page-bandwidth-resellers .bw-kpis,.page-reseller-ledger .rl-stats,.page-reseller-cashflow .rcf-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .page-payment-gateways .pgw-grid{grid-template-columns:1fr!important}
+  .page-payment-gateways .pgw-owner-strip{padding:.7rem!important}
+  .page-payment-gateways .pgw-provider-select{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .page-expense-input .expense-entry-row{grid-template-columns:repeat(2,minmax(0,1fr));padding:9px}
+  .page-expense-input .expense-entry-row>div:nth-last-child(1){grid-column:2}
+  .page-expense-input .expense-batch-actions{align-items:stretch;flex-direction:column}
+  .page-expense-input .expense-batch-actions .btn{width:100%}
+  .page-reseller-graphs .nms-refresh{min-height:150px}
+}
+@media(max-width:479.98px){
+  .page-billing-settings .billing-settings-kpis,.page-bandwidth-resellers .bw-kpis,.page-reseller-ledger .rl-stats,.page-reseller-cashflow .rcf-kpis{grid-template-columns:1fr!important}
+  .page-expense-input .expense-entry-row{grid-template-columns:1fr}
+  .page-expense-input .expense-entry-row>div:nth-last-child(1){grid-column:auto}
+  .page-payment-gateways .pgw-mode-tabs{display:grid!important;grid-template-columns:1fr}
+}
+
+/* Bootstrap light badges/buttons must remain readable in dark mode */
+[data-bs-theme="dark"] :is(.page-pop-list,.page-billing-settings,.page-payment-gateways,.page-mobile-banking-settings,.page-bandwidth-resellers,.page-bandwidth-invoices,.page-bandwidth-tickets) .text-bg-light{
+  background:var(--bs-tertiary-bg)!important;color:var(--bs-body-color)!important;border-color:var(--bs-border-color)!important;
+}
+[data-bs-theme="dark"] :is(.page-pop-list,.page-payment-gateways,.page-mobile-banking-settings) .btn-light{
+  background:var(--bs-tertiary-bg)!important;color:var(--bs-body-color)!important;border-color:var(--bs-border-color)!important;
+}
+
+/* Keep toolbars inside viewport on tablets/phones */
+@media(max-width:767.98px){
+  :is(.page-ledger-summary,.page-income-summary,.page-installation-charges,.page-digital-payments,.page-mobile-banking-logs,.page-reseller-cashflow,.page-bandwidth-invoices,.page-bandwidth-tickets) :is(.finance-toolbar,.bwi-toolbar,.bwt-toolbar,.rcf-toolbar,.mb-toolbar){width:100%;justify-content:flex-end}
+  .page-digital-payments .row.g-2.g-lg-3>.col-6,
+  .page-mobile-banking-logs .row.g-2.g-lg-3>.col-6{width:50%}
+  .page-installation-charges .row.g-2.mb-3>.col-6{width:50%}
+  .page-reseller-cashflow .rcf-table,.page-reseller-ledger .rl-table,.page-bandwidth-resellers .bw-list,.page-bandwidth-invoices .bwi-table,.page-bandwidth-tickets .bwt-table{font-size:.72rem!important}
+  .page-mobile-banking-settings .row.g-3>[class*="col-lg-"]{width:100%}
+}

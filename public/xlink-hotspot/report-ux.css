@@ -1,0 +1,33 @@
+/* ISP Billing v1.3.0.6 — shared report/filter/table usability */
+.report-filter-toggle,.auto-filter-toggle{
+  width:42px;height:42px;min-width:42px;border-radius:12px!important;
+  display:inline-flex!important;align-items:center;justify-content:center;
+  border:1px solid var(--bs-border-color)!important;background:var(--bs-body-bg)!important;
+  color:var(--bs-emphasis-color)!important;box-shadow:0 7px 18px rgba(15,23,42,.06)
+}
+.report-filter-toggle:hover,.auto-filter-toggle:hover,.report-filter-toggle[aria-expanded="true"],.auto-filter-toggle[aria-expanded="true"]{
+  border-color:color-mix(in srgb,var(--brand-accent,#2563eb) 55%,var(--bs-border-color))!important;
+  color:var(--brand-accent,#2563eb)!important;background:color-mix(in srgb,var(--brand-accent,#2563eb) 10%,var(--bs-body-bg))!important
+}
+.report-filter-toggle .filter-dot,.auto-filter-toggle .filter-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:#ef4444;right:6px;top:6px;border:2px solid var(--bs-body-bg)}
+.report-filter-panel[hidden],.auto-filter-form[hidden]{display:none!important}
+.auto-filter-shell{display:flex;justify-content:flex-end;align-items:center;margin-bottom:.7rem}
+.auto-filter-shell+.auto-filter-form:not([hidden]){margin-top:.25rem}
+.auto-table-pager{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.8rem 1rem;border-top:1px solid var(--bs-border-color);background:var(--bs-body-bg)}
+.auto-table-pager .pagination{margin:0}
+.analysis-card-link{display:block;text-decoration:none;color:inherit;height:100%}
+.analysis-card-link .analysis-card{transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.analysis-card-link:hover .analysis-card{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent,#2563eb) 65%,var(--bs-border-color));box-shadow:0 15px 34px rgba(15,23,42,.13)}
+.analysis-card-link.is-active .analysis-card{outline:3px solid color-mix(in srgb,var(--accent,#2563eb) 22%,transparent);border-color:var(--accent,#2563eb)}
+.report-click-row{cursor:pointer;transition:background-color .15s ease}
+.report-click-row:hover{background:color-mix(in srgb,var(--brand-accent,#2563eb) 7%,var(--bs-body-bg))!important}
+.report-click-row.is-active{background:color-mix(in srgb,var(--brand-accent,#2563eb) 11%,var(--bs-body-bg))!important}
+.collection-user-link{display:block;text-decoration:none;color:inherit}
+.collection-user-link:hover,.collection-user-link.is-active{background:color-mix(in srgb,var(--brand-accent,#2563eb) 7%,var(--bs-body-bg))}
+.network-overview-card{position:relative;overflow:hidden;border:1px solid var(--bs-border-color);border-radius:18px;background:var(--bs-body-bg);box-shadow:0 9px 24px rgba(15,23,42,.06);height:100%;transition:transform .15s ease,border-color .15s ease}
+.network-overview-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--card-accent,#2563eb) 55%,var(--bs-border-color))}
+.network-overview-card .card-body{padding:1.15rem 1.2rem}.network-overview-card .label{font-size:.76rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--bs-secondary-color)}
+.network-overview-card .value{font-size:1.65rem;font-weight:900;line-height:1.15}.network-overview-card .meta{font-size:.82rem;color:var(--bs-secondary-color)}
+.network-overview-card .icon{position:absolute;right:1rem;top:1rem;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:#fff;background:var(--card-accent,#2563eb);font-size:1.18rem}
+@media(max-width:575.98px){.report-filter-toggle,.auto-filter-toggle{width:40px;height:40px;min-width:40px}.auto-table-pager{padding:.65rem .75rem}.network-overview-card .value{font-size:1.4rem}}
+@media print{.report-filter-toggle,.auto-filter-toggle,.auto-filter-shell,.auto-table-pager{display:none!important}.report-filter-panel[hidden],.auto-filter-form[hidden]{display:block!important}}

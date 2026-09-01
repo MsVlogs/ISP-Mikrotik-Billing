@@ -274,13 +274,20 @@
 
                 <!-- Hotspot (Unified) -->
             <li class="nav-item">
-                <a wire:navigate.hover wire:current="active" class="nav-link"
-                    href="{{ route('mikrotik-hotspot-manager') }}">
-                    <div class="d-flex align-items-center">
-                        <span class="nav-link-icon"><i class="bi bi-wifi"></i></span>
-                        <span class="nav-link-text ps-1">{{ __('Hotspot') }}</span>
-                    </div>
+                <a class="nav-link dropdown-indicator collapsed" href="#hotspotMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="hotspotMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-wifi"></i></span><span class="nav-link-text ps-1">{{ __('Hotspot') }}</span></div>
                 </a>
+                <div class="collapse ps-4" id="hotspotMenu">
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-dashboard') }}"><span class="nav-link-text ps-1">{{ __('Dashboard') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-customer-add') }}"><span class="nav-link-text ps-1">{{ __('Add Customer') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-customers') }}"><span class="nav-link-text ps-1">{{ __('Customer List') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-online-customers') }}"><span class="nav-link-text ps-1">{{ __('Online Customers') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-ledger') }}"><span class="nav-link-text ps-1">{{ __('Customer Ledger') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-packages') }}"><span class="nav-link-text ps-1">{{ __('Packages') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-cards') }}"><span class="nav-link-text ps-1">{{ __('Card List') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-card-print-setup') }}"><span class="nav-link-text ps-1">{{ __('Print Setup') }}</span></a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('hotspot-page-setup') }}"><span class="nav-link-text ps-1">{{ __('Hotspot Setup') }}</span></a>
+                </div>
             </li>
             <li class="nav-item">
                 <div class="row navbar-vertical-label-wrapper mt-3 mb-2">

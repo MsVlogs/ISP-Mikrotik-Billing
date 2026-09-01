@@ -157,6 +157,14 @@ class HotspotManager extends Component
 
     public function mount(): void
     {
+        $routeTab = [
+            'hotspot-dashboard' => 'dashboard', 'hotspot-customer-add' => 'users',
+            'hotspot-customers' => 'users', 'hotspot-online-customers' => 'sessions',
+            'hotspot-ledger' => 'income', 'hotspot-packages' => 'profiles',
+            'hotspot-cards' => 'vouchers', 'hotspot-card-print-setup' => 'vouchers',
+            'hotspot-page-setup' => 'setup', 'mikrotik-hotspot-manager' => 'dashboard',
+        ][request()->route()?->getName() ?? ''] ?? $this->activeTab;
+        $this->activeTab = $routeTab;
         if (! hasAccess(['Super Admin'], ['mikrotik-setup'])) {
             abort(403);
         }
