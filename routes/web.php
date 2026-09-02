@@ -534,17 +534,13 @@ Route::middleware([
             return view('xlink.communication-center', ['tab'=>'whatsapp','tickets'=>$tickets]);
         })->name('communication-center.whatsapp');
         Route::get('/support-center', function () {
-            $tickets = \App\Models\SupportTicket::query();
-            $open = (clone $tickets)->whereIn('status',['open','pending','in_progress'])->count();
-            $total = (clone $tickets)->count();
-            return view('xlink.module', [
-                'title'=>'Support Center','icon'=>'bi-headset','description'=>'Customer support desk with live ticket visibility and operational logs.',
-                'stats'=>[['label'=>'Open Tickets','value'=>$open],['label'=>'Total Tickets','value'=>$total],['label'=>'Status','value'=>'Online']],
-                'links'=>[
-                    ['url'=>route('admin-tickets'),'label'=>'Support Tickets','hint'=>'Manage customer issues'],
-                    ['url'=>route('admin.activity-logs'),'label'=>'Activity Logs','hint'=>'Operational history'],
-                    ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication activity'],
-                ],
+            $tickets = \App\Models\SupportTicket::with('customer')->latest()->take(12)->get();
+            return view('xlink.support-center', [
+                'tickets'=>$tickets,
+                'open'=>\App\Models\SupportTicket::whereIn('status',['open','pending'])->count(),
+                'inProgress'=>\App\Models\SupportTicket::where('status','in_progress')->count(),
+                'resolved'=>\App\Models\SupportTicket::where('status','resolved')->count(),
+                'total'=>\App\Models\SupportTicket::count(),
             ]);
         })->name('xlink.support-center');
         Route::get('/team-access', function () {
@@ -645,7 +641,6 @@ Route::middleware([
         Route::post('/bandwidth-tickets', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'storeTicket'])->name('bandwidth-tickets.store');
         Route::put('/bandwidth-tickets/{ticket}', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'updateTicket'])->name('bandwidth-tickets.update');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
-        Route::get('/support-center', fn () => redirect()->route('admin-tickets'))->name('xlink.support-center');
         Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('xlink.team-access');
         Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('xlink.system-settings');
         Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('xlink.billing-helpline');

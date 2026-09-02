@@ -397,8 +397,16 @@
                     <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.settings') }}">{{ __('Communication Settings') }}</a>
                     <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.whatsapp') }}">{{ __('WhatsApp Inbox') }}</a>
                 </div>
+                <a class="nav-link dropdown-indicator collapsed" href="#supportCenterMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="supportCenterMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-life-preserver"></i></span><span class="nav-link-text ps-1">{{ __('Support Center') }}</span></div>
+                </a>
+                <div class="collapse ps-4" id="supportCenterMenu">
+                    <a wire:navigate.hover class="nav-link" href="{{ route('xlink.support-center') }}">{{ __('Overview') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('admin-tickets') }}">{{ __('Support Tickets') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('admin.activity-logs') }}">{{ __('Activity Logs') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('admin.login-logs') }}">{{ __('Login Logs') }}</a>
+                </div>
                 @foreach([
-                    ['xlink.support-center','Support Center','bi-life-preserver','supportCenterMenu'],
                     ['xlink.team-access','Team & Access','bi-people','teamAccessMenu'],
                     ['xlink.system-settings','System Settings','bi-gear','systemSettingsMenu'],
                     ['xlink.billing-helpline','Billing Helpline','bi-headset','billingHelplineMenu'],
