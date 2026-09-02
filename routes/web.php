@@ -563,19 +563,12 @@ Route::middleware([
         })->name('xlink.team-access');
         Route::get('/system-settings', function () {
             $debug = config('app.debug') ? 'ON' : 'OFF';
-            return view('xlink.module', [
-                'title'=>'System Settings','icon'=>'bi-gear','description'=>'Central application, branding, MikroTik and messaging configuration.',
-                'stats'=>[
-                    ['label'=>'Environment','value'=>app()->environment()],
-                    ['label'=>'Debug','value'=>$debug],
-                    ['label'=>'Status','value'=>'Online'],
-                ],
-                'links'=>[
-                    ['url'=>route('site-settings'),'label'=>'Site Settings','hint'=>'Branding and site configuration'],
-                    ['url'=>route('mikrotik-sync'),'label'=>'MikroTik Setup','hint'=>'Router integration and synchronization'],
-                    ['url'=>route('sms-setup'),'label'=>'SMS Setup','hint'=>'Gateway and messaging configuration'],
-                    ['url'=>route('main-site-setup'),'label'=>'Main Site Setup','hint'=>'Website content configuration'],
-                ],
+            $backups = is_dir(base_path('backups')) ? count(glob(base_path('backups/*'))) : 0;
+            return view('xlink.system-settings', [
+                'environment'=>app()->environment(),
+                'debug'=>$debug,
+                'backups'=>$backups,
+                'siteName'=>\App\Models\MainSiteData::where('key','site_name')->value('value') ?: config('app.name'),
             ]);
         })->name('xlink.system-settings');
         Route::get('/billing-helpline', function () {
@@ -641,7 +634,6 @@ Route::middleware([
         Route::post('/bandwidth-tickets', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'storeTicket'])->name('bandwidth-tickets.store');
         Route::put('/bandwidth-tickets/{ticket}', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'updateTicket'])->name('bandwidth-tickets.update');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
-        Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('xlink.system-settings');
         Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('xlink.billing-helpline');
         Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('xlink.profile-security');
 
