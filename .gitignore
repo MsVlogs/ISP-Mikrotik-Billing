@@ -26,3 +26,6 @@ yarn-error.log
 # Local backup / copy files
 * copy.php
 /backups/
+
+# Reference archives (local-only, never commit)
+reference/*.zip
