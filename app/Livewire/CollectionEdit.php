@@ -170,7 +170,7 @@ class CollectionEdit extends Component
             if ($response && $response->isSuccessful()) {
                 flash()->success($response->getMessage());
             } else {
-                flash()->error($response ? $response->getMessage() : 'Failed to send SMS notification.');
+                flash()->error('Failed to send SMS notification. Please try again.');
             }
             $this->reset();
             $this->dispatch('focusInput');
@@ -271,11 +271,12 @@ class CollectionEdit extends Component
                         if ($response && $response->isSuccessful()) {
                             flash()->success($response->getMessage());
                         } else {
-                            flash()->error($response ? $response->getMessage() : 'Failed to send SMS notification.');
+                            flash()->error('Failed to send SMS notification. Please try again.');
                         }
                     } catch (\Exception $smsEx) {
                         \Log::error('Collection Delete SMS failed: '.$smsEx->getMessage());
-                        flash()->error('Collection Delete SMS failed: '.$smsEx->getMessage());
+                        report($smsEx);
+                        flash()->error('Collection delete SMS notification failed.');
                     }
                 }
 

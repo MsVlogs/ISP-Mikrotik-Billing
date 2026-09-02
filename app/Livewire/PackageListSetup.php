@@ -279,7 +279,8 @@ class PackageListSetup extends Component
                 flash()->success('Loaded '.count($this->mikrotik_pools).' pool(s) from '.array_key_first($routersPools).'.');
             }
         } catch (\Exception $e) {
-            flash()->error('Error loading pools: '.$e->getMessage());
+            report($e);
+            flash()->error('Error loading pools. Please try again.');
         }
     }
 

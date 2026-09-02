@@ -134,7 +134,7 @@ class SslCommerzPaymentController extends Controller
                     'gateway' => 'SSLCommerz',
                     'customer' => $customer,
                     'amount' => $amount,
-                    'reason' => 'Connection exception: '.$e->getMessage(),
+                    'reason' => 'Payment gateway connection failed. Please try again.',
                 ]);
             }
 

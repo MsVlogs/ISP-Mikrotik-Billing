@@ -327,7 +327,8 @@ class NewCustomer extends Component
                         }
                     }
                 } catch (\Exception $e) {
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
 
                 $this->profileNames = [];
@@ -350,7 +351,8 @@ class NewCustomer extends Component
                         }
                     }
                 } catch (\Exception $e) {
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
 
                 $this->interfaceNames = [];
@@ -520,7 +522,8 @@ class NewCustomer extends Component
                     $this->createUser();
 
                 } catch (\Exception $e) {
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
             } elseif ($this->service == 'static') {
                 try {
@@ -533,7 +536,8 @@ class NewCustomer extends Component
                     // Router write succeeded
                     $this->createUser();
                 } catch (\Exception $e) {
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
             } else {
                 $this->createUser();

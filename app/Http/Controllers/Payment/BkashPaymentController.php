@@ -137,7 +137,7 @@ class BkashPaymentController extends Controller
             }
 
             return redirect()->route('filament.portal.pages.pay-bill')
-                ->with('error', 'bKash service temporarily unavailable: '.$e->getMessage());
+                ->with('error', 'bKash service temporarily unavailable. Please try again.');
         }
     }
 
@@ -236,7 +236,7 @@ class BkashPaymentController extends Controller
                 ->with('success', 'Payment of BDT '.$amount.' simulated successfully via '.strtoupper($gateway).'. Your account is active.');
         } catch (\Exception $e) {
             return redirect()->route('filament.portal.pages.pay-bill')
-                ->with('error', 'Failed to process simulated payment: '.$e->getMessage());
+                ->with('error', 'Failed to process simulated payment. Please try again.');
         }
     }
 

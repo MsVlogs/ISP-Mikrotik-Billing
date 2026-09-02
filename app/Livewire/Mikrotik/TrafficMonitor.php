@@ -85,7 +85,8 @@ class TrafficMonitor extends Component
                     ->first(fn ($i) => str_contains($i, 'ether')) ?? $this->interfaces[0];
             }
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Load error. Please try again.');
         }
     }
 

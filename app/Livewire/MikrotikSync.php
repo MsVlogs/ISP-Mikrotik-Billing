@@ -324,7 +324,8 @@ class MikrotikSync extends Component
                 flash()->success("Router {$routerName} synchronized! Created: {$createdCount}, Updated: {$updatedCount}, Unchanged: {$unchangedCount}");
             } catch (\Exception $e) {
                 DB::rollBack();
-                flash()->error('Error syncing router '.$routerName.': '.$e->getMessage());
+                report($e);
+                flash()->error('Error syncing router. Please check the router connection and try again.');
             }
         }
     }

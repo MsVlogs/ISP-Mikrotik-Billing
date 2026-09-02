@@ -118,7 +118,8 @@ class ManageTickets extends Component
                     }
                 } catch (\Exception $smsEx) {
                     \Log::warning("Failed to send SMS reply for ticket #{$ticket->ticket_no}: ".$smsEx->getMessage());
-                    flash()->error('Failed to send SMS notification: '.$smsEx->getMessage());
+                    report($smsEx);
+                    flash()->error('Failed to send SMS notification. Please try again.');
                 }
             }
         }

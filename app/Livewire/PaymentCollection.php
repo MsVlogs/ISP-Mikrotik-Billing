@@ -274,7 +274,7 @@ class PaymentCollection extends Component
             if ($response && $response->isSuccessful()) {
                 flash()->success($response->getMessage());
             } else {
-                flash()->error($response ? $response->getMessage() : 'Failed to send SMS notification.');
+                flash()->error('Failed to send SMS notification. Please try again.');
             }
         } catch (\Throwable $th) {
             report($th);
