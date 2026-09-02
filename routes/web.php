@@ -582,20 +582,12 @@ Route::middleware([
             return view('xlink.billing-helpline', compact('open','inProgress','resolved','total','highPriority','recentTickets'));
         })->name('xlink.billing-helpline');
         Route::get('/profile-security', function () {
-            return view('xlink.module', [
-                'title'=>'Profile & Security','icon'=>'bi-shield-lock','description'=>'Profile, authentication, sessions and access-security controls.',
-                'stats'=>[
-                    ['label'=>'Authentication','value'=>'Protected'],
-                    ['label'=>'2FA','value'=>'Available'],
-                    ['label'=>'Debug','value'=>config('app.debug') ? 'ON' : 'OFF'],
-                ],
-                'links'=>[
-                    ['url'=>route('profile.show'),'label'=>'My Profile','hint'=>'Profile and personal settings'],
-                    ['url'=>route('two-factor.login'),'label'=>'Two-Factor Authentication','hint'=>'Manage account 2FA'],
-                    ['url'=>route('xlink.team-access'),'label'=>'Team & Access','hint'=>'Users and roles'],
-                    ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication events'],
-                ],
-            ]);
+            $user = auth()->user();
+            $twoFactorEnabled = ! is_null($user->two_factor_confirmed_at);
+            $tokenCount = class_exists(\Laravel\Sanctum\PersonalAccessToken::class)
+                ? \Laravel\Sanctum\PersonalAccessToken::where('tokenable_type', get_class($user))->where('tokenable_id', $user->getKey())->count()
+                : 0;
+            return view('xlink.profile-security', compact('user', 'twoFactorEnabled', 'tokenCount'));
         })->name('xlink.profile-security');
 
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
@@ -625,7 +617,6 @@ Route::middleware([
         Route::post('/bandwidth-tickets', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'storeTicket'])->name('bandwidth-tickets.store');
         Route::put('/bandwidth-tickets/{ticket}', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'updateTicket'])->name('bandwidth-tickets.update');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
-        Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('xlink.profile-security');
 
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
         // Route::get('/edit-customer', EditCustomer::class);
