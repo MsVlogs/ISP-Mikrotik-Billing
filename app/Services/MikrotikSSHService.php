@@ -32,7 +32,8 @@ class MikrotikSSHService
         try {
             return (string) $this->ssh->exec($command);
         } catch (\RuntimeException $e) {
-            return 'Error: '.$e->getMessage();
+            report($e);
+            return 'Error: MikroTik SSH command failed.';
         }
     }
 

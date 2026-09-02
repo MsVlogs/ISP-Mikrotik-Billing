@@ -464,7 +464,8 @@ class MainSiteSetup extends Component implements HasActions, HasForms
             }
         } catch (\Exception $e) {
             Log::error('MainSiteSetup save failed: '.json_encode($e->getMessage()));
-            flash()->error('Save failed: '.$e->getMessage());
+            report($e);
+            flash()->error('Save failed. Please try again.');
         }
     }
 
@@ -751,7 +752,8 @@ class MainSiteSetup extends Component implements HasActions, HasForms
 
             flash()->success($count > 0 ? "Fetched {$count} fresh logs from your selected routers." : 'No new entries retrieved from selected routers.');
         } catch (\Exception $e) {
-            flash()->error('Failed to poll routers: '.$e->getMessage());
+            report($e);
+            flash()->error('Failed to poll routers. Please try again.');
         }
     }
 

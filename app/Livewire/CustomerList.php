@@ -403,7 +403,8 @@ class CustomerList extends Component
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('Failed to enable customer '.$unique_id.': '.$e->getMessage());
-            flash()->addError('Failed to enable customer on router: '.$e->getMessage());
+            report($e);
+            flash()->addError('Failed to enable customer on router. Please try again.');
         }
 
         $this->dispatch('customer-action-done');
@@ -486,7 +487,8 @@ class CustomerList extends Component
             flash()->success('Billing information updated successfully.');
             $this->closeBillModal();
         } catch (\Exception $e) {
-            flash()->addError($e->getMessage());
+            report($e);
+            flash()->addError('Operation failed. Please try again.');
         }
     }
 
@@ -540,10 +542,12 @@ class CustomerList extends Component
             } catch (\Exception $e) {
                 \DB::rollBack();
                 \Log::error('Failed to delete customer '.$decryptedId.': '.$e->getMessage());
-                flash()->addError('Failed to delete customer on router: '.$e->getMessage());
+                report($e);
+            flash()->addError('Failed to delete customer on router. Please try again.');
             }
         } catch (\Exception $e) {
-            flash()->addError($e->getMessage());
+            report($e);
+            flash()->addError('Operation failed. Please try again.');
         }
 
         $this->dispatch('customer-action-done');
@@ -596,7 +600,8 @@ class CustomerList extends Component
             flash()->addSuccess("Customer successfully pushed to MikroTik router.");
         } catch (\Exception $e) {
             \Log::error("Failed to push customer: " . $e->getMessage());
-            flash()->addError("Failed to push to router: " . $e->getMessage());
+            report($e);
+            flash()->addError('Failed to push to router. Please try again.');
         }
 
         $this->dispatch('customer-action-done');
@@ -641,7 +646,8 @@ class CustomerList extends Component
 
         } catch (\Exception $e) {
             \Log::error("Failed bulk push to routers: " . $e->getMessage());
-            flash()->addError("Failed to push all customers: " . $e->getMessage());
+            report($e);
+            flash()->addError('Failed to push all customers. Please try again.');
         }
 
         $this->dispatch('customer-action-done');

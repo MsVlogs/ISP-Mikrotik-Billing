@@ -55,7 +55,8 @@ class MikrotikApiService
 
             return $response;
         } catch (Exception $e) {
-            return 'Error: '.$e->getMessage();
+            report($e);
+            return 'Error: MikroTik API command failed.';
         }
     }
 }

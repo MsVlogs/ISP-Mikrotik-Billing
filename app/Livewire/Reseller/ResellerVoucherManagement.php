@@ -146,7 +146,8 @@ class ResellerVoucherManagement extends Component
             flash()->success("Successfully generated {$generatedCount} vouchers. BDT ".number_format($totalCost, 2).' was debited from your wallet.');
         } catch (\Exception $e) {
             DB::rollBack();
-            flash()->error('Failed to generate vouchers: '.$e->getMessage());
+            report($e);
+            flash()->error('Failed to generate vouchers. Please try again.');
 
             return;
         }
@@ -209,7 +210,8 @@ class ResellerVoucherManagement extends Component
             flash()->success("Successfully cancelled voucher {$voucher->code}. BDT ".number_format($voucher->value, 2).' has been refunded to your wallet.');
         } catch (\Exception $e) {
             DB::rollBack();
-            flash()->error('Failed to cancel voucher: '.$e->getMessage());
+            report($e);
+            flash()->error('Failed to cancel voucher. Please try again.');
         }
     }
 

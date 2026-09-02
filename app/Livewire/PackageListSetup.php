@@ -186,7 +186,8 @@ class PackageListSetup extends Component
             \Log::error("PackageListSetup: FAILED to save or sync package '{$this->package_name}': ".$e->getMessage(), [
                 'exception' => $e,
             ]);
-            flash()->error('Error saving data: '.$e->getMessage());
+            report($e);
+            flash()->error('Error saving data. Please try again.');
         }
     }
 
@@ -394,7 +395,8 @@ class PackageListSetup extends Component
             $this->dataRender();
         } catch (\Exception $e) {
             \Log::error('PackageListSetup: Two-Way Sync FAILED: '.$e->getMessage());
-            flash()->error('Full sync failed: '.$e->getMessage());
+            report($e);
+            flash()->error('Full sync failed. Please try again.');
         }
     }
 

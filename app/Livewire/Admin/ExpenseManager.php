@@ -193,7 +193,8 @@ class ExpenseManager extends Component
             $this->userSuggestions = collect();
             $this->resetPage();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

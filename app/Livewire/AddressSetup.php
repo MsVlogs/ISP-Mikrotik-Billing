@@ -108,7 +108,8 @@ class AddressSetup extends Component
             );
             flash()->success('Data saved successfully!');
         } catch (\Exception $e) {
-            flash()->error('Error saving data: '.$e->getMessage());
+            report($e);
+            flash()->error('Error saving data. Please try again.');
         }
         $this->reset();
     }

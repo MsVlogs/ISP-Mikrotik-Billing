@@ -1033,7 +1033,8 @@ class MikrotikController extends Controller
 
             return 'success';
         } catch (\Exception $e) {
-            return 'Error: '.$e->getMessage();
+            report($e);
+            return 'Error: Unable to execute the router command.';
         }
     }
 
@@ -1309,7 +1310,8 @@ class MikrotikController extends Controller
         try {
             return $this->singleWrite($routerName, '/ip hotspot active remove [find user='.$this->mtQuote($user).']');
         } catch (\Exception $e) {
-            return 'Error: '.$e->getMessage();
+            report($e);
+            return 'Error: Unable to execute the router command.';
         }
     }
 
@@ -2004,7 +2006,8 @@ class MikrotikController extends Controller
 
                 $backupCreated = true;
             } catch (\Exception $e) {
-                return ['success' => false, 'message' => 'SSH Backup failed: '.$e->getMessage(), 'warnings' => $warnings];
+                report($e);
+                return ['success' => false, 'message' => 'SSH backup failed. Please try again.', 'warnings' => $warnings];
             }
         }
 

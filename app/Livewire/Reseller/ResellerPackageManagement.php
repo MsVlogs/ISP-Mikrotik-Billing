@@ -115,7 +115,8 @@ class ResellerPackageManagement extends Component
             $pkg->delete();
             flash()->success('Custom package deleted successfully.');
         } catch (\Exception $e) {
-            flash()->error('Failed to delete package: '.$e->getMessage());
+            report($e);
+            flash()->error('Failed to delete package. Please try again.');
         }
     }
 

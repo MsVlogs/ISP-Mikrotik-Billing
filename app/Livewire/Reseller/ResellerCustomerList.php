@@ -222,7 +222,8 @@ class ResellerCustomerList extends Component
             flash()->addSuccess('Customer deleted successfully.');
         } catch (\Exception $e) {
             \DB::rollBack();
-            flash()->addError('Failed to delete customer: '.$e->getMessage());
+            report($e);
+            flash()->addError('Failed to delete customer. Please try again.');
         }
 
         $this->dispatch('customer-action-done');

@@ -250,7 +250,8 @@ class PaymentCollection extends Component
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            sweetalert()->error($th->getMessage(), ['title' => 'Error']);
+            report($th);
+            sweetalert()->error('Unable to process the payment action. Please try again.', ['title' => 'Error']);
             return;
         }
 
@@ -276,7 +277,8 @@ class PaymentCollection extends Component
                 flash()->error($response ? $response->getMessage() : 'Failed to send SMS notification.');
             }
         } catch (\Throwable $th) {
-            sweetalert()->error($th->getMessage(), ['title' => 'Error']);
+            report($th);
+            sweetalert()->error('Unable to process the payment action. Please try again.', ['title' => 'Error']);
         } finally {
             $this->reset();
             $this->dispatch('focusInput');

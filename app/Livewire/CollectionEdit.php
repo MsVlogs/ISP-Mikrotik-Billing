@@ -176,7 +176,8 @@ class CollectionEdit extends Component
             $this->dispatch('focusInput');
         } catch (\Throwable $th) {
             DB::rollBack();
-            flash('Error:'.$th->getMessage())->error();
+            report($th);
+                flash('Unable to process the collection action. Please try again.')->error();
         }
     }
 
@@ -281,7 +282,8 @@ class CollectionEdit extends Component
                 $this->info_data = [];
             } catch (\Exception $e) {
                 DB::rollBack();
-                flash()->error('Error deleting collection: '.$e->getMessage());
+                report($e);
+                flash()->error('Error deleting collection. Please try again.');
             }
         } else {
             flash()->error('Collection not found.');

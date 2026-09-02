@@ -550,7 +550,8 @@ class NewCustomer extends Component
             // Re-throw the validation exception to allow @error directive to work
             throw $e;
         } catch (\Exception $e) {
-            flash()->error('Error: '.$e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -739,7 +740,8 @@ class NewCustomer extends Component
             if (file_exists(public_path($path))) {
                 unlink(public_path($path));
             }
-            flash()->error('Error: '.$e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
