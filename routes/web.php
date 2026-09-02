@@ -510,17 +510,29 @@ Route::middleware([
         Route::get('/communication-center', function () {
             $templates = \App\Models\SmsTemplate::count();
             $notifications = \App\Models\NotificationLogs::count();
-            return view('xlink.module', [
-                'title'=>'Communication Center','icon'=>'bi-chat-dots','description'=>'Central SMS, notifications and customer communication tools.',
-                'stats'=>[['label'=>'SMS Templates','value'=>$templates],['label'=>'Notifications','value'=>$notifications],['label'=>'Bridge','value'=>'Ready']],
-                'links'=>[
-                    ['url'=>route('sms-setup'),'label'=>'SMS Setup','hint'=>'Gateway and messaging configuration'],
-                    ['url'=>route('sms-bridge.index'),'label'=>'SMS Bridge','hint'=>'Bridge operations'],
-                    ['url'=>route('notifications'),'label'=>'Notifications','hint'=>'Notification center'],
-                    ['url'=>route('admin-tickets'),'label'=>'Support Tickets','hint'=>'Customer communication'],
-                ],
-            ]);
+            $tickets = \App\Models\SupportTicket::count();
+            return view('xlink.communication-center', ['tab'=>'dashboard','stats'=>[['label'=>'SMS Templates','value'=>$templates],['label'=>'Notifications','value'=>$notifications],['label'=>'Conversations','value'=>$tickets]]]);
         })->name('xlink.communication-center');
+        Route::get('/communication-center/chat', function () {
+            $tickets = \App\Models\SupportTicket::with('customer')->latest()->paginate(20)->withQueryString();
+            return view('xlink.communication-center', ['tab'=>'chat','tickets'=>$tickets]);
+        })->name('communication-center.chat');
+        Route::get('/communication-center/settings', function () {
+            $whatsapp = \App\Models\MainSiteData::where('key','site_whatsapp')->value('value');
+            return view('xlink.communication-center', ['tab'=>'settings','whatsapp'=>$whatsapp]);
+        })->name('communication-center.settings');
+        Route::post('/communication-center/settings', function (\Illuminate\Http\Request $r) {
+            $d=$r->validate(['whatsapp'=>'nullable|string|max:30','notification_email'=>'nullable|email|max:190','notification_url'=>'nullable|url|max:500']);
+            foreach ([['site_whatsapp',$d['whatsapp']??null],['notification_email',$d['notification_email']??null],['notification_url',$d['notification_url']??null]] as [$k,$v]) {
+                if ($v===null || $v==='') continue;
+                \App\Models\MainSiteData::updateOrCreate(['key'=>$k],['value'=>$v]);
+            }
+            return back()->with('communication_message','Communication settings updated.');
+        })->name('communication-center.settings.update');
+        Route::get('/communication-center/whatsapp', function () {
+            $tickets = \App\Models\SupportTicket::with('customer')->latest()->paginate(20)->withQueryString();
+            return view('xlink.communication-center', ['tab'=>'whatsapp','tickets'=>$tickets]);
+        })->name('communication-center.whatsapp');
         Route::get('/support-center', function () {
             $tickets = \App\Models\SupportTicket::query();
             $open = (clone $tickets)->whereIn('status',['open','pending','in_progress'])->count();
@@ -633,7 +645,6 @@ Route::middleware([
         Route::post('/bandwidth-tickets', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'storeTicket'])->name('bandwidth-tickets.store');
         Route::put('/bandwidth-tickets/{ticket}', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'updateTicket'])->name('bandwidth-tickets.update');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
-        Route::get('/communication-center', fn () => redirect()->route('sms-bridge.index'))->name('xlink.communication-center');
         Route::get('/support-center', fn () => redirect()->route('admin-tickets'))->name('xlink.support-center');
         Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('xlink.team-access');
         Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('xlink.system-settings');

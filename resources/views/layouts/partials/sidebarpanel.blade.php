@@ -388,8 +388,16 @@
                     <a wire:navigate.hover class="nav-link" href="{{ route('stock-inventory.damaged') }}">{{ __('Lost & Damaged') }}</a>
                     <a wire:navigate.hover class="nav-link" href="{{ route('stock-inventory.settings') }}">{{ __('Settings') }}</a>
                 </div>
+                <a class="nav-link dropdown-indicator collapsed" href="#communicationCenterMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="communicationCenterMenu">
+                    <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-chat-dots"></i></span><span class="nav-link-text ps-1">{{ __('Communication Center') }}</span></div>
+                </a>
+                <div class="collapse ps-4" id="communicationCenterMenu">
+                    <a wire:navigate.hover class="nav-link" href="{{ route('xlink.communication-center') }}">{{ __('Overview') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.chat') }}">{{ __('Chat') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.settings') }}">{{ __('Communication Settings') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.whatsapp') }}">{{ __('WhatsApp Inbox') }}</a>
+                </div>
                 @foreach([
-                    ['xlink.communication-center','Communication Center','bi-chat-dots','communicationCenterMenu'],
                     ['xlink.support-center','Support Center','bi-life-preserver','supportCenterMenu'],
                     ['xlink.team-access','Team & Access','bi-people','teamAccessMenu'],
                     ['xlink.system-settings','System Settings','bi-gear','systemSettingsMenu'],
