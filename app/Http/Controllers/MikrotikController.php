@@ -1781,7 +1781,8 @@ class MikrotikController extends Controller
                 return $this->normalizeTrafficData($res[0]);
             }
         } catch (\Exception $e) {
-            flash()->warning("[{$routerName}] Live traffic unavailable — ".$e->getMessage());
+            report($e);
+            flash()->warning("[{$routerName}] Live traffic unavailable.");
         }
 
         return $empty;
@@ -1864,7 +1865,8 @@ class MikrotikController extends Controller
                 return $slice($res);
             }
         } catch (\Exception $e) {
-            flash()->warning("[{$routerName}] Router logs unavailable — ".$e->getMessage());
+            report($e);
+            flash()->warning("[{$routerName}] Router logs unavailable.");
         }
 
         return [];
