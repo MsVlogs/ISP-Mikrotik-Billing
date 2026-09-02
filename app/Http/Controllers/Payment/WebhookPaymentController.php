@@ -25,14 +25,19 @@ class WebhookPaymentController extends Controller
         // Log the raw incoming payload for auditing
         Log::info('bKash Merchant IPN Webhook received: ' . json_encode($request->all()));
 
-        $trxId = $request->input('trxID') ?? $request->input('transactionId') ?? $request->input('trxId');
+        $trxId = trim((string) ($request->input('trxID') ?? $request->input('transactionId') ?? $request->input('trxId') ?? ''));
         $amount = $request->input('amount');
-        $payerReference = $request->input('payerReference') ?? $request->input('reference') ?? $request->input('payerRef');
-        $status = strtolower($request->input('transactionStatus') ?? $request->input('status') ?? 'completed');
+        $payerReference = trim((string) ($request->input('payerReference') ?? $request->input('reference') ?? $request->input('payerRef') ?? ''));
+        $status = strtolower(trim((string) ($request->input('transactionStatus') ?? $request->input('status') ?? 'completed')));
 
-        if (!$trxId || !$amount || !$payerReference) {
+        if ($trxId === '' || $amount === null || $payerReference === '') {
             Log::warning('bKash IPN missing required fields: trxID, amount, or payerReference.');
             return response()->json(['status' => 'error', 'message' => 'Missing required fields'], 400);
+        }
+
+        if (! is_numeric($amount) || (float) $amount <= 0) {
+            Log::warning("bKash IPN invalid amount for trxID: {$trxId}");
+            return response()->json(['status' => 'error', 'message' => 'Invalid amount'], 422);
         }
 
         // Verify status is success/completed
@@ -50,11 +55,20 @@ class WebhookPaymentController extends Controller
         }
 
         try {
-            $this->paymentService->processSuccessPayment($customer, (float)$amount, 'bkash', $trxId);
+            $processed = $this->paymentService->processSuccessPayment($customer, (float) $amount, 'bkash', $trxId);
+
+            if (! $processed) {
+                return response()->json([
+                    'status' => 'duplicate',
+                    'message' => 'Payment already processed',
+                    'transaction_id' => $trxId,
+                ], 200);
+            }
+
             return response()->json(['status' => 'success', 'message' => 'Payment processed successfully']);
         } catch (\Exception $e) {
             Log::error("bKash IPN processing failed: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Internal server error: ' . $e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => 'Internal server error'], 500);
         }
     }
 

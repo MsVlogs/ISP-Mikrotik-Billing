@@ -13,6 +13,7 @@ use App\Models\PPPSecrets;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
 
 class PaymentService
 {
@@ -22,6 +23,18 @@ class PaymentService
      */
     public function processSuccessPayment(CustomersInfo $customer, float $amount, string $gateway, string $trxId): bool
     {
+        $trxId = trim($trxId);
+        if ($trxId === '' || $amount <= 0) {
+            throw new \InvalidArgumentException('Payment transaction ID and amount must be valid.');
+        }
+
+        if (CollectionSummary::where('transaction_id', $trxId)
+            ->where('payment_status', 'paid')
+            ->exists()) {
+            Log::info("Payment already processed for transaction {$trxId}");
+            return false;
+        }
+
         DB::beginTransaction();
         try {
             $billing = $customer->billing;
@@ -236,6 +249,15 @@ class PaymentService
 
             return true;
 
+        } catch (QueryException $e) {
+            DB::rollBack();
+            $message = strtolower($e->getMessage());
+            if (str_contains($message, 'transaction_id') && (str_contains($message, 'unique') || str_contains($message, 'duplicate'))) {
+                Log::info("Concurrent duplicate payment ignored for transaction {$trxId}");
+                return false;
+            }
+            Log::error('PaymentService database processing failed: '.$e->getMessage());
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('PaymentService processing failed: '.$e->getMessage());
