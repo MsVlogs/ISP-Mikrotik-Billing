@@ -418,9 +418,21 @@
                     <a class="nav-link dropdown-indicator collapsed" href="#{{ $menuId }}" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="{{ $menuId }}">
                         <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi {{ $icon }}"></i></span><span class="nav-link-text ps-1">{{ __($label) }}</span></div>
                     </a>
+                    @if($menuId === 'systemSettingsMenu')
+                    <div class="collapse ps-4" id="{{ $menuId }}">
+                        <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('site-settings') }}">{{ __('Site Settings') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('mikrotik-sync') }}">{{ __('MikroTik Setup') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('sms-setup') }}">{{ __('SMS Setup') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('main-site-setup') }}">{{ __('Main Site Setup') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('mikrotik-server-backup') }}">{{ __('MikroTik Backup') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('mikrotik-log-viewer') }}">{{ __('MikroTik Logs') }}</a>
+                    </div>
+                    @else
                     <div class="collapse ps-4" id="{{ $menuId }}">
                         <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
                     </div>
+                    @endif
                 @endforeach
 
             <li class="nav-item">
