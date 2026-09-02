@@ -405,7 +405,12 @@
                 </a>
                 <div class="collapse ps-4" id="supportCenterMenu">
                     <a wire:navigate.hover class="nav-link" href="{{ route('xlink.support-center') }}">{{ __('Overview') }}</a>
-                    <a wire:navigate.hover class="nav-link" href="{{ route('admin-tickets') }}">{{ __('Support Tickets') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('support-center.tickets') }}">{{ __('Ticket List') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('support-center.create-ticket') }}">{{ __('Add Ticket') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('support-center.sales') }}">{{ __('Sales Query List') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('support-center.sales-create') }}">{{ __('Add Sales Query') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('support-center.kyc') }}">{{ __('KYC Update') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('support-center.templates') }}">{{ __('Template Settings') }}</a>
                     <a wire:navigate.hover class="nav-link" href="{{ route('admin.activity-logs') }}">{{ __('Activity Logs') }}</a>
                     <a wire:navigate.hover class="nav-link" href="{{ route('admin.login-logs') }}">{{ __('Login Logs') }}</a>
                 </div>

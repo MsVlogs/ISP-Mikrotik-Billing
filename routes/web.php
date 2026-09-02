@@ -18,6 +18,7 @@ use App\Http\Controllers\Payment\BkashPaymentController;
 use App\Http\Controllers\Payment\NagadPaymentController;
 use App\Http\Controllers\Payment\SslCommerzPaymentController;
 use App\Http\Controllers\Portal\PortalVoucherController;
+use App\Http\Controllers\SupportCenterController;
 use App\Http\Controllers\Reseller\ResellerDashboardController;
 use App\Livewire\AddressSetup;
 use App\Livewire\Admin\ManageRole;
@@ -543,16 +544,16 @@ Route::middleware([
             $tickets = \App\Models\SupportTicket::with('customer')->latest()->paginate(20)->withQueryString();
             return view('xlink.communication-center', ['tab'=>'whatsapp','tickets'=>$tickets]);
         })->name('communication-center.whatsapp');
-        Route::get('/support-center', function () {
-            $tickets = \App\Models\SupportTicket::with('customer')->latest()->take(12)->get();
-            return view('xlink.support-center', [
-                'tickets'=>$tickets,
-                'open'=>\App\Models\SupportTicket::whereIn('status',['open','pending'])->count(),
-                'inProgress'=>\App\Models\SupportTicket::where('status','in_progress')->count(),
-                'resolved'=>\App\Models\SupportTicket::where('status','resolved')->count(),
-                'total'=>\App\Models\SupportTicket::count(),
-            ]);
-        })->name('xlink.support-center');
+        Route::get('/support-center', [SupportCenterController::class, 'dashboard'])->name('xlink.support-center');
+        Route::get('/support-center/tickets', [SupportCenterController::class, 'tickets'])->name('support-center.tickets');
+        Route::get('/support-center/tickets/create', [SupportCenterController::class, 'createTicket'])->name('support-center.create-ticket');
+        Route::post('/support-center/tickets', [SupportCenterController::class, 'storeTicket'])->name('support-center.store-ticket');
+        Route::get('/support-center/sales-queries', [SupportCenterController::class, 'salesQueries'])->name('support-center.sales');
+        Route::get('/support-center/sales-queries/create', [SupportCenterController::class, 'createSalesQuery'])->name('support-center.sales-create');
+        Route::post('/support-center/sales-queries', [SupportCenterController::class, 'storeSalesQuery'])->name('support-center.sales-store');
+        Route::get('/support-center/kyc', [SupportCenterController::class, 'kyc'])->name('support-center.kyc');
+        Route::get('/support-center/templates', [SupportCenterController::class, 'templates'])->name('support-center.templates');
+        Route::post('/support-center/templates', [SupportCenterController::class, 'storeTemplate'])->name('support-center.template-store');
         Route::get('/team-access', function () {
             $users = \App\Models\User::count();
             $roles = class_exists(\Spatie\Permission\Models\Role::class) ? \Spatie\Permission\Models\Role::count() : 0;
