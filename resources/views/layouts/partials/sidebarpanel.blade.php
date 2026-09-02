@@ -428,6 +428,14 @@
                         <a wire:navigate.hover class="nav-link" href="{{ route('mikrotik-server-backup') }}">{{ __('MikroTik Backup') }}</a>
                         <a wire:navigate.hover class="nav-link" href="{{ route('mikrotik-log-viewer') }}">{{ __('MikroTik Logs') }}</a>
                     </div>
+                    @elseif($menuId === 'billingHelplineMenu')
+                    <div class="collapse ps-4" id="{{ $menuId }}">
+                        <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('admin-tickets') }}">{{ __('Support Tickets') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('payment-collection') }}">{{ __('Payment Collection') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('collection-report.index') }}">{{ __('Collection Report') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('customer-summary') }}">{{ __('Customer Summary') }}</a>
+                    </div>
                     @else
                     <div class="collapse ps-4" id="{{ $menuId }}">
                         <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>

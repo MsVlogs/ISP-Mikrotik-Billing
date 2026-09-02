@@ -573,22 +573,13 @@ Route::middleware([
         })->name('xlink.system-settings');
         Route::get('/billing-helpline', function () {
             $tickets = \App\Models\SupportTicket::query();
-            $open = (clone $tickets)->whereIn('status',['open','pending','in_progress'])->count();
+            $open = (clone $tickets)->whereIn('status',['open','pending'])->count();
+            $inProgress = (clone $tickets)->where('status','in_progress')->count();
+            $resolved = (clone $tickets)->where('status','resolved')->count();
             $total = (clone $tickets)->count();
-            return view('xlink.module', [
-                'title'=>'Billing Helpline','icon'=>'bi-telephone','description'=>'Billing support, collections and issue escalation desk.',
-                'stats'=>[
-                    ['label'=>'Open Tickets','value'=>$open],
-                    ['label'=>'Total Tickets','value'=>$total],
-                    ['label'=>'Billing','value'=>'Online'],
-                ],
-                'links'=>[
-                    ['url'=>route('admin-tickets'),'label'=>'Support Tickets','hint'=>'Handle billing/customer issues'],
-                    ['url'=>route('payment-collection'),'label'=>'Payment Collection','hint'=>'Collection desk'],
-                    ['url'=>route('collection-report.index'),'label'=>'Collection Report','hint'=>'Billing reporting'],
-                    ['url'=>route('customer-summary'),'label'=>'Customer Summary','hint'=>'Customer billing history'],
-                ],
-            ]);
+            $highPriority = (clone $tickets)->where('priority','high')->whereIn('status',['open','pending','in_progress'])->count();
+            $recentTickets = \App\Models\SupportTicket::with('customer')->latest()->limit(10)->get();
+            return view('xlink.billing-helpline', compact('open','inProgress','resolved','total','highPriority','recentTickets'));
         })->name('xlink.billing-helpline');
         Route::get('/profile-security', function () {
             return view('xlink.module', [
@@ -634,7 +625,6 @@ Route::middleware([
         Route::post('/bandwidth-tickets', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'storeTicket'])->name('bandwidth-tickets.store');
         Route::put('/bandwidth-tickets/{ticket}', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'updateTicket'])->name('bandwidth-tickets.update');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
-        Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('xlink.billing-helpline');
         Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('xlink.profile-security');
 
         Route::get('/all-notifications', NotificationListAll::class)->name('notifications');
