@@ -394,8 +394,11 @@
                 <div class="collapse ps-4" id="communicationCenterMenu">
                     <a wire:navigate.hover class="nav-link" href="{{ route('xlink.communication-center') }}">{{ __('Overview') }}</a>
                     <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.chat') }}">{{ __('Chat') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.sms') }}">{{ __('SMS Center') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.notifications') }}">{{ __('Notifications') }}</a>
                     <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.settings') }}">{{ __('Communication Settings') }}</a>
                     <a wire:navigate.hover class="nav-link" href="{{ route('communication-center.whatsapp') }}">{{ __('WhatsApp Inbox') }}</a>
+                    <a wire:navigate.hover class="nav-link" href="{{ route('sms-bridge.index') }}">{{ __('SMS Bridge') }}</a>
                 </div>
                 <a class="nav-link dropdown-indicator collapsed" href="#supportCenterMenu" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="supportCenterMenu">
                     <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-life-preserver"></i></span><span class="nav-link-text ps-1">{{ __('Support Center') }}</span></div>

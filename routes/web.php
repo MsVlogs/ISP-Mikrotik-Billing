@@ -510,8 +510,16 @@ Route::middleware([
         Route::get('/communication-center', function () {
             $templates = \App\Models\SmsTemplate::count();
             $notifications = \App\Models\NotificationLogs::count();
-            $tickets = \App\Models\SupportTicket::count();
-            return view('xlink.communication-center', ['tab'=>'dashboard','stats'=>[['label'=>'SMS Templates','value'=>$templates],['label'=>'Notifications','value'=>$notifications],['label'=>'Conversations','value'=>$tickets]]]);
+            $unread = \App\Models\NotificationLogs::whereNull('read_by')->count();
+            $conversations = \App\Models\SupportTicket::count();
+            $openTickets = \App\Models\SupportTicket::whereIn('status',['open','pending','in_progress'])->count();
+            $whatsapp = \App\Models\MainSiteData::where('key','site_whatsapp')->value('value');
+            $recentNotifications = \App\Models\NotificationLogs::latest()->limit(6)->get();
+            $recentConversations = \App\Models\SupportTicket::with('customer')->latest()->limit(6)->get();
+            return view('xlink.communication-center', compact(
+                'templates','notifications','unread','conversations','openTickets','whatsapp',
+                'recentNotifications','recentConversations'
+            ) + ['tab'=>'dashboard']);
         })->name('xlink.communication-center');
         Route::get('/communication-center/chat', function () {
             $tickets = \App\Models\SupportTicket::with('customer')->latest()->paginate(20)->withQueryString();
@@ -521,6 +529,8 @@ Route::middleware([
             $whatsapp = \App\Models\MainSiteData::where('key','site_whatsapp')->value('value');
             return view('xlink.communication-center', ['tab'=>'settings','whatsapp'=>$whatsapp]);
         })->name('communication-center.settings');
+        Route::get('/communication-center/sms', fn () => redirect()->route('sms-setup'))->name('communication-center.sms');
+        Route::get('/communication-center/notifications', fn () => redirect()->route('notifications'))->name('communication-center.notifications');
         Route::post('/communication-center/settings', function (\Illuminate\Http\Request $r) {
             $d=$r->validate(['whatsapp'=>'nullable|string|max:30','notification_email'=>'nullable|email|max:190','notification_url'=>'nullable|url|max:500']);
             foreach ([['site_whatsapp',$d['whatsapp']??null],['notification_email',$d['notification_email']??null],['notification_url',$d['notification_url']??null]] as [$k,$v]) {
