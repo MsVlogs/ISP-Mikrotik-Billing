@@ -1,98 +1,67 @@
 <x-guest-layout>
-    <div class="container">
-        <div class="box box__sm">
-            <div class="box__mobile box__image-container">
-                {{-- Mobile --}}
-                <div class="mobile-view">
-                    @if (siteUrlSettings('site_logo'))
-                        <img src="{{ site_image(siteUrlSettings('site_logo')) }}" alt="logo" class="box__image"/>
-                    @else
-                        <h2 class="box__title neon-text audiowide-bold">
-                            @if (siteUrlSettings('site_icon'))
-                                <img class="me-2" src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="" width="40" style="vertical-align: middle;" />
-                            @endif
-                            {{ siteUrlSettings('site_name') ?? 'Code Pagol' }}
-                        </h2>
-                    @endif
-                </div>
-            </div>
-
-            <div class="box__left box__image-container">
-                {{-- Desktop --}}
-                <div class="desktop-view">
-                    @if (siteUrlSettings('site_logo'))
-                        <img src="{{ site_image(siteUrlSettings('site_logo')) }}" alt="logo" class="box__image"/>
-                    @else
-                        @if (siteUrlSettings('site_icon'))
-                            <h2 class="box__title neon-text audiowide-bold">
-                                <img class="me-2" src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="" width="40" style="vertical-align: middle;" />
-                                {{ siteUrlSettings('site_name') ?? 'Code Pagol' }}
-                            </h2>
-                        @else
-                            <img src="{{ asset('images/front_logo_300_500.png') }}" alt="Desktop Picture" class="box__image">
-                        @endif
-                    @endif
-                </div>
-            </div>
-
-            <div class="box__right">
-                <form class="form" method="POST" action="{{ route('login') }}">
-                    @csrf
-                    @if (!siteUrlSettings('site_logo') && !siteUrlSettings('site_icon'))
-                        <div class="d-desktop-only" style="text-align: center; margin-bottom: 20px;">
-                            <h2 class="neon-text audiowide-bold" style="font-size: 2rem; color: #06ad73; text-shadow: 0 0 5px #06ad73;">{{ siteUrlSettings('site_name') ?? 'Code Pagol' }}</h2>
-                        </div>
-                    @endif
-                    <h2 class="form__title">Sign in</h2>
-                    <x-validation-errors class="mb-4" />
-
-                    <div class="input-group">
-                        <input id="email" type="email" name="email" value="{{ old('email') }}"
-                            class="form-control" required autocomplete="username" placeholder="E-mail / User Name">
-                        <span class="icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                class="bi bi-person-bounding-box" viewBox="0 0 16 16">
-                                <path
-                                    d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5M.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5" />
-                                <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="input-group">
-                        <input t id="password" type="password" name="password" placeholder="Password" required
-                            autocomplete="current-password">
-                        <span class="icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                class="bi bi-key" viewBox="0 0 16 16">
-                                <path
-                                    d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8m4-3a3 3 0 1 0 2.712 4.285A.5.5 0 0 1 7.163 9h.63l.853-.854a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.793-.793-1-1h-6.63a.5.5 0 0 1-.451-.285A3 3 0 0 0 4 5" />
-                                <path d="M4 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                            </svg>
-                        </span>
-                    </div>
-
-                    <label class="checkbox-group">
-                        <input type="checkbox" id="remember_me" name="remember">
-                        {{ __('Remember me') }}
-                    </label>
-                    @if (Route::has('password.request'))
-                        <p class="form__text">
-                            <a wire:navigate.hover wire:current="active" class="form__link"
-                                href="{{ route('password.request') }}">{{ __('Forgot your password?') }}</a>
-                        </p>
-                    @endif
-                    <button type="submit" class="form__button">Sign In</button>
-                    @if (Route::has('register'))
-                        <p class="form__text">
-                            Don't have an account?
-                            <label for="toggle" class="form__text">
-                                <a wire:navigate.hover wire:current="active" class="form__link"
-                                    href="{{ route('register') }}">Sign up!</a>
-                            </label>
-                        </p>
-                    @endif
-                </form>
-            </div>
-        </div>
-    </div>
+<style>
+:root{--login-accent:#06ad73;--login-ink:#0f172a;--login-muted:#64748b;--login-surface:#fff;--login-line:#d9e1ea}
+html[data-theme="dark"]{--login-ink:#f8fafc;--login-muted:#94a3b8;--login-surface:#07111f;--login-line:rgba(148,163,184,.22)}
+body.login-page{margin:0;background:#f2f5f9;min-height:100vh;min-height:100dvh;overflow-x:hidden}
+html[data-theme="dark"] body.login-page{background:#050d18}
+.login-theme{position:fixed;top:18px;right:18px;z-index:10;width:42px;height:42px;border-radius:12px;border:1px solid var(--login-line);background:var(--login-surface);color:var(--login-ink);display:grid;place-items:center}
+.login-shell{width:min(1080px,calc(100% - 32px));min-height:620px;margin:22px auto;display:grid;grid-template-columns:1.05fr .95fr;border:1px solid var(--login-line);border-radius:26px;overflow:hidden;background:var(--login-surface);box-shadow:0 28px 75px rgba(15,23,42,.16)}
+.login-visual{padding:42px;display:flex;flex-direction:column;justify-content:center;gap:18px;background:linear-gradient(160deg,#eafbf4,#fff);border-right:1px solid var(--login-line)}
+html[data-theme="dark"] .login-visual{background:linear-gradient(160deg,#0b2a22,#081321)}
+.login-slogan{color:var(--login-ink);font-size:clamp(1.9rem,3vw,2.8rem);line-height:1.06;letter-spacing:-.045em;font-weight:900;max-width:540px;margin:0}
+.login-media{display:grid;place-items:center;min-height:360px}.login-media img{width:100%;max-width:520px;max-height:390px;object-fit:contain;border-radius:20px}
+.login-panel{padding:50px 46px;display:flex;flex-direction:column;justify-content:center}.login-brand{display:flex;align-items:center;gap:14px;margin-bottom:26px}.login-logo{width:78px;height:78px;border-radius:18px;display:grid;place-items:center;overflow:hidden;background:#eafbf4;border:1px solid #d0f4e5}.login-logo img{width:100%;height:100%;object-fit:contain;padding:10px}.login-brand strong{display:block;color:var(--login-ink);font-size:1.05rem}.login-brand small{display:block;color:var(--login-muted);margin-top:3px}
+.login-head h1{font-size:2.7rem;font-weight:900;line-height:1;letter-spacing:-.055em;margin:0 0 24px;color:var(--login-ink)}
+.login-field{display:flex;align-items:center;min-height:54px;border-bottom:2px solid var(--login-line);margin-bottom:14px}.login-field:focus-within{border-bottom-color:var(--login-accent)}.login-field span{width:38px;color:var(--login-accent);font-weight:800}.login-field input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--login-ink);padding:12px 0;font-size:1rem}.login-field input::placeholder{color:var(--login-muted)}
+.login-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 18px;color:var(--login-muted);font-size:.86rem}.login-row a{color:var(--login-accent);font-weight:700;text-decoration:none}.login-submit{width:100%;min-height:56px;border:0;border-radius:999px;background:var(--login-accent);color:#fff;font-weight:900;box-shadow:0 14px 30px rgba(6,173,115,.24)}
+.login-alert{border:0;border-radius:13px;background:#fff0f0;color:#a61b1b;padding:11px 13px;margin-bottom:18px;font-size:.86rem}.login-powered{text-align:center;margin-top:20px;color:var(--login-muted);font-size:.76rem}.login-powered strong{color:var(--login-ink)}
+@media(max-width:860px){.login-shell{grid-template-columns:1fr;max-width:560px;min-height:0;margin-top:72px}.login-visual{display:none}.login-panel{padding:42px 30px}}
+@media(max-width:520px){.login-shell{width:calc(100% - 16px);border-radius:20px}.login-theme{top:12px;right:12px}.login-panel{padding:30px 20px}.login-head h1{font-size:2.3rem}}
+</style>
+<script>
+(function(){
+ document.body.classList.add('login-page');
+ var dark=localStorage.getItem('isp-theme')==='dark';
+ document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+})();
+</script>
+<button class="login-theme" id="loginThemeToggle" type="button" aria-label="Toggle dark mode">◐</button>
+<main class="login-shell">
+<section class="login-visual">
+<h1 class="login-slogan">Let’s Make ISP Automation Simple &amp; Paperless.</h1>
+<div class="login-media">
+<img src="{{ asset('images/front_logo_300_500.png') }}" alt="X-Link Limited">
+</div>
+</section>
+<section class="login-panel">
+<div class="login-brand">
+<div class="login-logo">
+@if(siteUrlSettings('site_logo'))<img src="{{ site_image(siteUrlSettings('site_logo')) }}" alt="{{ siteUrlSettings('site_name') }}">@elseif(siteUrlSettings('site_icon'))<img src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="{{ siteUrlSettings('site_name') }}">@else<span style="font-size:1.7rem;font-weight:900;color:var(--login-accent)">XL</span>@endif
+</div>
+<div><strong>{{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}</strong><small>Admin Panel</small></div>
+</div>
+<div class="login-head"><h1>ADMIN LOGIN</h1></div>
+@if(session('status'))<div class="login-alert" style="background:#ecfdf5;color:#047857">{{ session('status') }}</div>@endif
+<x-validation-errors class="login-alert" />
+<form class="login-form" method="POST" action="{{ route('login') }}">
+@csrf
+<div class="login-field"><span>✉</span><input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="username" placeholder="E-mail / User Name"></div>
+<div class="login-field"><span>🔑</span><input id="password" type="password" name="password" placeholder="Password" required autocomplete="current-password"></div>
+<div class="login-row">
+<label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="remember_me" name="remember"> {{ __('Remember me') }}</label>
+@if(Route::has('password.request'))<a wire:navigate.hover href="{{ route('password.request') }}">{{ __('Forgot your password?') }}</a>@endif
+</div>
+<button type="submit" class="login-submit">SIGN IN</button>
+@if(Route::has('register'))<div class="login-powered">Don't have an account? <a href="{{ route('register') }}">Sign up</a></div>@endif
+</form>
+<div class="login-powered">{{ __('Secure access') }} · <strong>{{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}</strong></div>
+</section>
+</main>
+<script>
+document.getElementById('loginThemeToggle')?.addEventListener('click',function(){
+ const dark=document.documentElement.getAttribute('data-theme')==='dark';
+ document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+ localStorage.setItem('isp-theme',dark?'light':'dark');
+});
+</script>
 </x-guest-layout>
