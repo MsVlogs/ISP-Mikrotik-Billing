@@ -75,7 +75,7 @@ class SendBulkSmsJob implements ShouldQueue
                         }
                     } catch (\Exception $e) {
                         Log::error("Bulk SMS gateway exception for: " . $customer->customer_unique_id . " - " . $e->getMessage());
-                        $errorIDs[] = $customer->customer_unique_id . ' - Exception: ' . $e->getMessage();
+                        $errorIDs[] = $customer->customer_unique_id . ' - Exception: SMS gateway failure';
                     }
                 }
             });

@@ -175,7 +175,7 @@ class NagadPaymentController extends Controller
             }
 
             return redirect()->route('filament.portal.pages.pay-bill')
-                ->with('error', 'Nagad session creation failed: '.($res['message'] ?? 'Unknown error'));
+                ->with('error', 'Nagad session creation failed. Please try again.');
 
         } catch (\Exception $e) {
             Log::error('Nagad initiate exception: '.$e->getMessage());

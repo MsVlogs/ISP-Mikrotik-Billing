@@ -31,7 +31,6 @@ class ScheduledTasksController extends Controller
     //     $dbPassword = env('DB_PASSWORD');
     //     $dbName = env('DB_DATABASE');
 
-    //     // dd($dbHost, $dbUser, $dbPassword, $dbName);
     //     // Backup file name
     //     $backupFile = storage_path("app/backup_" . date('Y-m-d_H-i-s') . ".sql");
 
@@ -80,7 +79,6 @@ class ScheduledTasksController extends Controller
             }
 
             $nextMonthStart = Carbon::now()->addMonthNoOverflow()->startOfMonth();
-            // dd($nextMonthStart);
 
             // Check if PaymentSummary already exists for the next month
             $existingPayment = PaymentSummary::where('customer_payment_unique_id', $billing->customer_bill_unique_id)
@@ -90,7 +88,6 @@ class ScheduledTasksController extends Controller
             $totalCollectionAmount = CollectionSummary::where('customer_collection_unique_id', $billing->customer_bill_unique_id)
                 ->whereBetween('collection_date', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])
                 ->sum('collection_amount');
-            // dd($billing->customer_bill_unique_id,$totalCollectionAmount, $billing->paid_amount);
             // if ($totalCollectionAmount == $billing->paid_amount) {
             $subtotal = $billing->monthly_rent + $billing->additional_charge + $billing->vat + $billing->previous_due;
             $discountTotal = $subtotal - $billing->discount;

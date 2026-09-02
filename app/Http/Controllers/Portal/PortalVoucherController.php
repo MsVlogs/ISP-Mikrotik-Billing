@@ -117,7 +117,7 @@ class PortalVoucherController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Voucher redemption failed: " . $e->getMessage());
-            return back()->withInput()->withErrors(['error' => 'Recharge failed: ' . $e->getMessage()]);
+            return back()->withInput()->withErrors(['error' => 'Recharge failed. Please try again.']);
         }
     }
 }

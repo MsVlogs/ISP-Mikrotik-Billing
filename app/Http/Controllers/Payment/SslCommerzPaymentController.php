@@ -124,7 +124,7 @@ class SslCommerzPaymentController extends Controller
             }
 
             return redirect()->route('filament.portal.pages.pay-bill')
-                ->with('error', 'SSLCommerz session creation failed: '.($res['failedreason'] ?? 'Unknown error'));
+                ->with('error', 'SSLCommerz session creation failed. Please try again.');
 
         } catch (\Exception $e) {
             Log::error('SSLCommerz initiate exception: '.$e->getMessage());
