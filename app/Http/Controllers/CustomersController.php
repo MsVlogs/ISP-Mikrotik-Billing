@@ -272,7 +272,7 @@ class CustomersController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to enable customer on router: '.$e->getMessage(),
+                'message' => 'Failed to enable customer on router. Please try again.',
             ]);
         }
     }
@@ -297,7 +297,8 @@ class CustomersController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Billing Information updated successfully']);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+            report($e);
+            return response()->json(['success' => false, 'message' => 'Operation failed. Please try again.'], 500);
         }
     }
 
@@ -344,7 +345,8 @@ class CustomersController extends Controller
             \Log::error('Customer destroy failed: '.$e->getMessage());
 
             // Handle decryption errors or unexpected exceptions
-            return response()->json(['error' => true, 'message' => $e->getMessage()]);
+            report($e);
+            return response()->json(['error' => true, 'message' => 'Unable to delete customer. Please try again.'], 500);
         }
     }
 }

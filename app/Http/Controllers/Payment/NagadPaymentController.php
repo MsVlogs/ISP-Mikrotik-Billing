@@ -190,7 +190,7 @@ class NagadPaymentController extends Controller
             }
 
             return redirect()->route('filament.portal.pages.pay-bill')
-                ->with('error', 'Nagad service currently unavailable: '.$e->getMessage());
+                ->with('error', 'Nagad service temporarily unavailable. Please try again.');
         }
     }
 
@@ -240,7 +240,7 @@ class NagadPaymentController extends Controller
                 Log::error('Nagad callback verification exception: '.$e->getMessage());
 
                 return redirect()->route('filament.portal.pages.pay-bill')
-                    ->with('error', 'Verification exception: '.$e->getMessage());
+                    ->with('error', 'Payment verification is temporarily unavailable. Please try again.');
             }
         }
 

@@ -139,7 +139,7 @@ class SslCommerzPaymentController extends Controller
             }
 
             return redirect()->route('filament.portal.pages.pay-bill')
-                ->with('error', 'SSLCommerz service currently offline: '.$e->getMessage());
+                ->with('error', 'SSLCommerz service temporarily unavailable. Please try again.');
         }
     }
 
@@ -192,7 +192,7 @@ class SslCommerzPaymentController extends Controller
                 Log::error('SSLCommerz callback verification exception: '.$e->getMessage());
 
                 return redirect()->route('filament.portal.pages.pay-bill')
-                    ->with('error', 'Verification exception: '.$e->getMessage());
+                    ->with('error', 'Payment verification is temporarily unavailable. Please try again.');
             }
         }
 

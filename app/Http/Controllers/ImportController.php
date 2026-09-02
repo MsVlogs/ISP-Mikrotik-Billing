@@ -28,7 +28,7 @@ class ImportController extends Controller
                 $importData = SimpleExcelReader::create($file->getRealPath())->getRows()->toArray();
                 $data = $importData;
             } catch (\Exception $e) {
-                return redirect()->back()->withErrors('Error processing file: '.$e->getMessage());
+                return redirect()->back()->withErrors('Error processing file. Please verify the file and try again.');
             }
         }
 
@@ -189,7 +189,7 @@ class ImportController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error processing file: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Error processing file. Please verify the file and try again.');
         }
 
         $message = "File processed successfully. {$uploadedRows} customers updated/added.";
@@ -315,7 +315,7 @@ class ImportController extends Controller
                 $uploadedRows++;
             }
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error processing file: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Error processing file. Please verify the file and try again.');
         }
 
         $message = "File processed successfully. {$uploadedRows} collections imported.";
@@ -397,7 +397,7 @@ class ImportController extends Controller
                 $uploadedRows++;
             }
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error processing file: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Error processing file. Please verify the file and try again.');
         }
 
         $message = "File processed successfully. {$uploadedRows} monthly bills imported.";

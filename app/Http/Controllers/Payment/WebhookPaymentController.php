@@ -147,7 +147,8 @@ class WebhookPaymentController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error("Failed to process MFS SMS payment: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Payment process exception: ' . $e->getMessage()], 500);
+            report($e);
+            return response()->json(['status' => 'error', 'message' => 'Internal server error'], 500);
         }
     }
 

@@ -156,7 +156,7 @@ class ResellerController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->withErrors(['error' => 'Failed to create reseller: ' . $e->getMessage()]);
+            return back()->withInput()->withErrors(['error' => 'Failed to create reseller. Please try again.']);
         }
     }
 
@@ -300,7 +300,7 @@ class ResellerController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->withErrors(['error' => 'Failed to update reseller: ' . $e->getMessage()]);
+            return back()->withInput()->withErrors(['error' => 'Failed to update reseller. Please try again.']);
         }
     }
 
@@ -327,7 +327,7 @@ class ResellerController extends Controller
             return redirect()->route('admin.resellers.index');
         } catch (\Exception $e) {
             DB::rollBack();
-            flash()->error('Failed to delete reseller: ' . $e->getMessage());
+            flash()->error('Failed to delete reseller. Please try again.');
             return back();
         }
     }
@@ -400,7 +400,8 @@ class ResellerController extends Controller
                 return redirect()->back();
             });
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
             return redirect()->back()->withInput();
         }
     }
