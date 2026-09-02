@@ -98,6 +98,14 @@ class BkashIpnTest extends TestCase
         );
     }
 
+
+    public function test_bkash_callback_rejects_missing_payment_id(): void
+    {
+        $response = $this->get('/payment/bkash/callback?status=success');
+
+        $response->assertRedirect(route('filament.portal.pages.pay-bill'));
+    }
+
     public function test_collection_transaction_id_is_unique(): void
     {
         $this->assertTrue(Schema::hasColumn('collection_summaries', 'transaction_id'));

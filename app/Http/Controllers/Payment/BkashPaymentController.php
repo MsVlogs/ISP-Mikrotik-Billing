@@ -143,10 +143,10 @@ class BkashPaymentController extends Controller
 
     public function callback(Request $request)
     {
-        $status = $request->query('status');
-        $paymentID = $request->query('paymentID');
+        $status = strtolower(trim((string) $request->query('status', '')));
+        $paymentID = trim((string) $request->query('paymentID', ''));
 
-        if ($status === 'success') {
+        if ($status === 'success' && $paymentID !== '') {
             try {
                 $idToken = $this->generateToken();
                 $config = $this->getBkashConfig();
@@ -185,7 +185,12 @@ class BkashPaymentController extends Controller
                     }
 
                     if ($customer) {
-                        $this->paymentService->processSuccessPayment($customer, $amount, 'bkash', $trxID);
+                        $processed = $this->paymentService->processSuccessPayment($customer, $amount, 'bkash', $trxID);
+
+                        if (! $processed) {
+                            return redirect()->route('filament.portal.pages.dashboard')
+                                ->with('success', 'Payment of BDT '.$amount.' was already processed via bKash.');
+                        }
 
                         return redirect()->route('filament.portal.pages.dashboard')
                             ->with('success', 'Payment of BDT '.$amount.' received successfully via bKash. Your account is active.');
@@ -195,18 +200,20 @@ class BkashPaymentController extends Controller
                 Log::error('bKash Execution Failed: '.json_encode($res));
 
                 return redirect()->route('filament.portal.pages.pay-bill')
-                    ->with('error', 'Payment verification failed: '.($res['statusMessage'] ?? 'Unknown error'));
+                    ->with('error', 'Payment verification failed. Please try again or contact support.');
 
             } catch (\Exception $e) {
                 Log::error('bKash callback execution exception: '.$e->getMessage());
 
                 return redirect()->route('filament.portal.pages.pay-bill')
-                    ->with('error', 'Verification exception: '.$e->getMessage());
+                    ->with('error', 'Payment verification is temporarily unavailable. Please try again.');
             }
         }
 
         return redirect()->route('filament.portal.pages.pay-bill')
-            ->with('error', 'Payment process cancelled or failed. Status: '.$status);
+            ->with('error', $paymentID === ''
+                ? 'Payment verification request was invalid.'
+                : 'Payment process cancelled or failed.');
     }
 
     public function mockSubmit(Request $request)
