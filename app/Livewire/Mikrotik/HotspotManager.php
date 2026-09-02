@@ -226,7 +226,8 @@ class HotspotManager extends Component
             $this->loadStats();
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -265,7 +266,8 @@ class HotspotManager extends Component
             $this->onlineCount = count($this->sessions);
             $this->loadResources();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -517,7 +519,8 @@ class HotspotManager extends Component
             }
         } catch (\Exception $e) {
             if ($showFlash) {
-                flash()->error('Sync Failed: '.$e->getMessage());
+                report($e);
+            flash()->error('Router sync failed. Please try again.');
             }
         }
     }
@@ -665,7 +668,8 @@ class HotspotManager extends Component
             $this->dispatch('reinit-datatables');
             $this->dispatch('close-modal', 'userModal');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -679,7 +683,8 @@ class HotspotManager extends Component
             $this->loadStats();
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -690,7 +695,8 @@ class HotspotManager extends Component
             flash()->success("Session for '{$user}' disconnected.");
             $this->refreshSessions();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -756,7 +762,8 @@ class HotspotManager extends Component
             $this->dispatch('reinit-datatables');
             $this->dispatch('close-modal', 'profileModal');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -768,7 +775,8 @@ class HotspotManager extends Component
             $this->userProfiles = $this->ctrl()->getHotspotUserProfiles($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -961,7 +969,8 @@ class HotspotManager extends Component
             flash()->success(count($results).' packages synced to router.');
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -974,7 +983,8 @@ class HotspotManager extends Component
             flash()->success($enable ? "User '{$username}' enabled." : "User '{$username}' disabled.");
             $this->loadData(); // Refresh UI
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -991,7 +1001,8 @@ class HotspotManager extends Component
             }
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

@@ -94,7 +94,8 @@ class FirewallSetup extends Component
             $this->interfaces = collect($ctrl->getInterfaces($this->selectedRouter))->pluck('name')->filter()->values()->toArray();
 
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -123,7 +124,8 @@ class FirewallSetup extends Component
             $this->filterRules = app(MikrotikController::class)->getFirewallFilter($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -134,7 +136,8 @@ class FirewallSetup extends Component
             $this->filterRules = app(MikrotikController::class)->getFirewallFilter($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -146,7 +149,8 @@ class FirewallSetup extends Component
             $this->filterRules = app(MikrotikController::class)->getFirewallFilter($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -174,7 +178,8 @@ class FirewallSetup extends Component
             $this->natRules = app(MikrotikController::class)->getFirewallNat($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -193,7 +198,8 @@ class FirewallSetup extends Component
             $this->natRules = app(MikrotikController::class)->getFirewallNat($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -205,7 +211,8 @@ class FirewallSetup extends Component
             $this->natRules = app(MikrotikController::class)->getFirewallNat($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -216,7 +223,8 @@ class FirewallSetup extends Component
             $this->mangleRules = app(MikrotikController::class)->getFirewallMangle($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -228,7 +236,8 @@ class FirewallSetup extends Component
             $this->mangleRules = app(MikrotikController::class)->getFirewallMangle($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -250,7 +259,8 @@ class FirewallSetup extends Component
             $this->addressLists = app(MikrotikController::class)->getAddressLists($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -266,7 +276,8 @@ class FirewallSetup extends Component
             app(MikrotikController::class)->moveItem($this->selectedRouter, '/ip firewall '.$type, $id, $prevId);
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -282,7 +293,8 @@ class FirewallSetup extends Component
             app(MikrotikController::class)->moveItem($this->selectedRouter, '/ip firewall '.$type, $id, $nextNextId);
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -294,7 +306,8 @@ class FirewallSetup extends Component
             $this->addressLists = app(MikrotikController::class)->getAddressLists($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

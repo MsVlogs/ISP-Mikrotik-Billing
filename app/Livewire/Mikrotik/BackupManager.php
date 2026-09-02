@@ -113,7 +113,8 @@ class BackupManager extends Component
             });
 
         } catch (\Exception $e) {
-            flash()->error('Failed to fetch snapshots: '.$e->getMessage());
+            report($e);
+            flash()->error('Failed to fetch snapshots. Please try again.');
         }
     }
 
@@ -151,7 +152,8 @@ class BackupManager extends Component
             $this->fetchBackups();
 
         } catch (\Exception $e) {
-            flash()->error('Backup failed: '.$e->getMessage());
+            report($e);
+            flash()->error('Backup failed. Please try again.');
         }
     }
 
@@ -192,7 +194,8 @@ class BackupManager extends Component
 
             $this->fetchBackups();
         } catch (\Exception $e) {
-            flash()->error('Failed to delete backup: '.$e->getMessage());
+            report($e);
+            flash()->error('Failed to delete backup. Please try again.');
         }
     }
 
@@ -210,7 +213,8 @@ class BackupManager extends Component
 
             flash()->success("Restore initiated. The router '{$this->selectedRouter}' will now reboot and apply the configuration.");
         } catch (\Exception $e) {
-            flash()->error('Restore Failed: '.$e->getMessage());
+            report($e);
+            flash()->error('Restore failed. Please try again.');
         }
     }
 

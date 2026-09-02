@@ -152,7 +152,8 @@ class PppoeSetup extends Component
 
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -197,7 +198,8 @@ class PppoeSetup extends Component
             $this->reset(['srv_interface', 'srv_service_name', 'srv_mrru', 'srv_authentication', 'srv_default_profile', 'editServerId']);
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -208,7 +210,8 @@ class PppoeSetup extends Component
             flash()->success('Server removal command sent.');
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -277,7 +280,8 @@ class PppoeSetup extends Component
                 $this->loadData();
             }
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -299,7 +303,8 @@ class PppoeSetup extends Component
             flash()->success('Profile removal command sent.');
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -334,7 +339,8 @@ class PppoeSetup extends Component
             $this->reset(['sec_name', 'sec_password', 'sec_profile', 'sec_comment', 'editSecretId', 'sec_service', 'sec_local_address', 'sec_remote_address', 'sec_caller_id']);
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -358,7 +364,8 @@ class PppoeSetup extends Component
             flash()->success('PPP Secret removed!');
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -390,7 +397,8 @@ class PppoeSetup extends Component
                 $this->ovpn_cipher = is_string($config['cipher'] ?? null) ? explode(',', $config['cipher']) : (array) ($config['cipher'] ?? ['aes128-cbc']);
             }
         } catch (\Exception $e) {
-            flash()->error('OVPN Load: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load OVPN data. Please try again.');
         }
     }
 
@@ -434,7 +442,8 @@ class PppoeSetup extends Component
                 flash()->error('Router Error: '.$res);
             }
         } catch (\Exception $e) {
-            flash()->error('System Error: '.$e->getMessage());
+            report($e);
+            flash()->error('System operation failed. Please try again.');
         }
     }
 

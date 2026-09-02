@@ -301,7 +301,8 @@ class EditCustomer extends Component
         } catch (\Exception $routerEx) {
             // Log but continue — user may have already been removed from router
             \Log::warning('deletePPPUser router error: '.$routerEx->getMessage());
-            flash()->warning('Router warning: '.$routerEx->getMessage().'. Cleaning up database record.');
+            report($routerEx);
+            flash()->warning('Router warning. Cleaning up database record.');
         }
 
         // Always clean up the database record regardless of router outcome
@@ -369,7 +370,8 @@ class EditCustomer extends Component
                         }
                     }
                 } catch (\Exception $e) {
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
 
                 $this->profileNames = [];
@@ -392,7 +394,8 @@ class EditCustomer extends Component
                         }
                     }
                 } catch (\Exception $e) {
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
 
                 $this->interfaceNames = [];
@@ -525,7 +528,8 @@ class EditCustomer extends Component
 
                 } catch (\Exception $e) {
                     // Handle any connection or execution errors
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
             } elseif ($this->service == 'static') {
                 try {
@@ -555,7 +559,8 @@ class EditCustomer extends Component
                     $this->resetPPPUser();
                 } catch (\Exception $e) {
                     // Handle any connection or execution errors
-                    flash()->error('Router '.$e->getMessage().' is not connected!');
+                    report($e);
+                    flash()->error('Router is not connected. Please check the router connection.');
                 }
             }
         } catch (ValidationException $e) {
@@ -571,7 +576,8 @@ class EditCustomer extends Component
             throw $e;
         } catch (\Exception $e) {
             // Handle any other type of exception
-            flash()->error('Error: '.$e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -848,7 +854,8 @@ class EditCustomer extends Component
                         }
                     } catch (\Exception $e) {
                         \Log::error('Failed to update PPP Secret '.$attributeField.' on router: '.$e->getMessage());
-                        flash()->error('Failed to update on Mikrotik: '.$e->getMessage());
+                        report($e);
+                        flash()->error('Failed to update on MikroTik. Please try again.');
                     }
                 } elseif ($relation == 'official' && $attribute == 'status') {
                     try {
@@ -890,7 +897,8 @@ class EditCustomer extends Component
                     } catch (\Exception $e) {
                         \DB::rollBack();
                         \Log::error('Failed to update status for customer '.$customer->customer_unique_id.': '.$e->getMessage());
-                        flash()->error('Failed to update status on router: '.$e->getMessage());
+                        report($e);
+                        flash()->error('Failed to update status on router. Please try again.');
                     }
                 } elseif ($relation && $customer->$relation) {
                     $relatedModel = $customer->$relation;

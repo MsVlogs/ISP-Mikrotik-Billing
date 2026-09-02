@@ -92,7 +92,8 @@ class OvpnSetup extends Component
             $this->certificates = collect($ctrl->getItems($this->selectedRouter, '/certificate'))->pluck('name')->toArray();
 
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -123,7 +124,8 @@ class OvpnSetup extends Component
                 flash()->error($res);
             }
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

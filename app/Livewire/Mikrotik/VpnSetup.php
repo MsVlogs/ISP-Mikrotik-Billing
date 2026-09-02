@@ -96,7 +96,8 @@ class VpnSetup extends Component
                 $this->sstp_port = (int) ($s['port'] ?? 443);
             }
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -111,7 +112,8 @@ class VpnSetup extends Component
             flash()->success('L2TP settings saved!');
             $this->l2tpStatus = app(MikrotikController::class)->getL2tpStatus($this->selectedRouter);
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -124,7 +126,8 @@ class VpnSetup extends Component
             flash()->success('PPTP settings saved!');
             $this->pptpStatus = app(MikrotikController::class)->getPptpStatus($this->selectedRouter);
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -138,7 +141,8 @@ class VpnSetup extends Component
             $this->sstpStatus = app(MikrotikController::class)->getSstpStatus($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -148,7 +152,8 @@ class VpnSetup extends Component
             $this->activeSessions = app(MikrotikController::class)->getActivePppSessions($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

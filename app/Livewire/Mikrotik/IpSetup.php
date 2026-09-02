@@ -106,7 +106,8 @@ class IpSetup extends Component
             $this->interfaces = collect($ctrl->getInterfaces($this->selectedRouter))->pluck('name')->filter()->values()->toArray();
 
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -131,7 +132,8 @@ class IpSetup extends Component
             $this->ipAddresses = app(MikrotikController::class)->getIpAddresses($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -143,7 +145,8 @@ class IpSetup extends Component
             $this->ipAddresses = app(MikrotikController::class)->getIpAddresses($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -161,7 +164,8 @@ class IpSetup extends Component
             $this->ipPools = $ctrl->getIpPools($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -182,7 +186,8 @@ class IpSetup extends Component
             $this->ipPools = app(MikrotikController::class)->getIpPools($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -216,7 +221,8 @@ class IpSetup extends Component
             $this->dhcpServers = app(MikrotikController::class)->getDhcpServers($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -228,7 +234,8 @@ class IpSetup extends Component
             $this->dhcpServers = app(MikrotikController::class)->getDhcpServers($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -240,7 +247,8 @@ class IpSetup extends Component
             $this->dhcpServers = app(MikrotikController::class)->getDhcpServers($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -290,7 +298,8 @@ class IpSetup extends Component
             $this->dhcpNetworks = app(MikrotikController::class)->getDhcpNetworks($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -302,7 +311,8 @@ class IpSetup extends Component
             $this->dhcpNetworks = app(MikrotikController::class)->getDhcpNetworks($this->selectedRouter);
 
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

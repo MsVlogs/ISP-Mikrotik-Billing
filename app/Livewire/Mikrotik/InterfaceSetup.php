@@ -72,7 +72,8 @@ class InterfaceSetup extends Component
             $this->bridgePorts = $ctrl->getBridgePorts($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -84,7 +85,8 @@ class InterfaceSetup extends Component
             $this->interfaces = app(MikrotikController::class)->getInterfaces($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -115,7 +117,8 @@ class InterfaceSetup extends Component
             $this->vlans = app(MikrotikController::class)->getVlans($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -127,7 +130,8 @@ class InterfaceSetup extends Component
             $this->vlans = app(MikrotikController::class)->getVlans($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -141,7 +145,8 @@ class InterfaceSetup extends Component
             $this->bridges = app(MikrotikController::class)->getBridges($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -153,7 +158,8 @@ class InterfaceSetup extends Component
             $this->bridges = app(MikrotikController::class)->getBridges($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

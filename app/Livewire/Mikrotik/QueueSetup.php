@@ -77,7 +77,8 @@ class QueueSetup extends Component
             $this->queueTypes = $ctrl->getQueueTypes($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -107,7 +108,8 @@ class QueueSetup extends Component
             $this->simpleQueues = app(MikrotikController::class)->getSimpleQueues($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -119,7 +121,8 @@ class QueueSetup extends Component
             $this->simpleQueues = app(MikrotikController::class)->getSimpleQueues($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -131,7 +134,8 @@ class QueueSetup extends Component
             $this->simpleQueues = app(MikrotikController::class)->getSimpleQueues($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -165,7 +169,8 @@ class QueueSetup extends Component
             $this->queueTree = app(MikrotikController::class)->getQueueTree($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -177,7 +182,8 @@ class QueueSetup extends Component
             $this->queueTree = app(MikrotikController::class)->getQueueTree($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -193,7 +199,8 @@ class QueueSetup extends Component
             app(MikrotikController::class)->moveItem($this->selectedRouter, '/queue '.$type, $id, $prevId);
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -209,7 +216,8 @@ class QueueSetup extends Component
             app(MikrotikController::class)->moveItem($this->selectedRouter, '/queue '.$type, $id, $nextNextId);
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

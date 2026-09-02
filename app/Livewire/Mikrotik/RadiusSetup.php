@@ -57,7 +57,8 @@ class RadiusSetup extends Component
             $this->radiusServers = app(MikrotikController::class)->getRadiusServers($this->selectedRouter);
             $this->dispatch('reinit-datatables');
         } catch (\Exception $e) {
-            flash()->error('Load error: '.$e->getMessage());
+            report($e);
+            flash()->error('Unable to load data. Please try again.');
         }
     }
 
@@ -93,7 +94,8 @@ class RadiusSetup extends Component
             $this->reset(['r_address', 'r_secret', 'r_comment', 'editRadiusId']);
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -104,7 +106,8 @@ class RadiusSetup extends Component
             flash()->success('RADIUS server removed.');
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 
@@ -115,7 +118,8 @@ class RadiusSetup extends Component
             flash()->success('RADIUS server '.($enable ? 'enabled' : 'disabled').'.');
             $this->loadData();
         } catch (\Exception $e) {
-            flash()->error($e->getMessage());
+            report($e);
+            flash()->error('Operation failed. Please try again.');
         }
     }
 

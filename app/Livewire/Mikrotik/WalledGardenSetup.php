@@ -151,7 +151,8 @@ class WalledGardenSetup extends Component
             $this->reset(['url_or_ip', 'type', 'comment']);
 
         } catch (\Exception $e) {
-            flash()->error('Mikrotik sync error: '.$e->getMessage());
+            report($e);
+            flash()->error('MikroTik sync failed. Please try again.');
         }
     }
 
@@ -187,7 +188,8 @@ class WalledGardenSetup extends Component
                 }
 
             } catch (\Exception $e) {
-                flash()->error('Failed to remove from Mikrotik router: '.$e->getMessage());
+                report($e);
+            flash()->error('Failed to remove from MikroTik router. Please try again.');
 
                 return;
             }
@@ -310,7 +312,8 @@ class WalledGardenSetup extends Component
             flash()->success('Router redirection setup completed successfully!');
 
         } catch (\Exception $e) {
-            flash()->error('Router setup failed: '.$e->getMessage());
+            report($e);
+            flash()->error('Router setup failed. Please try again.');
         }
     }
 
