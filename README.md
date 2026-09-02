@@ -3,13 +3,10 @@
 <div align="center">
 
 ![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)
-![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=for-the-badge&logo=php&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=for-the-badge&logo=laravel&logoColor=white)
 ![Filament](https://img.shields.io/badge/Filament-3.x-F59E0B?style=for-the-badge&logo=laravel&logoColor=white)
 ![MikroTik API](https://img.shields.io/badge/MikroTik-RouterOS%20API-000000?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-
-### Sponsored by [Friends Communications Limited](https://fcnetwork24.com)
-### Demo: [isp.codepagol.com](https://isp.codepagol.com/)
 
 A premium, modern Internet Service Provider (ISP) Billing & MikroTik RouterOS API management platform built on Laravel, Livewire, and Filament. It allows network administrators and resellers to seamlessly manage subscribers, PPPoE connections, hotspot vouchers, automated payment reconciliations, and commissions from a unified interface.
 
@@ -54,11 +51,9 @@ graph TD
     Laravel -->|Spatie RBAC| Auth[Access Control / Jetstream]
     Laravel -->|RouterOS API / Port 8728| RouterOS[MikroTik RouterOS]
     Laravel -->|Eloquent ORM| DB[(MySQL Database)]
-    
     Android[Android SMS Forwarder App] -->|MFS SMS Webhook / Sanctum Token| API[Laravel API Endpoint]
     bKash[bKash IPN Server] -->|Payment Callback| API
     API -->|Reconcile & Match| Laravel
-    
     Reseller[Reseller Wallet] -->|Purchase Package / Voucher| Customer[PPP Secrets / Hotspot Vouchers]
     Customer -->|Provision via API| RouterOS
 ```
@@ -78,7 +73,7 @@ graph TD
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/CodePagol/ISP-Mikrotik-Billing.git
+   git clone https://github.com/MsVlogs/ISP-Mikrotik-Billing.git
    cd ISP-Mikrotik-Billing
    ```
 
