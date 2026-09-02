@@ -42,9 +42,9 @@
                 @else
                     @if (siteUrlSettings('site_icon'))
                         <img class="d-inline-block align-text-top" src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="" width="40" />
-                        <span class="font-sans-serif text-success">{{ siteUrlSettings('site_name') ?? 'Code Pagol' }}</span>
+                        <span class="font-sans-serif text-success">{{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}</span>
                     @else
-                        <span class="font-sans-serif text-success">{{ siteUrlSettings('site_name') ?? 'Code Pagol' }}</span>
+                        <span class="font-sans-serif text-success">{{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}</span>
                     @endif
                 @endif
 				{{-- <img src="{{ siteUrlSettings('site_logo') ?? asset('images/logo.png') }}" alt="Logo" width="164" height="40" class="d-inline-block align-text-top"> --}}

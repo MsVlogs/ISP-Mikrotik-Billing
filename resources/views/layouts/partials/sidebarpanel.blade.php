@@ -443,13 +443,6 @@
                         <a wire:navigate.hover class="nav-link" href="{{ route('api-tokens.index') }}">{{ __('API Tokens') }}</a>
                         <a wire:navigate.hover class="nav-link" href="{{ route('admin.login-logs') }}">{{ __('Login Logs') }}</a>
                     </div>
-                    @elseif($menuId === 'profileSecurityMenu')
-                    <div class="collapse ps-4" id="{{ $menuId }}">
-                        <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
-                        <a wire:navigate.hover class="nav-link" href="{{ route('profile.show') }}">{{ __('My Profile') }}</a>
-                        <a wire:navigate.hover class="nav-link" href="{{ route('api-tokens.index') }}">{{ __('API Tokens') }}</a>
-                        <a wire:navigate.hover class="nav-link" href="{{ route('admin.login-logs') }}">{{ __('Login Logs') }}</a>
-                    </div>
                     @else
                     <div class="collapse ps-4" id="{{ $menuId }}">
                         <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>

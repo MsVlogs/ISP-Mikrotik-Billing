@@ -1,7 +1,7 @@
 @php
     $logo = siteUrlSettings('site_logo');
     $icon = siteUrlSettings('site_icon');
-    $name = siteUrlSettings('site_name') ?? 'Code Pagol';
+    $name = siteUrlSettings('site_name') ?? 'X-Link Limited';
 @endphp
 
 <div class="flex items-center">

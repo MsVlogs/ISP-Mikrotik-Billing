@@ -11,7 +11,7 @@
                             @if (siteUrlSettings('site_icon'))
                                 <img class="me-2" src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="" width="40" style="vertical-align: middle;" />
                             @endif
-                            {{ siteUrlSettings('site_name') ?? 'Code Pagol' }}
+                            {{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}
                         </h2>
                     @endif
                 </div>
@@ -21,7 +21,7 @@
                     @csrf
                     @if (!siteUrlSettings('site_logo') && !siteUrlSettings('site_icon'))
                         <div class="d-desktop-only" style="text-align: center; margin-bottom: 20px;">
-                            <h2 class="neon-text audiowide-bold" style="font-size: 2rem; color: #06ad73; text-shadow: 0 0 5px #06ad73;">{{ siteUrlSettings('site_name') ?? 'Code Pagol' }}</h2>
+                            <h2 class="neon-text audiowide-bold" style="font-size: 2rem; color: #06ad73; text-shadow: 0 0 5px #06ad73;">{{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}</h2>
                         </div>
                     @endif
                     <h2 class="form__title">Sign Up</h2>
@@ -95,7 +95,7 @@
                         @if (siteUrlSettings('site_icon'))
                             <h2 class="box__title neon-text audiowide-bold">
                                 <img class="me-2" src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="" width="40" style="vertical-align: middle;" />
-                                {{ siteUrlSettings('site_name') ?? 'Code Pagol' }}
+                                {{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}
                             </h2>
                         @else
                             <img src="{{ asset('images/front_logo_300_500.png') }}" alt="Desktop Picture" class="box__image">

@@ -8,7 +8,7 @@
                 @if (siteUrlSettings('site_icon'))
                     <img class="me-2" src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="" width="40" style="vertical-align: middle;" />
                 @endif
-                {{ siteUrlSettings('site_name') ?? 'Code Pagol' }}
+                {{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}
             </h2>
         @endif
     </div>
@@ -23,7 +23,7 @@
             @if (siteUrlSettings('site_icon'))
                 <h2 class="box__title neon-text audiowide-bold">
                     <img class="me-2" src="{{ site_image(siteUrlSettings('site_icon')) }}" alt="" width="40" style="vertical-align: middle;" />
-                    {{ siteUrlSettings('site_name') ?? 'Code Pagol' }}
+                    {{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}
                 </h2>
             @else
                 <img src="{{ asset('images/front_logo_300_500.png') }}" alt="Desktop Picture" class="box__image">
