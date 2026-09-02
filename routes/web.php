@@ -546,20 +546,10 @@ Route::middleware([
         Route::get('/team-access', function () {
             $users = \App\Models\User::count();
             $roles = class_exists(\Spatie\Permission\Models\Role::class) ? \Spatie\Permission\Models\Role::count() : 0;
-            return view('xlink.module', [
-                'title'=>'Team & Access','icon'=>'bi-people','description'=>'Users, roles and access administration with protected admin controls.',
-                'stats'=>[
-                    ['label'=>'Users','value'=>$users],
-                    ['label'=>'Roles','value'=>$roles],
-                    ['label'=>'Auth','value'=>'Protected'],
-                ],
-                'links'=>[
-                    ['url'=>route('admin-users'),'label'=>'Manage Users','hint'=>'Create, edit and review users'],
-                    ['url'=>route('admin-roles'),'label'=>'Manage Roles','hint'=>'Roles and permissions'],
-                    ['url'=>route('profile.show'),'label'=>'My Profile','hint'=>'Account settings'],
-                    ['url'=>route('admin.login-logs'),'label'=>'Login Logs','hint'=>'Authentication history'],
-                ],
-            ]);
+            $superAdmins = \App\Models\User::role('Super Admin')->count();
+            $twoFactor = \App\Models\User::whereNotNull('two_factor_confirmed_at')->count();
+            $recentUsers = \App\Models\User::latest()->limit(8)->get();
+            return view('xlink.team-access', compact('users','roles','superAdmins','twoFactor','recentUsers'));
         })->name('xlink.team-access');
         Route::get('/system-settings', function () {
             $debug = config('app.debug') ? 'ON' : 'OFF';
@@ -641,7 +631,6 @@ Route::middleware([
         Route::post('/bandwidth-tickets', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'storeTicket'])->name('bandwidth-tickets.store');
         Route::put('/bandwidth-tickets/{ticket}', [\App\Http\Controllers\Admin\BandwidthResellerController::class,'updateTicket'])->name('bandwidth-tickets.update');
         Route::get('/devices-inventory', fn () => redirect()->route('mikrotik-server'))->name('xlink.devices-inventory');
-        Route::get('/team-access', fn () => redirect()->route('admin-users'))->name('xlink.team-access');
         Route::get('/system-settings', fn () => redirect()->route('site-settings'))->name('xlink.system-settings');
         Route::get('/billing-helpline', fn () => redirect()->route('admin-tickets'))->name('xlink.billing-helpline');
         Route::get('/profile-security', fn () => redirect()->route('profile.show'))->name('xlink.profile-security');
