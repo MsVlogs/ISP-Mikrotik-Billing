@@ -164,7 +164,8 @@ class ManageRole extends Component
 
             session()->flash('success', 'Role successfully deleted.');
         } catch (\Throwable $e) {
-            dd($e->getMessage(), $e->getFile(), $e->getLine());
+            report($e);
+            session()->flash('error', 'Unable to delete the role. Please try again.');
         }
     }
 
