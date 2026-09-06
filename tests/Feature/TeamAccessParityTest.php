@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class TeamAccessParityTest extends TestCase
@@ -13,6 +14,7 @@ class TeamAccessParityTest extends TestCase
     private function admin(): User
     {
         $user = User::factory()->create();
+        Role::findOrCreate('Super Admin', 'web');
         $user->assignRole('Super Admin');
         return $user;
     }
