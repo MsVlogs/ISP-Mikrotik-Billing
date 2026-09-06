@@ -96,6 +96,20 @@ class SupportCenterParityTest extends TestCase
     }
 
     #[Test]
+    public function sales_query_source_alias_is_supported(): void
+    {
+        $user = $this->superAdmin();
+        $this->actingAs($user)->get('/support-center/sales-queries?source=Facebook')->assertOk();
+    }
+
+    #[Test]
+    public function kyc_date_filters_are_supported(): void
+    {
+        $user = $this->superAdmin();
+        $this->actingAs($user)->get('/support-center/kyc?date_from=2026-01-01&date_to=2026-12-31')->assertOk();
+    }
+
+    #[Test]
     public function templates_page_renders_for_super_admin(): void
     {
         $user = $this->superAdmin();

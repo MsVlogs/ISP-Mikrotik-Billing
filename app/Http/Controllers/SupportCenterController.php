@@ -238,8 +238,8 @@ class SupportCenterController extends Controller
         $this->authorizeSupport();
         $query=SalesQuery::with(["package","assignee"])->latest();
         if($request->filled("status")) $query->where("status",$request->status);
-        if($request->filled("lead_source")) $query->where("lead_source",$request->lead_source);
-        if($request->filled("q")) $query->where(fn($q)=>$q->where("prospect_name","like","%{$request->q}%")->orWhere("mobile1","like","%{$request->q}%")->orWhere("email","like","%{$request->q}%"));
+        if($request->filled("lead_source") || $request->filled("source")) $query->where("lead_source",$request->input("lead_source", $request->input("source")));
+        if($request->filled("q")) $query->where(fn($q)=>$q->where("prospect_name","like","%{$request->q}%")->orWhere("mobile1","like","%{$request->q}%")->orWhere("email","like","%{$request->q}%")->orWhere("referred_by","like","%{$request->q}%")->orWhere("remarks","like","%{$request->q}%"));
         $stats=["open"=>SalesQuery::whereIn("status",["new","contacted","follow_up","qualified"])->count(),"new"=>SalesQuery::where("status","new")->count(),"follow_up"=>SalesQuery::where("status","follow_up")->count(),"converted"=>SalesQuery::where("status","converted")->count()];
         return view("xlink.support-center-sales",["queries"=>$query->paginate(25)->withQueryString(),"stats"=>$stats]);
     }
@@ -263,6 +263,8 @@ class SupportCenterController extends Controller
         $this->authorizeSupport();
         $query=KycRequest::with("customer")->latest();
         if($request->filled("status")) $query->where("status",$request->status);
+        if($request->filled("date_from")) $query->whereDate("created_at",">=",$request->date_from);
+        if($request->filled("date_to")) $query->whereDate("created_at","<=",$request->date_to);
         if($request->filled("q")) $query->where(fn($q)=>$q->where("customer_unique_id","like","%{$request->q}%")->orWhere("customer_name","like","%{$request->q}%")->orWhere("phone","like","%{$request->q}%")->orWhere("nid","like","%{$request->q}%")->orWhere("email","like","%{$request->q}%"));
         return view("xlink.support-center-kyc",["requests"=>$query->paginate(25)->withQueryString()]);
     }
@@ -283,9 +285,16 @@ class SupportCenterController extends Controller
     public function storeTemplate(Request $request)
     {
         $this->authorizeSupport();
-        $data=$request->validate(["type"=>"required|in:complain,task,sales","name"=>"required|string|max:120","sort_order"=>"required|integer|min:0","subject_template"=>"nullable|string|max:190","internal_note_template"=>"nullable|string|max:2000","description_template"=>"nullable|string|max:5000","customer_message"=>"nullable|string|max:3000","staff_message"=>"nullable|string|max:3000","body_template"=>"nullable|string|max:5000","customer_message_template"=>"nullable|string|max:3000","staff_message_template"=>"nullable|string|max:3000","allow_custom_channels"=>"nullable|boolean"]);
-        $data["active"]=(bool)$request->boolean("active"); $data["allow_custom_channels"]=(bool)$request->boolean("allow_custom_channels"); $data["bell_notification"]=(bool)$request->boolean("bell_notification"); $data["staff_sms"]=(bool)$request->boolean("staff_sms"); $data["customer_sms"]=(bool)$request->boolean("customer_sms"); $data["customer_whatsapp"]=(bool)$request->boolean("customer_whatsapp"); $data["owner_telegram"]=(bool)$request->boolean("owner_telegram"); $data["custom_override"]=(bool)$request->boolean("custom_override");
-        SupportTicketTemplate::updateOrCreate(["name"=>$data["name"],"type"=>$data["type"]],$data);
+        $data=$request->validate(["type"=>"nullable|in:complain,task,sales","ticket_type"=>"nullable|in:complain,task,sales","topic_id"=>"nullable|integer|exists:support_ticket_templates,id","name"=>"required|string|max:120","sort_order"=>"required|integer|min:0","subject_template"=>"nullable|string|max:190","internal_note_template"=>"nullable|string|max:2000","description_template"=>"nullable|string|max:5000","description"=>"nullable|string|max:5000","customer_message"=>"nullable|string|max:3000","staff_message"=>"nullable|string|max:3000","body_template"=>"nullable|string|max:5000","customer_message_template"=>"nullable|string|max:3000","staff_message_template"=>"nullable|string|max:3000","allow_custom_channels"=>"nullable|boolean"]);
+        $data["type"] = $data["type"] ?? $data["ticket_type"];
+        $data["description_template"] = $data["description_template"] ?? $data["description"] ?? null;
+        $data["active"]=(bool)$request->boolean("active", $request->boolean("is_active")); $data["allow_custom_channels"]=(bool)$request->boolean("allow_custom_channels"); $data["bell_notification"]=(bool)$request->boolean("bell_notification"); $data["staff_sms"]=(bool)$request->boolean("staff_sms"); $data["customer_sms"]=(bool)$request->boolean("customer_sms"); $data["customer_whatsapp"]=(bool)$request->boolean("customer_whatsapp"); $data["owner_telegram"]=(bool)$request->boolean("owner_telegram"); $data["custom_override"]=(bool)$request->boolean("custom_override");
+        $template = ! empty($data["topic_id"]) ? SupportTicketTemplate::find($data["topic_id"]) : null;
+        if ($template) {
+            $template->update($data);
+        } else {
+            SupportTicketTemplate::updateOrCreate(["name"=>$data["name"],"type"=>$data["type"]],$data);
+        }
         return back()->with("support_message","Template saved successfully.");
     }
 }
