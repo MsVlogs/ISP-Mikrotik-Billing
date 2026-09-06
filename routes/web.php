@@ -557,6 +557,10 @@ Route::middleware([
         Route::put('/support-center/kyc/{kyc}', [SupportCenterController::class, 'updateKyc'])->name('support-center.kyc-update');
         Route::get('/support-center/templates', [SupportCenterController::class, 'templates'])->name('support-center.templates');
         Route::post('/support-center/templates', [SupportCenterController::class, 'storeTemplate'])->name('support-center.template-store');
+        Route::post('/support-center/tickets/bulk', [SupportCenterController::class, 'bulkUpdateTickets'])->name('support-center.tickets-bulk');
+        Route::get('/support-center/settings', [SupportCenterController::class, 'generalSettings'])->name('support-center.settings');
+        Route::post('/support-center/settings', [SupportCenterController::class, 'saveGeneralSettings'])->name('support-center.settings.save');
+        Route::post('/support-center/kyc/bulk', [SupportCenterController::class, 'bulkUpdateKyc'])->name('support-center.kyc-bulk');
         Route::get('/team-access', function () {
             $users = \App\Models\User::count();
             $roles = class_exists(\Spatie\Permission\Models\Role::class) ? \Spatie\Permission\Models\Role::count() : 0;
