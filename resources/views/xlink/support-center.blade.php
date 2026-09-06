@@ -15,7 +15,7 @@
             <div class="col-md-2"><label class="form-label small">From Date</label><input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control"></div>
             <div class="col-md-2"><label class="form-label small">To Date</label><input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control"></div>
             <div class="col-md-2"><label class="form-label small">Status</label><select name="status" class="form-select"><option value="">All</option>@foreach(['new','open','pending','in_progress','resolved','closed'] as $s)<option value="{{ $s }}" @selected(request('status')===$s)>{{ ucfirst(str_replace('_',' ',$s)) }}</option>@endforeach</select></div>
-            <div class="col-md-2"><label class="form-label small">Type</label><select name="type" class="form-select"><option value="">All</option><option value="complain">Complain</option><option value="task">Task</option><option value="sales">Sales</option></select></div>
+            <div class="col-md-2"><label class="form-label small">Type</label><select name="type" class="form-select"><option value="">All</option><option value="complain">Complain</option><option value="task">Task</option><option value="sales">Sales</option><option value="legacy_sales">Legacy Sales</option></select></div>
             <div class="col-md-3"><label class="form-label small">Search</label><input name="q" value="{{ request('q') }}" class="form-control" placeholder="Ticket, CID, customer or subject"></div>
             <div class="col-md-1"><button class="btn btn-outline-primary w-100">Filter</button></div>
         </form>

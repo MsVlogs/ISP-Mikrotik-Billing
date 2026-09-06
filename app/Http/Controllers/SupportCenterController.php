@@ -46,7 +46,7 @@ class SupportCenterController extends Controller
             "closed" => SupportTicket::whereIn("status", ["closed", "resolved"])->count(),
             "complain" => SupportTicket::where("ticket_type", "complain")->count(),
             "task" => SupportTicket::where("ticket_type", "task")->count(),
-            "sales" => SupportTicket::where("ticket_type", "sales")->count(),
+            "sales" => SupportTicket::whereIn("ticket_type", ["sales", "legacy_sales"])->count(),
             "kyc" => KycRequest::where("status", "pending")->count(),
         ];
         $kycRequests = KycRequest::with("customer")->where("status", "pending")->latest()->limit(6)->get();
@@ -247,7 +247,7 @@ class SupportCenterController extends Controller
     public function createSalesQuery()
     {
         $this->authorizeSupport();
-        return view("xlink.support-center-sales-create", ["packages"=>PackageList::orderBy("package")->get(), "staff"=>$this->staff()]);
+        return view("xlink.support-center-sales-create", ["packages"=>PackageList::orderBy("package")->get(), "staff"=>$this->staff(), "leadSources"=>["Facebook","Company Website","Banner / Poster","Handbill","Friend / Family","Another Customer","Company Employee / Sales Person","Other Website","Newspaper","Walk-in","Phone Call","Other"], "areas"=>["Campus Zone","Central POP","East Market","Industrial Belt","Lake View","North Zone","South Zone","West Residential"]]);
     }
 
     public function storeSalesQuery(Request $request)
