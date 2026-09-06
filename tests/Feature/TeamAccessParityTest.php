@@ -13,7 +13,7 @@ class TeamAccessParityTest extends TestCase
 
     private function admin(): User
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['email_verified_at' => now()]);
         Role::findOrCreate('Super Admin', 'web');
         $user->assignRole('Super Admin');
         return $user;
@@ -34,7 +34,12 @@ class TeamAccessParityTest extends TestCase
         $this->actingAs($admin);
 
         foreach ($routes as $name) {
-            $this->get(route($name))->assertSuccessful();
+            $response = $this->get(route($name));
+            if ($name === 'user-activity') {
+                $response->assertRedirect(route('admin.activity-logs'));
+            } else {
+                $response->assertSuccessful();
+            }
         }
     }
 
@@ -50,7 +55,8 @@ class TeamAccessParityTest extends TestCase
             'to_date' => today()->addDays(2)->toDateString(), 'reason' => 'Personal',
         ])->assertRedirect();
 
-        $this->assertDatabaseHas('team_attendance_records', ['user_id' => $admin->id, 'attendance_date' => today()->toDateString()]);
+        $this->assertDatabaseCount('team_attendance_records', 1);
+        $this->assertNotNull(\App\Models\TeamAttendanceRecord::query()->where('user_id', $admin->id)->whereDate('attendance_date', today())->first());
         $this->assertDatabaseHas('team_leave_requests', ['user_id' => $admin->id, 'status' => 'pending']);
     }
 }
