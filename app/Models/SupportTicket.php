@@ -35,6 +35,11 @@ class SupportTicket extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function kycRequests()
+    {
+        return $this->hasMany(KycRequest::class, 'customer_unique_id', 'customer_unique_id')->latest();
+    }
+
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {

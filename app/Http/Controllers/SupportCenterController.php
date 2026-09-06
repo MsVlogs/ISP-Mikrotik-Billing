@@ -38,12 +38,16 @@ class SupportCenterController extends Controller
         if ($request->filled("date_from")) $q->whereDate("created_at", ">=", $request->date_from);
         if ($request->filled("date_to")) $q->whereDate("created_at", "<=", $request->date_to);
 
-        $tickets = (clone $q)->with(["customer", "assignee"])->latest()->limit(12)->get();
+        $tickets = (clone $q)->with(["customer.pppUser", "customer.kycRequests", "assignee"])->latest()->limit(12)->get();
+        $activeStatuses = ["new", "open", "pending", "in_progress"];
+        $rangeQuery = clone $q;
         $stats = [
             "total" => SupportTicket::count(),
+            "active" => SupportTicket::whereIn("status", $activeStatuses)->count(),
             "new" => SupportTicket::where("status", "new")->count(),
             "open" => SupportTicket::whereIn("status", ["open", "pending", "in_progress"])->count(),
-            "closed" => SupportTicket::whereIn("status", ["closed", "resolved"])->count(),
+            "closed_in_range" => $rangeQuery->whereIn("status", ["closed", "resolved"])->count(),
+            "open_24h" => SupportTicket::whereIn("status", $activeStatuses)->where("created_at", "<=", now()->subDay())->count(),
             "complain" => SupportTicket::where("ticket_type", "complain")->count(),
             "task" => SupportTicket::where("ticket_type", "task")->count(),
             "sales" => SupportTicket::whereIn("ticket_type", ["sales", "legacy_sales"])->count(),
@@ -108,7 +112,7 @@ class SupportCenterController extends Controller
     public function tickets(Request $request)
     {
         $this->authorizeSupport();
-        $query = SupportTicket::with(["customer", "assignee"])->latest();
+        $query = SupportTicket::with(["customer.pppUser", "customer.kycRequests", "assignee"])->latest();
         foreach (["status", "ticket_type", "assigned_to"] as $filter) if ($request->filled($filter)) $query->where($filter, $request->input($filter));
         if ($request->filled("q")) { $term=$request->string("q"); $query->where(fn($q)=>$q->where("ticket_no","like","%{$term}%")->orWhere("subject","like","%{$term}%")->orWhere("customer_unique_id","like","%{$term}%")->orWhere("ppp_username","like","%{$term}%")); }
         if ($request->filled("date_from")) $query->whereDate("created_at",">=",$request->date_from);
@@ -119,7 +123,7 @@ class SupportCenterController extends Controller
     public function exportTickets(Request $request)
     {
         $this->authorizeSupport();
-        $query = SupportTicket::with(["customer", "assignee"])->latest();
+        $query = SupportTicket::with(["customer.pppUser", "customer.kycRequests", "assignee"])->latest();
         foreach (["status", "ticket_type", "assigned_to"] as $filter) {
             if ($request->filled($filter)) {
                 $query->where($filter, $request->input($filter));
@@ -301,6 +305,13 @@ class SupportCenterController extends Controller
                 "notify_sms" => (bool) MainSiteData::getValue("support_notify_sms", 1),
             ],
         ]);
+    }
+
+    public function toggleTemplate(SupportTicketTemplate $template)
+    {
+        $this->authorizeSupport();
+        $template->update(["active" => ! $template->active]);
+        return back()->with("support_message", "Template ".($template->active ? "enabled" : "disabled")." successfully.");
     }
 
     public function storeTemplate(Request $request)
