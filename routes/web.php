@@ -546,6 +546,7 @@ Route::middleware([
         })->name('communication-center.whatsapp');
         Route::get('/support-center', [SupportCenterController::class, 'dashboard'])->name('xlink.support-center');
         Route::get('/support-center/tickets', [SupportCenterController::class, 'tickets'])->name('support-center.tickets');
+        Route::get('/support-center/tickets/export', [SupportCenterController::class, 'exportTickets'])->name('support-center.tickets-export');
         Route::get('/support-center/tickets/create', [SupportCenterController::class, 'createTicket'])->name('support-center.create-ticket');
         Route::post('/support-center/tickets', [SupportCenterController::class, 'storeTicket'])->name('support-center.store-ticket');
         Route::put('/support-center/tickets/{ticket}', [SupportCenterController::class, 'updateTicket'])->name('support-center.ticket-update');

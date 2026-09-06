@@ -3,7 +3,7 @@
     @if(session('support_message')) <div class="alert alert-success shadow-sm">{{ session('support_message') }}</div> @endif
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <div><h3 class="mb-1"><i class="bi bi-life-preserver me-2"></i>Support Center</h3><div class="text-muted">Support operations, ticket queue, sales leads and KYC follow-up.</div></div>
-        <div class="d-flex gap-2"><a href="{{ route('support-center.create-ticket') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Add Ticket</a><a href="{{ route('support-center.sales-create') }}" class="btn btn-outline-primary"><i class="bi bi-person-plus me-1"></i>Sales Query</a></div>
+        <div class="d-flex gap-2"><a href="{{ route('support-center.tickets-export') }}" class="btn btn-outline-success">Download Tickets</a><a href="{{ route('support-center.create-ticket') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Add Ticket</a><a href="{{ route('support-center.sales-create') }}" class="btn btn-outline-primary"><i class="bi bi-person-plus me-1"></i>Sales Query</a></div>
     </div>
     <div class="row g-3 mb-4">
         @foreach([['Tickets',$stats['total'],'primary'],['New',$stats['new'],'info'],['Open Workload',$stats['open'],'warning'],['Closed',$stats['closed'],'success'],['Complaints',$stats['complain'],'danger'],['Tasks',$stats['task'],'secondary'],['Sales',$stats['sales'],'primary'],['Pending KYC',$stats['kyc'],'warning']] as [$label,$value,$color])

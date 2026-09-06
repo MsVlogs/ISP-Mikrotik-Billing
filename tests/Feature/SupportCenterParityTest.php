@@ -51,6 +51,19 @@ class SupportCenterParityTest extends TestCase
     }
 
     #[Test]
+    public function super_admin_can_export_tickets(): void
+    {
+        $user = $this->superAdmin();
+        SupportTicket::create([
+            'ticket_no'=>'TKT-EXPORT01','customer_unique_id'=>'CUS-EXPORT01','subject'=>'Export me','description'=>'Export test','priority'=>'low','status'=>'new',
+        ]);
+
+        $response = $this->actingAs($user)->get('/support-center/tickets/export');
+        $response->assertOk();
+        $this->assertStringContainsString('TKT-EXPORT01', $response->streamedContent());
+    }
+
+    #[Test]
     public function selected_tickets_can_be_bulk_updated(): void
     {
         $user = $this->superAdmin();
@@ -80,6 +93,18 @@ class SupportCenterParityTest extends TestCase
 
         $this->assertDatabaseHas('kyc_requests', ['id'=>$a->id,'status'=>'reviewed']);
         $this->assertDatabaseHas('kyc_requests', ['id'=>$b->id,'status'=>'reviewed']);
+    }
+
+    #[Test]
+    public function templates_page_renders_for_super_admin(): void
+    {
+        $user = $this->superAdmin();
+
+        $this->actingAs($user)
+            ->get('/support-center/templates')
+            ->assertOk()
+            ->assertSee('Ticket Templates & Rules', false)
+            ->assertSee('General Support Settings');
     }
 
     #[Test]

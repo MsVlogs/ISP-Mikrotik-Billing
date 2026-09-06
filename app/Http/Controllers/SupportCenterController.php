@@ -116,6 +116,50 @@ class SupportCenterController extends Controller
         return view("xlink.support-center-tickets", ["tickets"=>$query->paginate(25)->withQueryString(), "staff"=>$this->staff()]);
     }
 
+    public function exportTickets(Request $request)
+    {
+        $this->authorizeSupport();
+        $query = SupportTicket::with(["customer", "assignee"])->latest();
+        foreach (["status", "ticket_type", "assigned_to"] as $filter) {
+            if ($request->filled($filter)) {
+                $query->where($filter, $request->input($filter));
+            }
+        }
+        if ($request->filled("q")) {
+            $term = $request->string("q");
+            $query->where(fn($q) => $q
+                ->where("ticket_no", "like", "%{$term}%")
+                ->orWhere("subject", "like", "%{$term}%")
+                ->orWhere("customer_unique_id", "like", "%{$term}%")
+                ->orWhere("ppp_username", "like", "%{$term}%"));
+        }
+        if ($request->filled("date_from")) $query->whereDate("created_at", ">=", $request->date_from);
+        if ($request->filled("date_to")) $query->whereDate("created_at", "<=", $request->date_to);
+
+        return response()->streamDownload(function () use ($query) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Ticket', 'Customer', 'CID', 'Type', 'Topic', 'Subject', 'Priority', 'Assigned', 'Status', 'Created', 'Updated']);
+            $query->chunkById(500, function ($tickets) use ($out) {
+                foreach ($tickets as $ticket) {
+                    fputcsv($out, [
+                        $ticket->ticket_no,
+                        $ticket->customer->customer_name ?? '',
+                        $ticket->customer_unique_id,
+                        $ticket->ticket_type,
+                        $ticket->topic ?? '',
+                        $ticket->subject,
+                        $ticket->priority,
+                        $ticket->assignee->name ?? '',
+                        $ticket->status,
+                        optional($ticket->created_at)->format('Y-m-d H:i:s'),
+                        optional($ticket->updated_at)->format('Y-m-d H:i:s'),
+                    ]);
+                }
+            });
+            fclose($out);
+        }, 'support-tickets-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function createTicket()
     {
         $this->authorizeSupport();
@@ -219,14 +263,21 @@ class SupportCenterController extends Controller
         $this->authorizeSupport();
         $query=KycRequest::with("customer")->latest();
         if($request->filled("status")) $query->where("status",$request->status);
-        if($request->filled("q")) $query->where(fn($q)=>$q->where("customer_unique_id","like","%{$request->q}%")->orWhere("customer_name","like","%{$request->q}%")->orWhere("phone","like","%{$request->q}%")->orWhere("nid","like","%{$request->q}%"));
+        if($request->filled("q")) $query->where(fn($q)=>$q->where("customer_unique_id","like","%{$request->q}%")->orWhere("customer_name","like","%{$request->q}%")->orWhere("phone","like","%{$request->q}%")->orWhere("nid","like","%{$request->q}%")->orWhere("email","like","%{$request->q}%"));
         return view("xlink.support-center-kyc",["requests"=>$query->paginate(25)->withQueryString()]);
     }
 
     public function templates()
     {
         $this->authorizeSupport();
-        return view("xlink.support-center-templates", ["templates"=>SupportTicketTemplate::orderBy("sort_order")->get()]);
+        return view("xlink.support-center-templates", [
+            "templates" => SupportTicketTemplate::orderBy("sort_order")->get(),
+            "settings" => [
+                "default_priority" => MainSiteData::getValue("support_default_priority", "medium"),
+                "auto_close_days" => (int) MainSiteData::getValue("support_auto_close_days", 0),
+                "notify_sms" => (bool) MainSiteData::getValue("support_notify_sms", 1),
+            ],
+        ]);
     }
 
     public function storeTemplate(Request $request)
