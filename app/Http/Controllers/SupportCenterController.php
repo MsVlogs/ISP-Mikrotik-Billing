@@ -81,7 +81,22 @@ class SupportCenterController extends Controller
             "notify_customer_whatsapp"=>["nullable","boolean"], "notify_owner_telegram"=>["nullable","boolean"],
         ]);
         $customer=CustomersInfo::where("customer_unique_id",$data["customer_unique_id"])->firstOrFail();
-        $data["ticket_no"]=SupportTicket::generateTicketNo(); $data["ppp_username"]=$customer->pppUser?->username; $data["status"]="new";
+        $template = null;
+        if (! empty($data["topic"])) {
+            $template = SupportTicketTemplate::where("type", $data["ticket_type"])->where("name", $data["topic"])->where("active", true)->first();
+        }
+        $data["ticket_no"] = SupportTicket::generateTicketNo();
+        $data["ppp_username"] = $customer->pppUser?->username;
+        $data["status"] = "new";
+        if ($template) {
+            $data["notify_staff_bell"] = $template->bell_notification;
+            $data["notify_staff_sms"] = $template->staff_sms;
+            $data["notify_customer_sms"] = $template->customer_sms;
+            $data["notify_customer_whatsapp"] = $template->customer_whatsapp;
+            $data["notify_owner_telegram"] = $template->owner_telegram;
+            if ($template->subject_template) $data["subject"] = $template->subject_template;
+            if (! empty($template->description_template) && trim($data["description"]) === "") $data["description"] = $template->description_template;
+        }
         SupportTicket::create($data);
         NotificationLogs::create(["title"=>"Support Ticket Created","message"=>"Ticket #{$data["ticket_no"]} created for {$customer->customer_name}.","status"=>"new","type"=>"Support Ticket"]);
         return redirect()->route("support-center.tickets")->with("support_message","Support ticket {$data["ticket_no"]} created successfully.");
