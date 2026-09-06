@@ -87,6 +87,38 @@ class SupportCenterController extends Controller
         return redirect()->route("support-center.tickets")->with("support_message","Support ticket {$data["ticket_no"]} created successfully.");
     }
 
+    public function updateTicket(Request $request, SupportTicket $ticket)
+    {
+        $this->authorizeSupport();
+        $data = $request->validate([
+            "status" => ["required", "in:new,open,pending,in_progress,resolved,closed"],
+            "priority" => ["required", "in:low,medium,high,urgent"],
+            "assigned_to" => ["nullable", "exists:users,id"],
+        ]);
+        $ticket->update($data);
+        return back()->with("support_message", "Ticket #{$ticket->ticket_no} updated successfully.");
+    }
+
+    public function updateSalesQuery(Request $request, SalesQuery $query)
+    {
+        $this->authorizeSupport();
+        $data = $request->validate([
+            "status" => ["required", "in:new,contacted,follow_up,qualified,converted,lost"],
+            "priority" => ["required", "in:low,medium,high,urgent"],
+            "assigned_to" => ["nullable", "exists:users,id"],
+        ]);
+        $query->update($data);
+        return back()->with("support_message", "Sales query updated successfully.");
+    }
+
+    public function updateKyc(Request $request, KycRequest $kyc)
+    {
+        $this->authorizeSupport();
+        $data = $request->validate(["status" => ["required", "in:pending,reviewed,rejected"]]);
+        $kyc->update(["status" => $data["status"], "reviewed_by" => auth()->id(), "reviewed_at" => now()]);
+        return back()->with("support_message", "KYC status updated successfully.");
+    }
+
     public function salesQueries(Request $request)
     {
         $this->authorizeSupport();

@@ -548,10 +548,13 @@ Route::middleware([
         Route::get('/support-center/tickets', [SupportCenterController::class, 'tickets'])->name('support-center.tickets');
         Route::get('/support-center/tickets/create', [SupportCenterController::class, 'createTicket'])->name('support-center.create-ticket');
         Route::post('/support-center/tickets', [SupportCenterController::class, 'storeTicket'])->name('support-center.store-ticket');
+        Route::put('/support-center/tickets/{ticket}', [SupportCenterController::class, 'updateTicket'])->name('support-center.ticket-update');
         Route::get('/support-center/sales-queries', [SupportCenterController::class, 'salesQueries'])->name('support-center.sales');
         Route::get('/support-center/sales-queries/create', [SupportCenterController::class, 'createSalesQuery'])->name('support-center.sales-create');
         Route::post('/support-center/sales-queries', [SupportCenterController::class, 'storeSalesQuery'])->name('support-center.sales-store');
+        Route::put('/support-center/sales-queries/{query}', [SupportCenterController::class, 'updateSalesQuery'])->name('support-center.sales-update');
         Route::get('/support-center/kyc', [SupportCenterController::class, 'kyc'])->name('support-center.kyc');
+        Route::put('/support-center/kyc/{kyc}', [SupportCenterController::class, 'updateKyc'])->name('support-center.kyc-update');
         Route::get('/support-center/templates', [SupportCenterController::class, 'templates'])->name('support-center.templates');
         Route::post('/support-center/templates', [SupportCenterController::class, 'storeTemplate'])->name('support-center.template-store');
         Route::get('/team-access', function () {

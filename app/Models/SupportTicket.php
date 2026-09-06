@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class SupportTicket extends Model
 {
@@ -17,7 +18,7 @@ class SupportTicket extends Model
         'category',
         'admin_reply',
         'replied_at',
-        'replied_by',
+        'replied_by', 'ticket_type', 'topic', 'assigned_to', 'notify_staff_bell', 'notify_staff_sms', 'notify_customer_sms', 'notify_customer_whatsapp', 'notify_owner_telegram',
     ];
 
     protected $casts = [
@@ -27,6 +28,11 @@ class SupportTicket extends Model
     public function customer()
     {
         return $this->belongsTo(CustomersInfo::class, 'customer_unique_id', 'customer_unique_id');
+    }
+
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function getStatusColorAttribute(): string
