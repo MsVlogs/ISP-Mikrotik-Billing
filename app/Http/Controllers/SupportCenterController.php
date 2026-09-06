@@ -171,10 +171,10 @@ class SupportCenterController extends Controller
         $this->authorizeSupport();
         $data=$request->validate([
             "customer_unique_id"=>["required","exists:customers_infos,customer_unique_id"],
-            "ticket_type"=>["required","in:complain,task,sales"],
-            "priority"=>["required","in:low,medium,high,urgent"],
+            "ticket_type"=>["required","in:complain,task,sales,legacy_sales"],
+            "priority"=>["nullable","in:low,medium,high,urgent"],
             "topic"=>["nullable","string","max:120"], "assigned_to"=>["nullable","exists:users,id"],
-            "subject"=>["required","string","max:190"], "description"=>["required","string","max:5000"],
+            "subject"=>["nullable","string","max:190"], "description"=>["nullable","string","max:5000"],
             "notify_staff_bell"=>["nullable","boolean"], "notify_staff_sms"=>["nullable","boolean"], "notify_customer_sms"=>["nullable","boolean"],
             "notify_customer_whatsapp"=>["nullable","boolean"], "notify_owner_telegram"=>["nullable","boolean"],
         ]);
@@ -188,14 +188,35 @@ class SupportCenterController extends Controller
         $data["status"] = "new";
         $data["priority"] = $data["priority"] ?: MainSiteData::getValue("support_default_priority", "medium");
         if ($template) {
-            $data["notify_staff_bell"] = $template->bell_notification;
-            $data["notify_staff_sms"] = $template->staff_sms;
-            $data["notify_customer_sms"] = $template->customer_sms;
-            $data["notify_customer_whatsapp"] = $template->customer_whatsapp;
-            $data["notify_owner_telegram"] = $template->owner_telegram;
-            if ($template->subject_template) $data["subject"] = $template->subject_template;
-            if (! empty($template->description_template) && trim($data["description"]) === "") $data["description"] = $template->description_template;
+            if ($template->subject_template && trim((string) ($data["subject"] ?? "")) === "") {
+                $data["subject"] = $template->subject_template;
+            }
+            if (! empty($template->description_template) && trim((string) ($data["description"] ?? "")) === "") {
+                $data["description"] = $template->description_template;
+            }
+
+            if ($template->custom_override) {
+                $data["notify_staff_bell"] = $request->boolean("notify_staff_bell");
+                $data["notify_staff_sms"] = $request->boolean("notify_staff_sms");
+                $data["notify_customer_sms"] = $request->boolean("notify_customer_sms");
+                $data["notify_customer_whatsapp"] = $request->boolean("notify_customer_whatsapp");
+                $data["notify_owner_telegram"] = $request->boolean("notify_owner_telegram");
+            } else {
+                $data["notify_staff_bell"] = $template->bell_notification;
+                $data["notify_staff_sms"] = $template->staff_sms;
+                $data["notify_customer_sms"] = $template->customer_sms;
+                $data["notify_customer_whatsapp"] = $template->customer_whatsapp;
+                $data["notify_owner_telegram"] = $template->owner_telegram;
+            }
         }
+
+        if (trim((string) ($data["subject"] ?? "")) === "" || trim((string) ($data["description"] ?? "")) === "") {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                "subject" => trim((string) ($data["subject"] ?? "")) === "" ? "Subject is required." : null,
+                "description" => trim((string) ($data["description"] ?? "")) === "" ? "Description is required." : null,
+            ]);
+        }
+
         SupportTicket::create($data);
         NotificationLogs::create(["title"=>"Support Ticket Created","message"=>"Ticket #{$data["ticket_no"]} created for {$customer->customer_name}.","status"=>"new","type"=>"Support Ticket"]);
         return redirect()->route("support-center.tickets")->with("support_message","Support ticket {$data["ticket_no"]} created successfully.");

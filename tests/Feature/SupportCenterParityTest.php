@@ -122,6 +122,67 @@ class SupportCenterParityTest extends TestCase
     }
 
     #[Test]
+    public function ticket_topic_template_can_fill_required_subject_and_description(): void
+    {
+        $user = $this->superAdmin();
+        $customer = CustomersInfo::create([
+            "customer_unique_id" => "CUS-TPL-001",
+            "customer_name" => "Template Customer",
+            "status" => "active",
+        ]);
+
+        SupportTicketTemplate::updateOrCreate(
+            ["type" => "complain", "name" => "Template Fill"],
+            [
+                "sort_order" => 999,
+                "subject_template" => "Connection Problem",
+                "description_template" => "Template description.",
+                "custom_override" => true,
+                "active" => true,
+            ]
+        );
+
+        $this->actingAs($user)->post("/support-center/tickets", [
+            "customer_unique_id" => $customer->customer_unique_id,
+            "ticket_type" => "complain",
+            "topic" => "Template Fill",
+            "priority" => null,
+        ])->assertRedirect(route("support-center.tickets"));
+
+        $this->assertDatabaseHas("support_tickets", [
+            "customer_unique_id" => $customer->customer_unique_id,
+            "subject" => "Connection Problem",
+            "description" => "Template description.",
+            "priority" => "medium",
+        ]);
+    }
+
+    #[Test]
+    public function legacy_sales_ticket_type_is_supported(): void
+    {
+        $user = $this->superAdmin();
+        $customer = CustomersInfo::create([
+            "customer_unique_id" => "CUS-LEGACY-001",
+            "customer_name" => "Legacy Customer",
+            "status" => "active",
+        ]);
+
+        $this->actingAs($user)->post("/support-center/tickets", [
+            "customer_unique_id" => $customer->customer_unique_id,
+            "ticket_type" => "legacy_sales",
+            "priority" => "low",
+            "subject" => "Legacy sales follow-up",
+            "description" => "Legacy sales request.",
+        ])->assertRedirect(route("support-center.tickets"));
+
+        $this->assertDatabaseHas("support_tickets", [
+            "customer_unique_id" => $customer->customer_unique_id,
+            "ticket_type" => "legacy_sales",
+            "subject" => "Legacy sales follow-up",
+        ]);
+    }
+
+    #[Test]
     public function template_parity_fields_are_persisted(): void
     {
         $user = $this->superAdmin();
