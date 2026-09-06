@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CustomersInfo;
 use App\Models\KycRequest;
+use App\Models\MainSiteData;
 use App\Models\NotificationLogs;
 use App\Models\PackageList;
 use App\Models\SalesQuery;
@@ -48,7 +49,60 @@ class SupportCenterController extends Controller
             "sales" => SupportTicket::where("ticket_type", "sales")->count(),
             "kyc" => KycRequest::where("status", "pending")->count(),
         ];
-        return view("xlink.support-center", compact("tickets", "stats"));
+        $kycRequests = KycRequest::with("customer")->where("status", "pending")->latest()->limit(6)->get();
+        return view("xlink.support-center", compact("tickets", "stats", "kycRequests"));
+    }
+
+    public function bulkUpdateTickets(Request $request)
+    {
+        $this->authorizeSupport();
+        $data = $request->validate([
+            'ticket_ids' => ['required','array','min:1'],
+            'ticket_ids.*' => ['integer','exists:support_tickets,id'],
+            'status' => ['required','in:new,open,pending,in_progress,resolved,closed'],
+        ]);
+        $updated = SupportTicket::whereIn('id', $data['ticket_ids'])->update(['status' => $data['status']]);
+        return back()->with('support_message', "{$updated} ticket(s) updated successfully.");
+    }
+
+    public function generalSettings(Request $request)
+    {
+        $this->authorizeSupport();
+        return view('xlink.support-center-settings', [
+            'settings' => [
+                'default_priority' => MainSiteData::getValue('support_default_priority', 'medium'),
+                'auto_close_days' => (int) MainSiteData::getValue('support_auto_close_days', 0),
+                'notify_sms' => (bool) MainSiteData::getValue('support_notify_sms', 1),
+            ],
+        ]);
+    }
+
+    public function saveGeneralSettings(Request $request)
+    {
+        $this->authorizeSupport();
+        $data = $request->validate([
+            'default_priority' => ['required','in:low,medium,high,urgent'],
+            'auto_close_days' => ['required','integer','min:0','max:365'],
+            'notify_sms' => ['nullable','boolean'],
+        ]);
+        MainSiteData::setValue('support_default_priority', $data['default_priority']);
+        MainSiteData::setValue('support_auto_close_days', (string) $data['auto_close_days']);
+        MainSiteData::setValue('support_notify_sms', $request->boolean('notify_sms') ? '1' : '0');
+        return back()->with('support_message', 'Support settings saved successfully.');
+    }
+
+    public function bulkUpdateKyc(Request $request)
+    {
+        $this->authorizeSupport();
+        $data = $request->validate([
+            'kyc_ids' => ['required','array','min:1'],
+            'kyc_ids.*' => ['integer','exists:kyc_requests,id'],
+            'status' => ['required','in:pending,reviewed,rejected'],
+        ]);
+        $updated = KycRequest::whereIn('id', $data['kyc_ids'])->update([
+            'status'=>$data['status'], 'reviewed_by'=>auth()->id(), 'reviewed_at'=>now(),
+        ]);
+        return back()->with('support_message', "{$updated} KYC request(s) updated successfully.");
     }
 
     public function tickets(Request $request)
@@ -88,6 +142,7 @@ class SupportCenterController extends Controller
         $data["ticket_no"] = SupportTicket::generateTicketNo();
         $data["ppp_username"] = $customer->pppUser?->username;
         $data["status"] = "new";
+        $data["priority"] = $data["priority"] ?: MainSiteData::getValue("support_default_priority", "medium");
         if ($template) {
             $data["notify_staff_bell"] = $template->bell_notification;
             $data["notify_staff_sms"] = $template->staff_sms;
@@ -177,8 +232,8 @@ class SupportCenterController extends Controller
     public function storeTemplate(Request $request)
     {
         $this->authorizeSupport();
-        $data=$request->validate(["type"=>"required|in:complain,task,sales","name"=>"required|string|max:120","sort_order"=>"required|integer|min:0","subject_template"=>"nullable|string|max:190","internal_note_template"=>"nullable|string|max:2000","description_template"=>"nullable|string|max:5000","customer_message"=>"nullable|string|max:3000","staff_message"=>"nullable|string|max:3000"]);
-        $data["active"]=(bool)$request->boolean("active"); $data["bell_notification"]=(bool)$request->boolean("bell_notification"); $data["staff_sms"]=(bool)$request->boolean("staff_sms"); $data["customer_sms"]=(bool)$request->boolean("customer_sms"); $data["customer_whatsapp"]=(bool)$request->boolean("customer_whatsapp"); $data["owner_telegram"]=(bool)$request->boolean("owner_telegram"); $data["custom_override"]=(bool)$request->boolean("custom_override");
+        $data=$request->validate(["type"=>"required|in:complain,task,sales","name"=>"required|string|max:120","sort_order"=>"required|integer|min:0","subject_template"=>"nullable|string|max:190","internal_note_template"=>"nullable|string|max:2000","description_template"=>"nullable|string|max:5000","customer_message"=>"nullable|string|max:3000","staff_message"=>"nullable|string|max:3000","body_template"=>"nullable|string|max:5000","customer_message_template"=>"nullable|string|max:3000","staff_message_template"=>"nullable|string|max:3000","allow_custom_channels"=>"nullable|boolean"]);
+        $data["active"]=(bool)$request->boolean("active"); $data["allow_custom_channels"]=(bool)$request->boolean("allow_custom_channels"); $data["bell_notification"]=(bool)$request->boolean("bell_notification"); $data["staff_sms"]=(bool)$request->boolean("staff_sms"); $data["customer_sms"]=(bool)$request->boolean("customer_sms"); $data["customer_whatsapp"]=(bool)$request->boolean("customer_whatsapp"); $data["owner_telegram"]=(bool)$request->boolean("owner_telegram"); $data["custom_override"]=(bool)$request->boolean("custom_override");
         SupportTicketTemplate::updateOrCreate(["name"=>$data["name"],"type"=>$data["type"]],$data);
         return back()->with("support_message","Template saved successfully.");
     }
