@@ -564,7 +564,28 @@ Route::middleware([
         Route::post('/support-center/settings', [SupportCenterController::class, 'saveGeneralSettings'])->name('support-center.settings.save');
         Route::post('/support-center/kyc/bulk', [SupportCenterController::class, 'bulkUpdateKyc'])->name('support-center.kyc-bulk');
         Route::get('/team-access', [\App\Http\Controllers\TeamAccessController::class, 'overview'])->name('xlink.team-access');
-        Route::get('/system-settings', function () {
+// Team & Access reference-parity routes.
+                Route::get('/staff-team', [\App\Http\Controllers\TeamAccessController::class, 'teamOverview'])->name('staff-team');
+        Route::get('/attendance', [\App\Http\Controllers\TeamAccessController::class, 'attendance'])->name('attendance');
+        Route::post('/attendance/check-in', [\App\Http\Controllers\TeamAccessController::class, 'checkIn'])->name('team-attendance.checkin');
+        Route::post('/attendance/check-out', [\App\Http\Controllers\TeamAccessController::class, 'checkOut'])->name('team-attendance.checkout');
+        Route::get('/attendance-report', [\App\Http\Controllers\TeamAccessController::class, 'attendanceReport'])->name('attendance-report');
+        Route::get('/attendance-settings', [\App\Http\Controllers\TeamAccessController::class, 'attendanceSettings'])->name('attendance-settings');
+        Route::post('/attendance-settings', [\App\Http\Controllers\TeamAccessController::class, 'saveAttendanceSettings'])->name('attendance-settings.save');
+        Route::post('/attendance-settings/devices', [\App\Http\Controllers\TeamAccessController::class, 'storeDevice'])->name('attendance-devices.store');
+        Route::post('/attendance-settings/locations', [\App\Http\Controllers\TeamAccessController::class, 'storeLocation'])->name('attendance-locations.store');
+        Route::get('/attendance-leave', [\App\Http\Controllers\TeamAccessController::class, 'leaves'])->name('attendance-leave');
+        Route::post('/attendance-leave', [\App\Http\Controllers\TeamAccessController::class, 'submitLeave'])->name('attendance-leave.submit');
+        Route::put('/attendance-leave/{leave}', [\App\Http\Controllers\TeamAccessController::class, 'updateLeave'])->name('attendance-leave.update');
+        Route::get('/attendance-payroll', [\App\Http\Controllers\TeamAccessController::class, 'payroll'])->name('attendance-payroll');
+        Route::post('/attendance-payroll', [\App\Http\Controllers\TeamAccessController::class, 'savePayroll'])->name('attendance-payroll.save');
+        Route::get('/staff-conveyance', [\App\Http\Controllers\TeamAccessController::class, 'visits'])->name('staff-conveyance');
+        Route::post('/staff-conveyance/visit', [\App\Http\Controllers\TeamAccessController::class, 'checkVisit'])->name('staff-conveyance.visit');
+        Route::post('/staff-conveyance/claim', [\App\Http\Controllers\TeamAccessController::class, 'submitClaim'])->name('staff-conveyance.claim');
+        Route::put('/staff-conveyance/claim/{claim}', [\App\Http\Controllers\TeamAccessController::class, 'reviewClaim'])->name('staff-conveyance.claim.review');
+        Route::get('/user-activity', fn () => redirect()->route('admin.activity-logs'))->name('user-activity');
+        Route::get('/team-access/demo', [\App\Http\Controllers\TeamAccessController::class, 'demo'])->name('team-access.demo');
+                Route::get('/system-settings', function () {
             $debug = config('app.debug') ? 'ON' : 'OFF';
             $backups = is_dir(base_path('backups')) ? count(glob(base_path('backups/*'))) : 0;
             return view('xlink.system-settings', [
@@ -758,24 +779,3 @@ Route::any('{any}', function () use ($baseDomain) {
     return redirect()->away(config('app.url') . '/warning');
 })->where('any', '.*');
 
-// Team & Access reference-parity routes.
-Route::get('/staff-team', [\App\Http\Controllers\TeamAccessController::class, 'teamOverview'])->name('staff-team');
-Route::get('/attendance', [\App\Http\Controllers\TeamAccessController::class, 'attendance'])->name('attendance');
-Route::post('/attendance/check-in', [\App\Http\Controllers\TeamAccessController::class, 'checkIn'])->name('team-attendance.checkin');
-Route::post('/attendance/check-out', [\App\Http\Controllers\TeamAccessController::class, 'checkOut'])->name('team-attendance.checkout');
-Route::get('/attendance-report', [\App\Http\Controllers\TeamAccessController::class, 'attendanceReport'])->name('attendance-report');
-Route::get('/attendance-settings', [\App\Http\Controllers\TeamAccessController::class, 'attendanceSettings'])->name('attendance-settings');
-Route::post('/attendance-settings', [\App\Http\Controllers\TeamAccessController::class, 'saveAttendanceSettings'])->name('attendance-settings.save');
-Route::post('/attendance-settings/devices', [\App\Http\Controllers\TeamAccessController::class, 'storeDevice'])->name('attendance-devices.store');
-Route::post('/attendance-settings/locations', [\App\Http\Controllers\TeamAccessController::class, 'storeLocation'])->name('attendance-locations.store');
-Route::get('/attendance-leave', [\App\Http\Controllers\TeamAccessController::class, 'leaves'])->name('attendance-leave');
-Route::post('/attendance-leave', [\App\Http\Controllers\TeamAccessController::class, 'submitLeave'])->name('attendance-leave.submit');
-Route::put('/attendance-leave/{leave}', [\App\Http\Controllers\TeamAccessController::class, 'updateLeave'])->name('attendance-leave.update');
-Route::get('/attendance-payroll', [\App\Http\Controllers\TeamAccessController::class, 'payroll'])->name('attendance-payroll');
-Route::post('/attendance-payroll', [\App\Http\Controllers\TeamAccessController::class, 'savePayroll'])->name('attendance-payroll.save');
-Route::get('/staff-conveyance', [\App\Http\Controllers\TeamAccessController::class, 'visits'])->name('staff-conveyance');
-Route::post('/staff-conveyance/visit', [\App\Http\Controllers\TeamAccessController::class, 'checkVisit'])->name('staff-conveyance.visit');
-Route::post('/staff-conveyance/claim', [\App\Http\Controllers\TeamAccessController::class, 'submitClaim'])->name('staff-conveyance.claim');
-Route::put('/staff-conveyance/claim/{claim}', [\App\Http\Controllers\TeamAccessController::class, 'reviewClaim'])->name('staff-conveyance.claim.review');
-Route::get('/user-activity', fn () => redirect()->route('admin.activity-logs'))->name('user-activity');
-Route::get('/team-access/demo', [\App\Http\Controllers\TeamAccessController::class, 'demo'])->name('team-access.demo');

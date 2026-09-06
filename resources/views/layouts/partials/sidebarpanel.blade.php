@@ -423,7 +423,22 @@
                     <a class="nav-link dropdown-indicator collapsed" href="#{{ $menuId }}" role="button" data-bs-toggle="collapse" aria-expanded="false" aria-controls="{{ $menuId }}">
                         <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi {{ $icon }}"></i></span><span class="nav-link-text ps-1">{{ __($label) }}</span></div>
                     </a>
-                    @if($menuId === 'systemSettingsMenu')
+                    @if($menuId === 'teamAccessMenu')
+                    <div class="collapse ps-4" id="{{ $menuId }}">
+                        <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('admin-users') }}">{{ __('Management Users') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('admin-roles') }}">{{ __('Permission Templates') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('user-activity') }}">{{ __('User & Permission Audit') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('staff-team') }}">{{ __('Team Overview') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('staff-conveyance') }}">{{ __('Visits & Conveyance') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('attendance') }}">{{ __('Attendance') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('attendance-report') }}">{{ __('Attendance Report') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('attendance-leave') }}">{{ __('Leave Management') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('attendance-payroll') }}">{{ __('Payroll & Salary') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('attendance-settings') }}">{{ __('Attendance Settings') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('team-access.demo') }}">{{ __('Demo Module') }}</a>
+                    </div>
+                    @elseif($menuId === 'systemSettingsMenu')
                     <div class="collapse ps-4" id="{{ $menuId }}">
                         <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
                         <a wire:navigate.hover class="nav-link" href="{{ route('site-settings') }}">{{ __('Site Settings') }}</a>
