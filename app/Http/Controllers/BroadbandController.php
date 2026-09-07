@@ -21,7 +21,7 @@ class BroadbandController extends Controller
                 $x->where('customer_name', 'like', "%{$v}%")
                   ->orWhere('customer_unique_id', 'like', "%{$v}%")
                   ->orWhere('mobile', 'like', "%{$v}%")
-                  ->orWhere('contact_email', 'like', "%{$v}%");
+                  ->orWhere('email', 'like', "%{$v}%");
             }))
             ->when($request->router_id, fn ($q, $v) => $q->whereHas('pppUser', fn ($x) => $x->where('router_name', $v)))
             ->when($request->reseller_id, fn ($q, $v) => $q->where('reseller_id', $v));
@@ -33,7 +33,7 @@ class BroadbandController extends Controller
         $query = $this->baseQuery($request);
         if ($status === 'online') $query->where('status', 'active')->whereHas('pppUser', fn ($q) => $q->where('status', 'active'));
         if ($status === 'inactive') $query->whereIn('status', ['inactive', 'disable']);
-        if ($status === 'unverified') $query->where(function ($q) { $q->whereNull('mobile')->orWhereNull('nid'); });
+        if ($status === 'unverified') $query->where(function ($q) { $q->whereNull('mobile')->orWhereNull('identification_no'); });
         if ($status === 'due') $query->whereHas('billing', fn ($q) => $q->where('due_amount', '>', 0));
         if ($request->from) $query->whereDate('created_at', '>=', $request->from);
         if ($request->to) $query->whereDate('created_at', '<=', $request->to);

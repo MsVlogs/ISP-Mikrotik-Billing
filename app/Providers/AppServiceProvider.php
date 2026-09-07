@@ -19,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        if (isset($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'portal.')) {
+        if ((isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 8082) || (isset($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'portal.'))) {
             config(['session.cookie' => 'portal_session']);
         }
 
@@ -31,11 +31,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Keep one public domain while preserving host-based billing/portal route groups.
+        // Keep one public domain and generate URLs using the active public port.
         $requestHost = request()->getHost();
-        if (str_starts_with($requestHost, 'billing.')) {
+        $requestPort = (int) request()->getPort();
+        if ($requestPort === 8081 || str_starts_with($requestHost, 'billing.')) {
             URL::forceRootUrl('http://bill.xlinkbd.net:8081');
-        } elseif (str_starts_with($requestHost, 'portal.')) {
+        } elseif ($requestPort === 8082 || str_starts_with($requestHost, 'portal.')) {
             URL::forceRootUrl('http://bill.xlinkbd.net:8082');
         }
 
