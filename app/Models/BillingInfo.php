@@ -32,7 +32,17 @@ class BillingInfo extends Model
         'total_amount',
     ];
 
-    // In Billing model
+    /**
+     * Customer associated with this billing record.
+     *
+     * BillingInfo.customer_bill_unique_id maps to
+     * CustomersInfo.customer_unique_id.
+     */
+    public function customer()
+    {
+        return $this->belongsTo(CustomersInfo::class, 'customer_bill_unique_id', 'customer_unique_id');
+    }
+
     public function scopeAutoDisable($query)
     {
         return $query->where('auto_disable', true);
