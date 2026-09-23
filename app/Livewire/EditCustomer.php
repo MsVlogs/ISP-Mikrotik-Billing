@@ -677,10 +677,10 @@ class EditCustomer extends Component
         // Define validation rules directly if there's an issue with accessing the rules method
         $rules = [
             'customer_name' => 'required|min:3|max:255',
-            'mobile' => ['required', 'string', new ValidPhoneDigits],
+            'mobile' => ['nullable', 'string', new ValidPhoneDigits],
             'email' => 'nullable|email',
             'alternative_mobile' => ['nullable', 'string', new ValidPhoneDigits],
-            'identification_no' => 'nullable|regex:/^\d{9,17}$/',
+            'identification_no' => 'nullable|string|max:255',
             'router_name' => 'nullable|required_with:service',
             'service' => 'nullable|required_with:router_name',
             'interface' => 'nullable|required_if:service,static',
@@ -831,7 +831,7 @@ class EditCustomer extends Component
 
                     data_set($this->fields, $field, $value);
                     flash()->success(ucwords(str_replace('_', ' ', $attribute)).' updated successfully!');
-                } elseif ($relation == 'pppUser' && $attribute == 'username' || $attribute == 'password' || $attribute == 'service' || $attribute == 'profile' || $attribute == 'caller_id' || $attribute == 'comment' || $attribute == 'ppp_remote_ip' || $attribute == 'bandwidth' || $attribute == 'queue_name' || $attribute == 'router_name' || $attribute == 'interface' || $attribute == 'ip_address') {
+                } elseif ($relation == 'pppUser' && in_array($attribute, ['username', 'password', 'service', 'profile', 'caller_id', 'comment', 'ppp_remote_ip', 'bandwidth', 'queue_name', 'router_name', 'interface', 'ip_address'], true)) {
                     if ($attribute == 'username') {
                         $attributeField = 'name';
                     } elseif ($attribute == 'caller_id') {
