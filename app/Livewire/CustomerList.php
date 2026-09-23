@@ -308,7 +308,7 @@ class CustomerList extends Component
     {
         $id = is_array($id) ? $id['id'] ?? $id : $id;
 
-        if (! hasAccess(['Super Admin'], ['enable-pending-customer'])) {
+        if (! hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
             return;
@@ -589,31 +589,26 @@ class CustomerList extends Component
                 return;
             }
 
-            try {
-                \DB::beginTransaction();
+            // Perform the router-side removal before deleting local records.
+            // A router failure must not leave the database claiming the customer is deleted.
+            $pppUser = $customerDelete->pppUser;
+            if ($pppUser && ! empty($pppUser->router_name)) {
+                app(MikrotikController::class)->removePPPSecret(
+                    $decryptedId,
+                    $pppUser->router_name,
+                    $pppUser->username
+                );
+            }
 
-                $pppUser = $customerDelete->pppUser;
+            \DB::transaction(function () use ($customerDelete, $pppUser) {
                 if ($pppUser) {
-                    if (! empty($pppUser->router_name)) {
-                        app(MikrotikController::class)->removePPPSecret(
-                            $decryptedId,
-                            $pppUser->router_name,
-                            $pppUser->username
-                        );
-                    }
                     $pppUser->delete();
                 }
 
                 $customerDelete->delete();
+            });
 
-                \DB::commit();
-                flash()->addSuccess('Customer deleted successfully.');
-            } catch (\Exception $e) {
-                \DB::rollBack();
-                \Log::error('Failed to delete customer '.$decryptedId.': '.$e->getMessage());
-                report($e);
-            flash()->addError('Failed to delete customer on router. Please try again.');
-            }
+            flash()->addSuccess('Customer deleted successfully.');
         } catch (\Exception $e) {
             report($e);
             flash()->addError('Operation failed. Please try again.');
