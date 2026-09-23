@@ -14,8 +14,15 @@ class EnsurePortalPort
             return $next($request);
         }
 
-        $host = $request->getHost();
+        $host = strtolower($request->getHost());
         $port = $request->getPort();
+
+        // Preserve the real public port when the app is behind Nginx/Apache
+        // or another reverse proxy that forwards X-Forwarded-Port.
+        $forwardedPort = $request->header('X-Forwarded-Port');
+        if ($forwardedPort !== null && ctype_digit((string) $forwardedPort)) {
+            $port = (int) $forwardedPort;
+        }
 
         if (! in_array($host, ['bill.xlinkbd.net', 'portal.bill.xlinkbd.net'], true) || $port !== 8082) {
             abort(404);
