@@ -679,6 +679,20 @@
                 });
             };
  
+            window.confirmDisableCustomer = function(encryptedId) {
+                Swal.fire({
+                    title: "{{ __('Are you sure?') }}",
+                    text: "{{ __('Disable this customer?') }}",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#f0ad4e",
+                    cancelButtonColor: "#6c757d",
+                    confirmButtonText: "{{ __('Yes, disable it!') }}"
+                }).then((result) => {
+                    if (result.isConfirmed) { Livewire.dispatch('disable-customer', { id: encryptedId }); }
+                });
+            };
+
             window.confirmEnableCustomer = function(encryptedId) {
                 Swal.fire({
                     title: "{{ __('Are you sure?') }}",
