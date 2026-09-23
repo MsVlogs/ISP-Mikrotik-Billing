@@ -223,8 +223,9 @@ class CustomerList extends Component
                        '<div class="text-muted" style="font-size: 0.7rem">Ext: '.($row->billing?->auto_disable_month ?? 0).' Mon</div>';
             })
             ->addColumn('action', function ($row) {
-                $enable_btn = '<button onclick="confirmEnableCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-success"><i class="bi bi-power"></i></button>';
-                $delete_btn = '<button onclick="confirmDeleteCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-danger"><i class="bi bi-trash"></i></button>';
+                $enable_btn = '<button onclick="confirmEnableCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-success" title="Enable"><i class="bi bi-power"></i></button>';
+                $disable_btn = '<button onclick="confirmDisableCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-warning text-dark" title="Disable"><i class="bi bi-slash-circle"></i></button>';
+                $delete_btn = '<button onclick="confirmDeleteCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-danger" title="Delete"><i class="bi bi-trash"></i></button>';
                 $customers_edit_btn = '<button onclick="Livewire.dispatch(\'open-edit-customer\', { id: \''.encrypt($row->customer_unique_id).'\' })" class="edit btn btn-primary"><i class="bi bi-pencil-square"></i></button>';
                 $bill_edit_btn = '<button onclick="Livewire.dispatch(\'open-bill-modal\', { id: \''.encrypt($row->customer_unique_id).'\' })" class="bill btn btn-info"><i class="bi bi-journal-arrow-up"></i></button>';
 
@@ -235,7 +236,7 @@ class CustomerList extends Component
                         $btns .= $customers_edit_btn.$enable_btn.$delete_btn;
                     } elseif (hasAccess(['Super Admin'], ['edit-customer'])) {
                         $btns .= $customers_edit_btn;
-                    } elseif (hasAccess(['Super Admin'], ['enable-pending-customer'])) {
+                    } elseif (hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer'])) {
                         $btns .= $enable_btn;
                     } elseif (hasAccess(['Super Admin'], ['delete-customer'])) {
                         $btns .= $delete_btn;
@@ -265,6 +266,10 @@ class CustomerList extends Component
                         $btns .= $customers_edit_btn;
                     } elseif (hasAccess(['Super Admin'], ['update-bill'])) {
                         $btns .= $bill_edit_btn;
+                    }
+
+                    if (hasAccess(['Super Admin'], ['disable-customer'])) {
+                        $btns .= $disable_btn;
                     }
                 }
 
@@ -503,6 +508,62 @@ class CustomerList extends Component
     public function closeBillModal()
     {
         $this->editingBillId = null;
+        $this->dispatch('customer-action-done');
+    }
+
+    #[On('disable-customer')]
+    public function disableCustomer($id): void
+    {
+        $id = is_array($id) ? $id['id'] ?? $id : $id;
+
+        if (! hasAccess(['Super Admin'], ['disable-customer'])) {
+            flash()->addError('Unauthorized action.');
+            $this->dispatch('customer-action-done');
+            return;
+        }
+
+        try {
+            $uniqueId = decrypt($id);
+            $customer = CustomersInfo::where('customer_unique_id', $uniqueId)
+                ->with('pppUser')
+                ->first();
+
+            if (! $customer) {
+                flash()->addError('Customer not found.');
+                $this->dispatch('customer-action-done');
+                return;
+            }
+
+            // Disable the router-side service first. If this fails, do not
+            // mark the customer disabled in the database.
+            if ($customer->pppUser && ! empty($customer->pppUser->router_name)) {
+                app(MikrotikController::class)->disablePPPSecret(
+                    $uniqueId,
+                    $customer->pppUser->router_name,
+                    $customer->pppUser->username
+                );
+            }
+
+            \DB::transaction(function () use ($customer) {
+                $customer->status = 'disable';
+                $customer->save();
+
+                if ($customer->pppUser) {
+                    PPPSecrets::where('id', $customer->ppp_user_id)
+                        ->update(['status' => 'disable']);
+                }
+            });
+
+            flash()->addSuccess('Customer disabled successfully.');
+        } catch (\Throwable $e) {
+            \Log::error('Failed to disable customer', [
+                'customer_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            report($e);
+            flash()->addError('Failed to disable customer. Please try again.');
+        }
+
         $this->dispatch('customer-action-done');
     }
 
