@@ -616,7 +616,7 @@ class CustomerList extends Component
     {
         $id = is_array($id) ? $id['id'] ?? $id : $id;
 
-        if (! hasAccess(['Super Admin'], ['edit-customer'])) {
+        if (! hasAccess(['Super Admin'], ['push-customers'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
 
@@ -656,7 +656,7 @@ class CustomerList extends Component
     #[On('push-all-customers')]
     public function pushAllCustomers(): void
     {
-        if (! hasAccess(['Super Admin'], ['edit-customer'])) {
+        if (! hasAccess(['Super Admin'], ['push-customers']))
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
             return;
