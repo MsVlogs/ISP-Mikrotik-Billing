@@ -213,10 +213,10 @@ class NewCustomer extends Component
         // Start with the base rules
         $rules = [
             'customer_name' => 'required|min:3|max:255',
-            'mobile' => ['required', 'string', new ValidPhoneDigits],
+            'mobile' => ['nullable', 'string', new ValidPhoneDigits],
             'email' => 'nullable|email',
             'alternative_mobile' => ['nullable', 'string', new ValidPhoneDigits],
-            'identification_no' => 'nullable|min:9|max:17',
+            'identification_no' => 'nullable|string|max:255',
             'router_name' => 'nullable|required_with:service',
             'service' => 'nullable|required_with:router_name',
             'interface' => 'nullable|required_if:service,static',
