@@ -301,77 +301,84 @@ class CustomerList extends Component
     #[On('enable-customer')]
     public function enableCustomer($id): void
     {
-        // For array wrappers
         $id = is_array($id) ? $id['id'] ?? $id : $id;
 
         if (! hasAccess(['Super Admin'], ['enable-pending-customer'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
-
-            return;
-        }
-
-        $unique_id = decrypt($id);
-        $bill = BillingInfo::where('customer_bill_unique_id', $unique_id)->first();
-
-        if (! $bill) {
-            flash()->addError('Billing Information not found.');
-            $this->dispatch('customer-action-done');
-
             return;
         }
 
         try {
-            \DB::beginTransaction();
+            $unique_id = decrypt($id);
+            $bill = BillingInfo::where('customer_bill_unique_id', $unique_id)->first();
 
-            $summaryExists = PaymentSummary::where('customer_payment_unique_id', $unique_id)
-                ->where('summary_date', Carbon::now()->firstOfMonth()->format('Y-m-d'))
-                ->exists();
-
-            if (! $summaryExists) {
-                PaymentSummary::create([
-                    'customer_payment_unique_id' => $unique_id,
-                    'summary_date' => Carbon::now()->firstOfMonth()->format('Y-m-d'),
-                    'monthly_rent' => $bill->monthly_rent,
-                    'additional_charge' => $bill->additional_charge,
-                    'vat' => $bill->vat,
-                    'previous_due' => $bill->previous_due,
-                    'advance' => $bill->advance,
-                    'discount' => $bill->discount,
-                ]);
-            }
-
-            $customer = CustomersInfo::where('customer_unique_id', $unique_id)->with('pppUser')->first();
-
-            if (! $customer) {
-                \DB::rollBack();
-                flash()->addError('Customer not found.');
+            if (! $bill) {
+                flash()->addError('Billing Information not found.');
                 $this->dispatch('customer-action-done');
-
                 return;
             }
 
-            $customer->status = 'active';
-            $customer->save();
+            $customer = CustomersInfo::where('customer_unique_id', $unique_id)
+                ->with('pppUser')
+                ->first();
 
-            if ($bill->auto_disable_date) {
-                $autoDisableDate = Carbon::parse($bill->auto_disable_date)->startOfDay();
-                $autoDisableMonth = $bill->auto_disable_month;
-                $disableDate = $autoDisableDate->copy()->addMonths($autoDisableMonth);
-
-                if ($disableDate->lte(today())) {
-                    while ($disableDate->lte(today())) {
-                        $disableDate->addMonth();
-                    }
-                    $bill->auto_disable_date = $disableDate->copy()->subMonths($autoDisableMonth)->toDateString();
-                    $bill->save();
-                }
+            if (! $customer) {
+                flash()->addError('Customer not found.');
+                $this->dispatch('customer-action-done');
+                return;
             }
 
-            if ($customer->pppUser) {
-                PPPSecrets::where('id', $customer->ppp_user_id)->update(['status' => 'active']);
+            // Keep database activation atomic. Router/network operations are
+            // intentionally performed only after the database commit.
+            \DB::transaction(function () use ($unique_id, $bill, $customer) {
+                $summaryExists = PaymentSummary::where('customer_payment_unique_id', $unique_id)
+                    ->where('summary_date', Carbon::now()->firstOfMonth()->format('Y-m-d'))
+                    ->exists();
 
-                if (! empty($customer->pppUser->router_name)) {
+                if (! $summaryExists) {
+                    PaymentSummary::create([
+                        'customer_payment_unique_id' => $unique_id,
+                        'summary_date' => Carbon::now()->firstOfMonth()->format('Y-m-d'),
+                        'monthly_rent' => $bill->monthly_rent,
+                        'additional_charge' => $bill->additional_charge,
+                        'vat' => $bill->vat,
+                        'previous_due' => $bill->previous_due,
+                        'advance' => $bill->advance,
+                        'discount' => $bill->discount,
+                    ]);
+                }
+
+                $customer->status = 'active';
+                $customer->save();
+
+                if ($bill->auto_disable_date) {
+                    $autoDisableDate = Carbon::parse($bill->auto_disable_date)->startOfDay();
+                    $autoDisableMonth = $bill->auto_disable_month;
+                    $disableDate = $autoDisableDate->copy()->addMonths($autoDisableMonth);
+
+                    if ($disableDate->lte(today())) {
+                        while ($disableDate->lte(today())) {
+                            $disableDate->addMonth();
+                        }
+
+                        $bill->auto_disable_date = $disableDate->copy()
+                            ->subMonths($autoDisableMonth)
+                            ->toDateString();
+                        $bill->save();
+                    }
+                }
+
+                if ($customer->pppUser) {
+                    PPPSecrets::where('id', $customer->ppp_user_id)
+                        ->update(['status' => 'active']);
+                }
+            });
+
+            $routerSyncFailed = false;
+
+            if ($customer->pppUser && ! empty($customer->pppUser->router_name)) {
+                try {
                     app(MikrotikController::class)->enablePPPSecret(
                         $unique_id,
                         $customer->pppUser->router_name,
@@ -384,27 +391,28 @@ class CustomerList extends Component
                         'profile',
                         $customer->pppUser->profile
                     );
-
-                    // Remove active PPP session via pooled/cached controller (auto-invalidates cache)
-                    try {
-                        app(MikrotikController::class)->singleWrite(
-                            $customer->pppUser->router_name,
-                            '/ppp active remove [find name="'.$customer->pppUser->username.'"]'
-                        );
-                    } catch (\Exception $e) {
-                        // Active session may not exist — not a critical error
-                        \Log::debug('enableCustomer: active session removal skipped: '.$e->getMessage());
-                    }
+                } catch (\Throwable $e) {
+                    $routerSyncFailed = true;
+                    \Log::error('Customer activated but MikroTik PPP sync failed', [
+                        'customer_unique_id' => $unique_id,
+                        'router' => $customer->pppUser->router_name,
+                        'username' => $customer->pppUser->username,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
-            \DB::commit();
-            flash()->addSuccess($customer->pppUser ? 'Customer enabled successfully and PPP secret activated.' : 'Customer enabled successfully.');
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error('Failed to enable customer '.$unique_id.': '.$e->getMessage());
+            if ($routerSyncFailed) {
+                flash()->addWarning('Customer activated, but MikroTik sync failed. Please sync the customer from the Push/Sync action.');
+            } else {
+                flash()->addSuccess($customer->pppUser
+                    ? 'Customer enabled successfully and PPP secret activated.'
+                    : 'Customer enabled successfully.');
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to enable customer '.$id.': '.$e->getMessage());
             report($e);
-            flash()->addError('Failed to enable customer on router. Please try again.');
+            flash()->addError('Failed to enable customer. Please try again.');
         }
 
         $this->dispatch('customer-action-done');
