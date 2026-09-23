@@ -12,11 +12,12 @@
         <div class="col-12 text-end"><button class="btn btn-outline-primary px-4">Apply</button></div>
     </form></div></div>
     <div class="card shadow-sm border-0"><div class="card-body">
-        <form method="post" action="{{ route('support-center.tickets-bulk') }}">@csrf
+        <form id="bulk-ticket-form" method="post" action="{{ route('support-center.tickets-bulk') }}">@csrf
             <div class="row g-2 mb-3"><div class="col-md-3"><select name="status" class="form-select" required><option value="">Bulk action status…</option>@foreach(['new','open','pending','in_progress','resolved','closed'] as $s)<option value="{{ $s }}">{{ ucfirst(str_replace('_',' ',$s)) }}</option>@endforeach</select></div><div class="col-md-3"><button class="btn btn-outline-primary" onclick="return confirm('Update selected tickets?')">Update Selected</button></div></div>
+            </form>
             <div class="table-responsive"><table class="table align-middle"><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.ticket-check').forEach(x=>x.checked=this.checked)"></th><th>Ticket</th><th>Customer</th><th>Type / Topic</th><th>Subject</th><th>Priority</th><th>Assigned</th><th>Uptime</th><th>Latest Update / Tracking</th><th>Action</th></tr></thead><tbody>
             @forelse($tickets as $t)<tr>
-                <td><input class="ticket-check" type="checkbox" name="ticket_ids[]" value="{{ $t->id }}"></td>
+                <td><input class="ticket-check" form="bulk-ticket-form" type="checkbox" name="ticket_ids[]" value="{{ $t->id }}"></td>
                 <td class="fw-bold text-primary">#{{ $t->ticket_no }}<br><small class="text-muted">{{ $t->created_at?->format('d M H:i') }}</small></td>
                 <td>{{ $t->customer->customer_name ?? $t->customer_unique_id }}<br><small class="text-muted">{{ $t->customer_unique_id }}</small></td>
                 <td>{{ ucfirst(str_replace('_',' ',$t->ticket_type)) }}<br><small class="text-muted">{{ $t->topic ?: $t->category ?: '—' }}</small></td>
@@ -27,7 +28,6 @@
                 <td><form id="ticket-update-{{ $t->id }}" method="post" action="{{ route('support-center.ticket-update',$t) }}" class="d-flex gap-1">@csrf @method('PUT')<select name="status" class="form-select form-select-sm">@foreach(['new','open','pending','in_progress','resolved','closed'] as $s)<option value="{{ $s }}" @selected($t->status===$s)>{{ ucfirst(str_replace('_',' ',$s)) }}</option>@endforeach</select><input type="hidden" name="priority" value="{{ $t->priority }}"><button class="btn btn-sm btn-outline-primary">Save</button></form></td>
             </tr>@empty<tr><td colspan="10" class="text-center text-muted py-4">No tickets found.</td></tr>@endforelse
             </tbody></table></div>
-        </form>
         {{ $tickets->links() }}
     </div></div>
 </div></x-app-layout>
