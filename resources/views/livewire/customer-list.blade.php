@@ -65,6 +65,11 @@
                             @endforeach
                         </div>
                         <div class="ms-auto border-start ps-1 d-flex gap-1">
+                            @if(hasAccess(['Super Admin'], ['create-customer']))
+                                <a href="{{ route('customer-add') }}" class="btn btn-primary btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;">
+                                    <i class="bi bi-person-plus-fill me-1"></i> {{ __('Add Customer') }}
+                                </a>
+                            @endif
                             @if(hasAccess(['Super Admin'], ['push-customers']))
                                 <button type="button" onclick="confirmPushAllCustomers()" class="btn btn-outline-warning btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Push all customers to MikroTik">
                                     <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ __('Push All') }}
@@ -421,9 +426,8 @@
     </style>
 @endpush
 
-@push('scripts')
+@script
     <script>
-        document.addEventListener('livewire:navigated', function() {
             $.ajaxSetup({
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -717,7 +721,6 @@
                 });
             };
 
-            Livewire.on('customer-action-done', () => { table.ajax.reload(null, false); });
-        });
+            $wire.on('customer-action-done', () => { table.ajax.reload(null, false); });
     </script>
-@endpush
+@endscript
