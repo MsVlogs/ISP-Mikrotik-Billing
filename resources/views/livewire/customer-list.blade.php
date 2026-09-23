@@ -523,12 +523,12 @@
                     { data: 'action', name: 'action', title: '{{ __('Action') }}', orderable: false, searchable: false, className: 'text-center' },
                     
                     // Invisible columns for raw data & totals (8-22)
-                    { data: 'customer_unique_id', name: 'customer_unique_id', title: '{{ __('ID') }}', visible: false, searchable: false },
-                    { data: 'customer_name', name: 'customer_name', title: '{{ __('Name') }}', visible: false, searchable: false },
-                    { data: 'customers_address', name: 'customers_address', title: '{{ __('Address') }}', visible: false, searchable: false },
-                    { data: 'mobile', name: 'mobile', title: '{{ __('Mobile') }}', visible: false, searchable: false },
-                    { data: 'ppp_user.username', name: 'ppp_user.username', title: '{{ __('IP') }}', visible: false, searchable: false },
-                    { data: 'ppp_user.router_name', name: 'ppp_user.router_name', title: '{{ __('Router') }}', visible: false, searchable: false },
+                    { data: 'customer_unique_id', name: 'customer_unique_id', title: '{{ __('ID') }}', visible: false, searchable: true },
+                    { data: 'customer_name', name: 'customer_name', title: '{{ __('Name') }}', visible: false, searchable: true },
+                    { data: 'customers_address', name: 'customers_address', title: '{{ __('Address') }}', visible: false, searchable: true },
+                    { data: 'mobile', name: 'mobile', title: '{{ __('Mobile') }}', visible: false, searchable: true },
+                    { data: 'ppp_user.username', name: 'ppp_user.username', title: '{{ __('IP') }}', visible: false, searchable: true },
+                    { data: 'ppp_user.router_name', name: 'ppp_user.router_name', title: '{{ __('Router') }}', visible: false, searchable: true },
                     { data: 'billing.monthly_rent', name: 'billing.monthly_rent', title: '{{ __('Rent') }}', visible: false, searchable: false },
                     { data: 'billing.previous_due', name: 'billing.previous_due', title: '{{ __('P.Due') }}', visible: false, searchable: false },
                     { data: 'billing.additional_charge', name: 'billing.additional_charge', title: '{{ __('Add.') }}', visible: false, searchable: false },
