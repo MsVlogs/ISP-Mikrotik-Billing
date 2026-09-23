@@ -223,59 +223,41 @@ class CustomerList extends Component
                        '<div class="text-muted" style="font-size: 0.7rem">Ext: '.($row->billing?->auto_disable_month ?? 0).' Mon</div>';
             })
             ->addColumn('action', function ($row) {
-                $enable_btn = '<button onclick="confirmEnableCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-success" title="Enable"><i class="bi bi-power"></i></button>';
-                $disable_btn = '<button onclick="confirmDisableCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-warning text-dark" title="Disable"><i class="bi bi-slash-circle"></i></button>';
-                $delete_btn = '<button onclick="confirmDeleteCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-danger" title="Delete"><i class="bi bi-trash"></i></button>';
-                $customers_edit_btn = '<button onclick="Livewire.dispatch(\'open-edit-customer\', { id: \''.encrypt($row->customer_unique_id).'\' })" class="edit btn btn-primary"><i class="bi bi-pencil-square"></i></button>';
-                $bill_edit_btn = '<button onclick="Livewire.dispatch(\'open-bill-modal\', { id: \''.encrypt($row->customer_unique_id).'\' })" class="bill btn btn-info"><i class="bi bi-journal-arrow-up"></i></button>';
+                $id = encrypt($row->customer_unique_id);
+                $editBtn = '<button onclick="Livewire.dispatch(\'open-edit-customer\', { id: \''.$id.'\' })" class="edit btn btn-primary" title="Edit"><i class="bi bi-pencil-square"></i></button>';
+                $billBtn = '<button onclick="Livewire.dispatch(\'open-bill-modal\', { id: \''.$id.'\' })" class="bill btn btn-info" title="Update Bill"><i class="bi bi-journal-arrow-up"></i></button>';
+                $enableBtn = '<button onclick="confirmEnableCustomer(\''.$id.'\')" class="btn btn-success" title="Enable"><i class="bi bi-power"></i></button>';
+                $disableBtn = '<button onclick="confirmDisableCustomer(\''.$id.'\')" class="btn btn-warning text-dark" title="Disable"><i class="bi bi-slash-circle"></i></button>';
+                $deleteBtn = '<button onclick="confirmDeleteCustomer(\''.$id.'\')" class="btn btn-danger" title="Delete"><i class="bi bi-trash"></i></button>';
 
                 $btns = '<div class="action-btns d-flex justify-content-center">';
 
-                if ($row->status === 'pending') {
-                    if (hasAccess(['Super Admin'], ['edit-customer', 'enable-pending-customer', 'delete-customer'])) {
-                        $btns .= $customers_edit_btn.$enable_btn.$delete_btn;
-                    } elseif (hasAccess(['Super Admin'], ['edit-customer'])) {
-                        $btns .= $customers_edit_btn;
-                    } elseif (hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer'])) {
-                        $btns .= $enable_btn;
-                    } elseif (hasAccess(['Super Admin'], ['delete-customer'])) {
-                        $btns .= $delete_btn;
-                    }
-                } elseif ($row->status === 'disable') {
-                    if (hasAccess(['Super Admin'], ['edit-customer', 'enable-pending-customer', 'delete-customer'])) {
-                        $btns .= $customers_edit_btn.$enable_btn.$delete_btn;
-                    } elseif (hasAccess(['Super Admin'], ['edit-customer'])) {
-                        $btns .= $customers_edit_btn;
-                    } elseif (hasAccess(['Super Admin'], ['enable-pending-customer'])) {
-                        $btns .= $enable_btn;
-                    } elseif (hasAccess(['Super Admin'], ['delete-customer'])) {
-                        $btns .= $delete_btn;
-                    }
-                } elseif ($row->status === 'inactive') {
-                    if (hasAccess(['Super Admin'], ['edit-customer', 'delete-customer'])) {
-                        $btns .= $customers_edit_btn.$delete_btn;
-                    } elseif (hasAccess(['Super Admin'], ['edit-customer'])) {
-                        $btns .= $customers_edit_btn;
-                    } elseif (hasAccess(['Super Admin'], ['delete-customer'])) {
-                        $btns .= $delete_btn;
-                    }
-                } else {
-                    if (hasAccess(['Super Admin'], ['edit-customer', 'update-bill'])) {
-                        $btns .= $customers_edit_btn.$bill_edit_btn;
-                    } elseif (hasAccess(['Super Admin'], ['edit-customer'])) {
-                        $btns .= $customers_edit_btn;
-                    } elseif (hasAccess(['Super Admin'], ['update-bill'])) {
-                        $btns .= $bill_edit_btn;
-                    }
-
-                    if (hasAccess(['Super Admin'], ['disable-customer'])) {
-                        $btns .= $disable_btn;
-                    }
+                if (hasAccess(['Super Admin'], ['edit-customer'])) {
+                    $btns .= $editBtn;
                 }
 
-                if ($row->pppUser && !empty($row->pppUser->router_name) && hasAccess(['Super Admin'], ['push-customers'])) {
-                    $push_btn = '<button onclick="confirmPushCustomer(\''.encrypt($row->customer_unique_id).'\')" class="btn btn-warning text-white ms-1" title="Push to MikroTik"><i class="bi bi-cloud-arrow-up"></i></button>';
-                    $btns .= $push_btn;
+                if (hasAccess(['Super Admin'], ['update-bill']) && ! in_array($row->status, ['pending', 'disable', 'inactive'], true)) {
+                    $btns .= $billBtn;
+                }
+
+                if (in_array($row->status, ['pending', 'disable'], true)
+                    && hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer'])) {
+                    $btns .= $enableBtn;
+                }
+
+                if (! in_array($row->status, ['pending', 'disable', 'inactive'], true)
+                    && hasAccess(['Super Admin'], ['disable-customer'])) {
+                    $btns .= $disableBtn;
+                }
+
+                if (hasAccess(['Super Admin'], ['delete-customer'])) {
+                    $btns .= $deleteBtn;
+                }
+
+                if ($row->pppUser && ! empty($row->pppUser->router_name)
+                    && hasAccess(['Super Admin'], ['push-customers'])) {
+                    $pushBtn = '<button onclick="confirmPushCustomer(\''.$id.'\')" class="btn btn-warning text-white ms-1" title="Push to MikroTik"><i class="bi bi-cloud-arrow-up"></i></button>';
+                    $btns .= $pushBtn;
                 }
 
                 return $btns.'</div>';
