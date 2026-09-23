@@ -106,6 +106,11 @@ class CustomersInfo extends Model
             });
     }
 
+    public function kycRequests()
+    {
+        return $this->hasMany(KycRequest::class, 'customer_unique_id', 'customer_unique_id');
+    }
+
     public function reseller()
     {
         return $this->belongsTo(Reseller::class, 'reseller_id');
