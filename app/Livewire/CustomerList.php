@@ -69,7 +69,7 @@ class CustomerList extends Component
 
     public function getData(Request $request)
     {
-        if (! hasAccess(['Super Admin'], ['all-customer'])) {
+        if (! hasAccess(['Super Admin'], ['view-customer', 'all-customer'])) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -93,6 +93,12 @@ class CustomerList extends Component
                     ->orWhere('customers_infos.contact_email', 'like', $like)
                     ->orWhere('customers_infos.contact_person', 'like', $like)
                     ->orWhere('customers_infos.identification_no', 'like', $like)
+                    ->orWhereHas('customerAddress', function ($address) use ($like) {
+                        $address->where('label_name', 'like', $like)
+                            ->orWhere('input_type_text', 'like', $like)
+                            ->orWhere('input_type_dropdown', 'like', $like)
+                            ->orWhere('input_type_textarea', 'like', $like);
+                    })
                     ->orWhereHas('pppUser', function ($ppp) use ($like) {
                         $ppp->where('username', 'like', $like)
                             ->orWhere('router_name', 'like', $like)
@@ -637,6 +643,12 @@ class CustomerList extends Component
     #[On('open-edit-customer')]
     public function openEditCustomerModal($id)
     {
+        if (! hasAccess(['Super Admin'], ['edit-customer'])) {
+            flash()->addError('Unauthorized action.');
+            $this->dispatch('customer-action-done');
+            return;
+        }
+
         $this->editingCustomerId = is_array($id) ? $id['id'] ?? $id : $id;
     }
 
