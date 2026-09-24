@@ -65,7 +65,7 @@
                             @endforeach
                         </div>
                         <div class="ms-auto border-start ps-1 d-flex gap-1">
-                            @if(hasAccess(['Super Admin'], ['create-customer']))
+                            @if(auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['create-customer']))
                                 <a href="{{ route('customer-add') }}" class="btn btn-primary btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;">
                                     <i class="bi bi-person-plus-fill me-1"></i> {{ __('Add Customer') }}
                                 </a>
