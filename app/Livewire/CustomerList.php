@@ -79,6 +79,33 @@ class CustomerList extends Component
             ->with(['billing', 'pppUser', 'customerAddress', 'official', 'package', 'reseller'])
             ->select('customers_infos.*');
 
+        // Global customer search: search across the customer's stored identity/contact
+        // fields and related PPP/router data. This keeps the search useful even
+        // when the matching field is not displayed as a visible table column.
+        $search = trim((string) $request->input('search.value', ''));
+        if ($search !== '') {
+            $data->where(function ($q) use ($search) {
+                $like = '%'.$search.'%';
+
+                $q->where('customers_infos.customer_unique_id', 'like', $like)
+                    ->orWhere('customers_infos.customer_name', 'like', $like)
+                    ->orWhere('customers_infos.mobile', 'like', $like)
+                    ->orWhere('customers_infos.contact_email', 'like', $like)
+                    ->orWhere('customers_infos.contact_person', 'like', $like)
+                    ->orWhere('customers_infos.identification_no', 'like', $like)
+                    ->orWhereHas('pppUser', function ($ppp) use ($like) {
+                        $ppp->where('username', 'like', $like)
+                            ->orWhere('router_name', 'like', $like)
+                            ->orWhere('ppp_remote_ip', 'like', $like)
+                            ->orWhere('ip_address', 'like', $like)
+                            ->orWhere('caller_id', 'like', $like);
+                    })
+                    ->orWhereHas('package', function ($package) use ($like) {
+                        $package->where('package', 'like', $like);
+                    });
+            });
+        }
+
         // Router Filter
         if ($request->router_name) {
             $data->whereHas('pppUser', function ($q) use ($request) {
