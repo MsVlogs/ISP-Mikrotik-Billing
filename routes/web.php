@@ -136,7 +136,6 @@ Route::middleware([
         Route::get('customers/data', [CustomerList::class, 'getData'])->name('customers.data');
         Route::get('customers/{id}/edit', [CustomerList::class, 'edit'])->name('customers.edit');
         Route::get('customers/{id}', [CustomerList::class, 'show'])->name('customers.show');
-        Route::patch('customers/{id}', [CustomerList::class, 'update'])->name('customers.update');
         Route::get('customers', CustomerList::class)->name('customers.index');
 
         Route::get('/new/customers', CustomerList::class)->name('customers-new');
