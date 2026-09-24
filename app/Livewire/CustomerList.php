@@ -265,7 +265,7 @@ class CustomerList extends Component
 
                 $btns = '<div class="action-btns d-flex justify-content-center">';
 
-                if (hasAccess(['Super Admin'], ['edit-customer'])) {
+                if (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['edit-customer'])) {
                     $btns .= $editBtn;
                 }
 
@@ -274,16 +274,16 @@ class CustomerList extends Component
                 }
 
                 if (in_array($row->status, ['pending', 'disable'], true)
-                    && hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer'])) {
+                    && (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer']))) {
                     $btns .= $enableBtn;
                 }
 
                 if (! in_array($row->status, ['pending', 'disable', 'inactive'], true)
-                    && hasAccess(['Super Admin'], ['disable-customer'])) {
+                    && (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['disable-customer']))) {
                     $btns .= $disableBtn;
                 }
 
-                if (hasAccess(['Super Admin'], ['delete-customer'])) {
+                if (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['delete-customer'])) {
                     $btns .= $deleteBtn;
                 }
 
@@ -317,7 +317,7 @@ class CustomerList extends Component
 
     public function edit(string $id)
     {
-        if (! hasAccess(['Super Admin'], ['edit-customer'])) {
+        if (! auth()->user()?->hasRole('Super Admin') && ! hasAccess(['Super Admin'], ['edit-customer'])) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -331,7 +331,7 @@ class CustomerList extends Component
     {
         $id = is_array($id) ? $id['id'] ?? $id : $id;
 
-        if (! hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer'])) {
+        if (! auth()->user()?->hasRole('Super Admin') && ! hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
             return;
@@ -549,7 +549,7 @@ class CustomerList extends Component
     {
         $id = is_array($id) ? $id['id'] ?? $id : $id;
 
-        if (! hasAccess(['Super Admin'], ['disable-customer'])) {
+        if (! auth()->user()?->hasRole('Super Admin') && ! hasAccess(['Super Admin'], ['disable-customer'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
             return;
@@ -605,7 +605,7 @@ class CustomerList extends Component
     {
         $id = is_array($id) ? $id['id'] ?? $id : $id;
 
-        if (! hasAccess(['Super Admin'], ['delete-customer'])) {
+        if (! auth()->user()?->hasRole('Super Admin') && ! hasAccess(['Super Admin'], ['delete-customer'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
 
@@ -660,7 +660,7 @@ class CustomerList extends Component
     #[On('open-edit-customer')]
     public function openEditCustomerModal($id)
     {
-        if (! hasAccess(['Super Admin'], ['edit-customer'])) {
+        if (! auth()->user()?->hasRole('Super Admin') && ! hasAccess(['Super Admin'], ['edit-customer'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
             return;
