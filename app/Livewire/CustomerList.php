@@ -268,6 +268,10 @@ class CustomerList extends Component
 
     public function show(string $id)
     {
+        if (! hasAccess(['Super Admin'], ['view-customer', 'all-customer'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $unique_id = decrypt($id);
         $data = CustomersInfo::where('customer_unique_id', $unique_id)
             ->join('billing_infos', 'customers_infos.customer_unique_id', '=', 'billing_infos.customer_bill_unique_id')
@@ -280,6 +284,10 @@ class CustomerList extends Component
 
     public function edit(string $id)
     {
+        if (! hasAccess(['Super Admin'], ['edit-customer'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         return view('edit-customer', [
             'customerId' => $id,
         ]);
