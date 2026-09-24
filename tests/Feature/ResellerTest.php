@@ -35,7 +35,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_can_create_a_reseller_profile()
     {
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -65,7 +65,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_redirects_reseller_user_from_admin_dashboard_to_reseller_dashboard()
     {
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -94,7 +94,7 @@ class ResellerTest extends TestCase
     public function it_awards_commission_to_reseller_on_package_purchased_event()
     {
         // Setup Reseller
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -157,7 +157,7 @@ class ResellerTest extends TestCase
     public function it_can_generate_and_redeem_fixed_amount_voucher()
     {
         // Setup Reseller
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -228,7 +228,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_allows_reseller_to_create_customer_via_new_customer_component()
     {
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -280,7 +280,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_allows_reseller_to_edit_their_own_customer_via_edit_customer_component()
     {
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -329,7 +329,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_prevents_reseller_from_editing_other_reseller_customer()
     {
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -376,7 +376,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_allows_reseller_to_manage_packages_via_livewire_component()
     {
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -442,7 +442,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_displays_reseller_data_on_admin_dashboard()
     {
-        $adminRole = Role::create(['name' => 'Super Admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'Super Admin']);
         $admin = User::create([
             'name' => 'Admin User',
             'email' => 'admin@isp.com',
@@ -451,7 +451,7 @@ class ResellerTest extends TestCase
         ]);
         $admin->assignRole($adminRole);
 
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -484,7 +484,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_filters_reseller_customers_on_admin_customer_list_datasource()
     {
-        $adminRole = Role::create(['name' => 'Super Admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'Super Admin']);
         $admin = User::create([
             'name' => 'Admin User',
             'email' => 'admin@isp.com',
@@ -493,7 +493,7 @@ class ResellerTest extends TestCase
         ]);
         $admin->assignRole($adminRole);
 
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user1 = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -578,8 +578,8 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_filters_customers_on_reseller_customer_list_datasource_for_authenticated_reseller()
     {
-        $permission = \Spatie\Permission\Models\Permission::create(['name' => 'view-customer']);
-        $role = Role::create(['name' => 'Reseller']);
+        $permission = \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'view-customer']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $role->givePermissionTo($permission);
         $user1 = User::create([
             'name' => 'Reseller One',
@@ -655,7 +655,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_prevents_reseller_from_updating_customer_status_to_free()
     {
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',
@@ -704,7 +704,7 @@ class ResellerTest extends TestCase
     /** @test */
     public function it_filters_reseller_collections_and_commissions_month_wise_on_index_page()
     {
-        $adminRole = Role::create(['name' => 'Super Admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'Super Admin']);
         $admin = User::create([
             'name' => 'Admin User',
             'email' => 'admin@isp.com',
@@ -713,7 +713,7 @@ class ResellerTest extends TestCase
         ]);
         $admin->assignRole($adminRole);
 
-        $role = Role::create(['name' => 'Reseller']);
+        $role = Role::firstOrCreate(['name' => 'Reseller']);
         $user = User::create([
             'name' => 'John Reseller',
             'email' => 'john@reseller.com',

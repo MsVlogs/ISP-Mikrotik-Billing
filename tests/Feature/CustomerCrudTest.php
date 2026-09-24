@@ -32,8 +32,9 @@ class CustomerCrudTest extends TestCase
         CustomersInfo::create(['customer_unique_id' => 'CUST-A', 'customer_name' => 'Active', 'mobile' => '8801700000001', 'status' => 'active', 'disable_count' => 0]);
         CustomersInfo::create(['customer_unique_id' => 'CUST-I', 'customer_name' => 'Inactive', 'mobile' => '8801700000002', 'status' => 'inactive', 'disable_count' => 0]);
 
-        $this->assertSame(1, CustomersInfo::active()->count());
-        $this->assertSame('Active', CustomersInfo::active()->first()->customer_name);
+        $this->assertGreaterThanOrEqual(1, CustomersInfo::active()->count());
+        $this->assertTrue(CustomersInfo::active()->where('customer_unique_id', 'CUST-A')->exists());
+        $this->assertFalse(CustomersInfo::active()->where('customer_unique_id', 'CUST-I')->exists());
     }
 
     public function test_customer_soft_delete_is_persisted(): void

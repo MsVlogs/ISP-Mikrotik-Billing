@@ -680,7 +680,6 @@ class EditCustomer extends Component
     protected $messages = [
         'mobile.regex' => 'Mobile number must start with "880" and be 11 digits long',
         'alternative_mobile.regex' => 'Mobile number must start with "880" and be 11 digits long',
-        'identification_no.regex' => 'NID No must e number and it less than 9 or grater than 17 digit',
         'password.required' => 'Password is required. No Blank or Null Value Allowed.',
     ];
 
