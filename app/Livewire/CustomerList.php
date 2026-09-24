@@ -357,6 +357,12 @@ class CustomerList extends Component
                 return;
             }
 
+            if (! in_array($customer->status, ['pending', 'disable'], true)) {
+                flash()->addError('Only pending or disabled customers can be enabled from this action.');
+                $this->dispatch('customer-action-done');
+                return;
+            }
+
             // Keep database activation atomic. Router/network operations are
             // intentionally performed only after the database commit.
             \DB::transaction(function () use ($unique_id, $bill, $customer) {
@@ -473,6 +479,10 @@ class CustomerList extends Component
     #[On('open-bill-modal')]
     public function openBillModal($id)
     {
+        if (! hasAccess(['Super Admin'], ['update-bill'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $id = is_array($id) ? $id['id'] ?? $id : $id;
         $this->editingBillId = $id;
 
@@ -607,6 +617,13 @@ class CustomerList extends Component
 
             if (! $customerDelete) {
                 flash()->addError('Customer not found.');
+                $this->dispatch('customer-action-done');
+
+                return;
+            }
+
+            if ($customerDelete->status === 'active') {
+                flash()->addError('Disable the customer before deleting the customer record.');
                 $this->dispatch('customer-action-done');
 
                 return;
