@@ -19,7 +19,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        if ((isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 8082) || (isset($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'portal.'))) {
+        $forwardedPort = $_SERVER['HTTP_X_FORWARDED_PORT'] ?? null;
+        $requestPort = $forwardedPort !== null && ctype_digit((string) $forwardedPort)
+            ? (int) $forwardedPort
+            : (int) ($_SERVER['SERVER_PORT'] ?? 0);
+        $requestHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+
+        if ($requestPort === 8082 || str_starts_with($requestHost, 'portal.')) {
             config(['session.cookie' => 'portal_session']);
         }
 
