@@ -6,6 +6,7 @@ use App\Http\Controllers\MikrotikController;
 use App\Models\RouterList;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 class BackupManager extends Component
@@ -129,6 +130,10 @@ class BackupManager extends Component
 
     public function createBackup(): void
     {
+        if (! hasAccess(['Super Admin'], ['mikrotik-setup'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         if (! $this->selectedRouter) {
             return;
         }
@@ -159,6 +164,10 @@ class BackupManager extends Component
 
     public function deleteBackup(string $id, string $name): void
     {
+        if (! hasAccess(['Super Admin'], ['mikrotik-setup'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         if (! $this->selectedRouter) {
             return;
         }
@@ -201,6 +210,10 @@ class BackupManager extends Component
 
     public function restoreBackup(string $name): void
     {
+        if (! hasAccess(['Super Admin'], ['mikrotik-setup'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         if (! $this->selectedRouter) {
             return;
         }
@@ -220,6 +233,11 @@ class BackupManager extends Component
 
     public function downloadBackupFile(string $name): mixed
     {
+        if (! hasAccess(['Super Admin'], ['mikrotik-setup'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $name = basename($name);
         if (str_ends_with($name, '.rsc')) {
             // Initiate browser download for the LOCAL mirrored configuration
             $path = base_path('backups/'.$name);
