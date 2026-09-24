@@ -57,7 +57,7 @@ class CustomerList extends Component
 
     public function render()
     {
-        if (! hasAccess(['Super Admin'], ['all-customer'])) {
+        if (! hasAccess(['Super Admin'], ['view-customer', 'all-customer'])) {
             abort(403, 'Unauthorized action.');
         }
 
