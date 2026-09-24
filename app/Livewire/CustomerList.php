@@ -720,7 +720,7 @@ class CustomerList extends Component
     #[On('push-all-customers')]
     public function pushAllCustomers(): void
     {
-        if (! hasAccess(['Super Admin'], ['push-customers']))
+        if (! hasAccess(['Super Admin'], ['push-customers'])) {
             flash()->addError('Unauthorized action.');
             $this->dispatch('customer-action-done');
             return;
