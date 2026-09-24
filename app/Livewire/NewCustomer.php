@@ -497,6 +497,10 @@ class NewCustomer extends Component
 
     public function save()
     {
+        if (! hasAccess(['Super Admin'], ['create-customer']) && ! auth()->user()->hasRole('Reseller')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         try {
             $this->calculateTotal('package_name');
             $this->validate();
