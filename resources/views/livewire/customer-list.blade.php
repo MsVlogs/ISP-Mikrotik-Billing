@@ -525,7 +525,7 @@
                     // Invisible columns for raw data & totals (8-22)
                     { data: 'customer_unique_id', name: 'customer_unique_id', title: '{{ __('ID') }}', visible: false, searchable: true },
                     { data: 'customer_name', name: 'customer_name', title: '{{ __('Name') }}', visible: false, searchable: true },
-                    { data: 'customers_address', name: 'customers_address', title: '{{ __('Address') }}', visible: false, searchable: true },
+                    { data: 'customers_address', name: 'customers_address', title: '{{ __('Address') }}', visible: false, searchable: false },
                     { data: 'mobile', name: 'mobile', title: '{{ __('Mobile') }}', visible: false, searchable: true },
                     { data: 'ppp_user.username', name: 'ppp_user.username', title: '{{ __('IP') }}', visible: false, searchable: true },
                     { data: 'ppp_user.router_name', name: 'ppp_user.router_name', title: '{{ __('Router') }}', visible: false, searchable: true },
