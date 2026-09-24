@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Services\Olt\Adapters\VsolSnmpReadOnlyAdapter;
+use App\Services\Olt\OltReadOnlyAdapterManager;
+
 use Illuminate\Auth\EloquentUserProvider;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Pagination\Paginator;
@@ -19,6 +22,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(OltReadOnlyAdapterManager::class, function ($app) {
+            $manager = new OltReadOnlyAdapterManager();
+            $manager->register($app->make(VsolSnmpReadOnlyAdapter::class));
+            return $manager;
+        });
+
         $forwardedPort = $_SERVER['HTTP_X_FORWARDED_PORT'] ?? null;
         $requestPort = $forwardedPort !== null && ctype_digit((string) $forwardedPort)
             ? (int) $forwardedPort

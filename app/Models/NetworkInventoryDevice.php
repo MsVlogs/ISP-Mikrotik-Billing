@@ -28,6 +28,8 @@ class NetworkInventoryDevice extends Model
         return $query->where('type', $type);
     }
 
+    public function onuMappings(): HasMany { return $this->hasMany(OltOnuCustomerMapping::class, 'olt_device_id'); }
+
     public function healthChecks(): HasMany
     {
         return $this->hasMany(NetworkInventoryHealthCheck::class);
