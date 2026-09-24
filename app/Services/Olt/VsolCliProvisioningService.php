@@ -17,6 +17,10 @@ class VsolCliProvisioningService
         $host = (string)($device->ip_address ?: $device->host);
         if ($host === '') throw new RuntimeException('OLT management IP/host is not configured.');
         if (!$device->provisioning_enabled) throw new RuntimeException('OLT provisioning is disabled.');
+        $profileKey=(string)($this->config['vsol_model_profile'] ?? ''); $profiles=config('olt_vsol.profiles',[]);
+        if ($profileKey==='' || !isset($profiles[$profileKey])) throw new RuntimeException('No exact VSOL model command profile selected.');
+        $profile=$profiles[$profileKey]; $model=trim((string)$device->model);
+        if ($model==='' || !collect($profile['models']??[])->contains(fn($m)=>strcasecmp(trim($m),$model)===0)) throw new RuntimeException('OLT model does not exactly match the selected VSOL command profile.');
         $transport = strtolower((string)($this->config['write_transport'] ?? ($device->ssh_enabled ? 'ssh' : 'telnet')));
         if ($transport !== 'ssh') throw new RuntimeException('Only SSH provisioning is enabled by this service; configure VSOL SSH before enabling writes.');
         $username = $this->secret($device, 'username');
@@ -42,8 +46,8 @@ class VsolCliProvisioningService
     public function configurePppoe(string $pon, string $onu, string $username, string $password): string
     {
         $this->validatePon($pon); $this->validateOnu($onu);
-        if ($username === '' || strlen($username) > 128 || strlen($password) > 128) throw new RuntimeException('Invalid PPPoE credentials.');
-        $commands = $this->commands('pppoe', compact('pon','onu','username','password'));
+        if ($username === '' || strlen($username) > 128 || strlen($password) > 128 || strlen($server) > 128) throw new RuntimeException('Invalid PPPoE credentials.');
+        $commands = $this->commands('pppoe', compact('pon','onu','username','password','server'));
         return $this->runMany($commands);
     }
 
@@ -52,7 +56,7 @@ class VsolCliProvisioningService
         $this->validatePon($pon); $this->validateOnu($onu);
         foreach ([$ip,$gateway] as $value) if (!filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) throw new RuntimeException('Invalid IPv4 address.');
         if (!filter_var($netmask, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) throw new RuntimeException('Invalid IPv4 netmask.');
-        return $this->runMany($this->commands('static_ip', compact('pon','onu','ip','netmask','gateway')));
+        return $this->runMany($this->commands('static_ip', compact('pon','onu','ip','netmask','gateway','dns1','dns2')));
     }
 
     public function disableOnu(string $pon, string $onu): string
@@ -77,18 +81,16 @@ class VsolCliProvisioningService
         $configured = data_get($this->config, 'commands.'.$type);
         if (is_array($configured) && $configured) return array_map(fn($c)=>(string)$this->render($c,$vars), $configured);
         if ($type === 'pppoe') return [
-            'interface epon '.$vars['pon'],
-            'onu '.$vars['onu'].' pri wan_conn add route',
-            'onu '.$vars['onu'].' pri wan_conn index 1 route internet nat enable mtu 1492 pppoe proxy disable user '.$this->quote($vars['username']).' pwd '.$this->quote($vars['password']).' mode auto',
-            'onu '.$vars['onu'].' pri wan_conn commit',
-            'exit',
+            'configure terminal','interface epon '.$vars['pon'],
+            'onu '.$vars['onu'].' pri wan_conn add route internet nat enable',
+            'onu '.$vars['onu'].' pri wan_conn index 1 pppoe proxy disable user '.$this->quote($vars['username']).' pwd '.$this->quote($vars['password']).' server '.$this->quote($vars['server'] ?? '').' mode auto',
+            'onu '.$vars['onu'].' pri wan_conn commit','exit','exit',
         ];
         if ($type === 'static_ip') return [
-            'interface epon '.$vars['pon'],
-            'onu '.$vars['onu'].' pri wan_conn add route',
-            'onu '.$vars['onu'].' pri wan_conn index 1 route internet nat enable ip '.$vars['ip'].' netmask '.$vars['netmask'].' gateway '.$vars['gateway'].' mode manual',
-            'onu '.$vars['onu'].' pri wan_conn commit',
-            'exit',
+            'configure terminal','interface epon '.$vars['pon'],
+            'onu '.$vars['onu'].' pri wan_conn add route internet nat enable',
+            'onu '.$vars['onu'].' pri wan_conn index 1 static ip '.$vars['ip'].' mask '.$vars['netmask'].' gw '.$vars['gateway'].' dns master '.$vars['dns1'].' slave '.$vars['dns2'],
+            'onu '.$vars['onu'].' pri wan_conn commit','exit','exit',
         ];
         throw new RuntimeException('No safe VSOL command template configured for '.$type.'. Configure adapter_config.commands.'.$type.' for this exact model.');
     }
@@ -98,10 +100,10 @@ class VsolCliProvisioningService
         $configured = data_get($this->config, 'commands.'.$type);
         if (is_array($configured)) $configured = $configured[0] ?? '';
         if (!$configured) {
-            if ($type === 'authorize_mac') return 'interface epon '.$vars['pon'].'; onu-auth mode mac; onu mac-auth add '.$vars['mac'].'; exit';
-            if ($type === 'remove_mac') return 'interface epon '.$vars['pon'].'; onu mac-auth del '.$vars['mac'].'; exit';
-            if ($type === 'disable_onu') return 'interface epon '.$vars['pon'].'; onu '.$vars['onu'].' disable; exit';
-            if ($type === 'enable_onu') return 'interface epon '.$vars['pon'].'; onu '.$vars['onu'].' enable; exit';
+            if ($type === 'authorize_mac') return "configure terminal\ninterface epon {$vars['pon']}\nonu-auth mode mac\nonu mac-auth add {$vars['mac']}\nexit\nexit";
+            if ($type === 'remove_mac') return "configure terminal\ninterface epon {$vars['pon']}\nonu mac-auth del {$vars['mac']}\nexit\nexit";
+            if ($type === 'disable_onu') return "configure terminal\ninterface epon {$vars['pon']}\nonu {$vars['onu']} disable\nexit\nexit";
+            if ($type === 'enable_onu') return "configure terminal\ninterface epon {$vars['pon']}\nonu {$vars['onu']} enable\nexit\nexit";
         }
         if (!$configured) throw new RuntimeException('No safe VSOL command template configured for '.$type.'.');
         return (string)$this->render($configured,$vars);
