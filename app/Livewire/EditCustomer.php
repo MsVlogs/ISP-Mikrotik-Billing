@@ -319,20 +319,21 @@ class EditCustomer extends Component
         }
 
         $pppUserId = $pppUser->id;
+        $resellerId = $customer->reseller_id;
+        $resellerName = 'N/A';
+        if ($customer->reseller) {
+            $resellerName = $customer->reseller?->user?->name ?? 'N/A';
+            if ($customer->reseller?->company) {
+                $resellerName = $customer->reseller->company . ' (' . $resellerName . ')';
+            }
+        }
+
         $customer->update([
             'status' => 'inactive',
             'reseller_id' => null,
             'ppp_user_id' => null,
         ]);
         PPPSecrets::where('id', $pppUserId)->delete();
-
-        $resellerName = 'N/A';
-        if ($customer->reseller_id != null) {
-            $resellerName = $customer->reseller?->user?->name ?? 'N/A';
-            if ($customer->reseller?->company) {
-                $resellerName = $customer->reseller->company . ' (' . $resellerName . ')';
-            }
-        }
 
         activity()
             ->performedOn($customer)
@@ -342,7 +343,7 @@ class EditCustomer extends Component
                     'customer_unique_id' => $customer->customer_unique_id,
                     'customer_name' => $customer->customer_name,
                     'customer_mobile' => $customer->mobile,
-                    'reseller_id' => $customer->reseller_id,
+                    'reseller_id' => $resellerId,
                     'reseller_name' => $resellerName,
                     'customer_status' => $customer->status,
                 ],
