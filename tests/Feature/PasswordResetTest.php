@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -34,7 +35,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', [
+        $this->withoutMiddleware(VerifyCsrfToken::class)->post('/forgot-password', [
             'email' => $user->email,
         ]);
 
@@ -51,7 +52,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', [
+        $this->withoutMiddleware(VerifyCsrfToken::class)->post('/forgot-password', [
             'email' => $user->email,
         ]);
 
@@ -74,12 +75,12 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', [
+        $this->withoutMiddleware(VerifyCsrfToken::class)->post('/forgot-password', [
             'email' => $user->email,
         ]);
 
         Notification::assertSentTo($user, ResetPassword::class, function (object $notification) use ($user) {
-            $response = $this->post('/reset-password', [
+            $response = $this->withoutMiddleware(VerifyCsrfToken::class)->post('/reset-password', [
                 'token' => $notification->token,
                 'email' => $user->email,
                 'password' => 'password',

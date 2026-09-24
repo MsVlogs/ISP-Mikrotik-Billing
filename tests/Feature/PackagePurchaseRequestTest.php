@@ -58,7 +58,7 @@ class PackagePurchaseRequestTest extends TestCase
     /** @test */
     public function admin_can_manage_purchase_requests()
     {
-        $role = Role::create(['name' => 'Super Admin']);
+        $role = Role::firstOrCreate(['name' => 'Super Admin']);
         $admin = User::create([
             'name' => 'Admin User',
             'email' => 'admin@isp.com',

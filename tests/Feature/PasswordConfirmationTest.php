@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Tests\TestCase;
 
 class PasswordConfirmationTest extends TestCase
@@ -23,7 +24,7 @@ class PasswordConfirmationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/user/confirm-password', [
+        $response = $this->actingAs($user)->withoutMiddleware(VerifyCsrfToken::class)->post('/user/confirm-password', [
             'password' => 'password',
         ]);
 
@@ -35,7 +36,7 @@ class PasswordConfirmationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/user/confirm-password', [
+        $response = $this->actingAs($user)->withoutMiddleware(VerifyCsrfToken::class)->post('/user/confirm-password', [
             'password' => 'wrong-password',
         ]);
 

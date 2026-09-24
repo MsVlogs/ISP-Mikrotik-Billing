@@ -101,7 +101,7 @@ class BkashIpnTest extends TestCase
 
     public function test_bkash_callback_rejects_missing_payment_id(): void
     {
-        $response = $this->get('/payment/bkash/callback?status=success');
+        $response = $this->withServerVariables(['HTTP_HOST' => 'bill.xlinkbd.net', 'SERVER_NAME' => 'bill.xlinkbd.net', 'SERVER_PORT' => '8082'])->get('/payment/bkash/callback?status=success');
 
         $response->assertRedirect(route('filament.portal.pages.pay-bill'));
     }

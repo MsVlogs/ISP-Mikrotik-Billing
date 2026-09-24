@@ -23,7 +23,7 @@ class SiteStatusTest extends TestCase
 
     public function test_site_is_accessible_when_active_and_no_maintenance()
     {
-        $response = $this->get('http://localhost/');
+        $response = $this->get('http://bill.xlinkbd.net/');
         $response->assertStatus(200);
     }
 
@@ -32,18 +32,18 @@ class SiteStatusTest extends TestCase
         MainSiteData::setValue('site_maintenance', '1');
 
         // Main site
-        $response = $this->get('http://localhost/');
+        $response = $this->get('http://bill.xlinkbd.net/');
         $response->assertStatus(503);
         $response->assertSee('Under Maintenance');
         $response->assertSee('Custom announcement message');
 
         // Portal subdomain
-        $response = $this->get('http://portal.localhost/');
+        $response = $this->get('http://portal.bill.xlinkbd.net/');
         $response->assertStatus(503);
         $response->assertSee('Under Maintenance');
 
         // Billing subdomain should not be blocked (redirects to login/dashboard or 200/302)
-        $response = $this->get('http://billing.localhost/dashboard');
+        $response = $this->get('http://bill.xlinkbd.net:8081/dashboard');
         $this->assertNotEquals(503, $response->getStatusCode());
     }
 
@@ -52,17 +52,17 @@ class SiteStatusTest extends TestCase
         MainSiteData::setValue('site_status', 'disabled');
 
         // Main site
-        $response = $this->get('http://localhost/');
+        $response = $this->get('http://bill.xlinkbd.net/');
         $response->assertStatus(503);
         $response->assertSee('Site Temporarily Offline');
 
         // Portal subdomain
-        $response = $this->get('http://portal.localhost/');
+        $response = $this->get('http://portal.bill.xlinkbd.net/');
         $response->assertStatus(503);
         $response->assertSee('Site Temporarily Offline');
 
         // Billing subdomain should not be blocked
-        $response = $this->get('http://billing.localhost/dashboard');
+        $response = $this->get('http://bill.xlinkbd.net:8081/dashboard');
         $this->assertNotEquals(503, $response->getStatusCode());
     }
 }
