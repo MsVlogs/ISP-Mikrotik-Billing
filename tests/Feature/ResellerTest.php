@@ -210,7 +210,8 @@ class ResellerTest extends TestCase
 
         // Act - Redeem via post request simulation or direct call
         $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
-        $response = $this->withHeaders(['Host' => 'portal.'.$baseDomain])
+        $response = $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class)
+            ->withHeaders(['Host' => 'portal.'.$baseDomain])
             ->post(route('portal.voucher.redeem'), [
                 'username' => 'CUST002',
                 'code' => 'VCH-TEST-1234',
@@ -761,7 +762,7 @@ class ResellerTest extends TestCase
             'collection_date' => now(),
             'collection_amount' => 500.00,
             'payment_status' => 'paid',
-            'invoice_no' => 'INV-001',
+            'invoice_no' => 1001,
         ]);
 
         // Last Month (commission and collection)
@@ -779,7 +780,7 @@ class ResellerTest extends TestCase
             'collection_date' => now()->subMonth()->startOfMonth(),
             'collection_amount' => 700.00,
             'payment_status' => 'paid',
-            'invoice_no' => 'INV-002',
+            'invoice_no' => 1002,
         ]);
 
         $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
