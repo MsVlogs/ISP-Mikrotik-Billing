@@ -287,52 +287,69 @@ class EditCustomer extends Component
 
     public function deletePPPUser()
     {
-        if (auth()->user()->hasRole('Reseller')) {
+        if (! hasAccess(['Super Admin'], ['delete-customer'])) {
             abort(403, 'Unauthorized action.');
         }
-        $customer = CustomersInfo::where('customer_unique_id', decrypt($this->customerId))->with('pppUser')->first();
 
-        // Remove PPP secret from router using the correct [find name=...] selector
-        try {
-            app(MikrotikController::class)->singleWrite(
-                $customer->pppUser->router_name,
-                '/ppp secret remove [find name="'.$customer->pppUser->username.'"]'
-            );
-        } catch (\Exception $routerEx) {
-            // Log but continue — user may have already been removed from router
-            \Log::warning('deletePPPUser router error: '.$routerEx->getMessage());
-            report($routerEx);
-            flash()->warning('Router warning. Cleaning up database record.');
+        $customer = CustomersInfo::where('customer_unique_id', decrypt($this->customerId))
+            ->with('pppUser')
+            ->first();
+
+        if (! $customer || ! $customer->pppUser) {
+            flash()->error('PPP User not found.');
+            return;
         }
 
-        // Always clean up the database record regardless of router outcome
-        PPPSecrets::where('id', $this->ppp_user_id)->first()->delete();
-        if($customer->reseller_id != null) {
+        $pppUser = $customer->pppUser;
+
+        // Keep the local record when router removal fails so the application
+        // does not falsely report a successful deletion.
+        if (! empty($pppUser->router_name)) {
+            try {
+                app(MikrotikController::class)->singleWrite(
+                    $pppUser->router_name,
+                    '/ppp secret remove [find name="'.$pppUser->username.'"]'
+                );
+            } catch (\Throwable $routerEx) {
+                \Log::error('deletePPPUser router error: '.$routerEx->getMessage());
+                report($routerEx);
+                flash()->error('Failed to remove PPP User from MikroTik. Database record was kept.');
+                return;
+            }
+        }
+
+        $pppUserId = $pppUser->id;
+        $customer->update([
+            'status' => 'inactive',
+            'reseller_id' => null,
+            'ppp_user_id' => null,
+        ]);
+        PPPSecrets::where('id', $pppUserId)->delete();
+
+        $resellerName = 'N/A';
+        if ($customer->reseller_id != null) {
             $resellerName = $customer->reseller?->user?->name ?? 'N/A';
             if ($customer->reseller?->company) {
                 $resellerName = $customer->reseller->company . ' (' . $resellerName . ')';
             }
-
-            activity()
-                ->performedOn($customer)
-                ->causedBy(auth()->user())
-                ->withProperties([
-                    'Reseller Info' => [
-                        'customer_unique_id' => $customer->customer_unique_id,
-                        'customer_name' => $customer->customer_name,
-                        'customer_mobile' => $customer->mobile,
-                        'reseller_id' => $customer->reseller_id,
-                        'reseller_name' => $resellerName,
-                        'customer_status' => $customer->status,
-                    ],
-                ])
-                ->log("Deleted PPP User for customer {$customer->customer_name} (ID: {$customer->customer_unique_id}) and unmapped from reseller {$resellerName}.");
         }
-        $customer->update([
-            'status' => 'inactive',
-            'reseller_id' => null,
-        ]);
-        flash()->warning('Customer PPP User deleted successfully!');
+
+        activity()
+            ->performedOn($customer)
+            ->causedBy(auth()->user())
+            ->withProperties([
+                'Reseller Info' => [
+                    'customer_unique_id' => $customer->customer_unique_id,
+                    'customer_name' => $customer->customer_name,
+                    'customer_mobile' => $customer->mobile,
+                    'reseller_id' => $customer->reseller_id,
+                    'reseller_name' => $resellerName,
+                    'customer_status' => $customer->status,
+                ],
+            ])
+            ->log("Deleted PPP User for customer {$customer->customer_name} (ID: {$customer->customer_unique_id}).");
+
+        flash()->success('Customer PPP User deleted successfully!');
         $this->ppp_user_id = null;
         $this->loadCustomerData($this->customerId);
     }
