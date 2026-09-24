@@ -87,8 +87,8 @@
     @else
         <div class="row g-3"><div class="col-xl-7"><div class="card shadow-sm"><div class="card-header fw-bold">Communication Settings</div><div class="card-body"><form method="POST" action="{{route('communication-center.settings.update')}}">@csrf
             <div class="mb-3"><label class="form-label">WhatsApp Business Number</label><input name="whatsapp" class="form-control" value="{{$whatsapp??''}}" placeholder="8801XXXXXXXXX"></div>
-            <div class="mb-3"><label class="form-label">Notification Email</label><input type="email" name="notification_email" class="form-control" value="{{\App\Models\MainSiteData::where('key','notification_email')->value('value')}}" placeholder="noc@example.com"></div>
-            <div class="mb-3"><label class="form-label">Notification Destination URL</label><input type="url" name="notification_url" class="form-control" value="{{\App\Models\MainSiteData::where('key','notification_url')->value('value')}}" placeholder="https://..."></div>
+            <div class="mb-3"><label class="form-label">Notification Email</label><input type="email" name="notification_email" class="form-control" value="{{\App\Models\MainSiteData::where('type','notification_email')->value('value')}}" placeholder="noc@example.com"></div>
+            <div class="mb-3"><label class="form-label">Notification Destination URL</label><input type="url" name="notification_url" class="form-control" value="{{\App\Models\MainSiteData::where('type','notification_url')->value('value')}}" placeholder="https://..."></div>
             <button class="btn btn-primary">Save Communication Settings</button>
         </form></div></div></div><div class="col-xl-5"><div class="card shadow-sm"><div class="card-body"><h5 class="fw-bold">Production Channels</h5><div class="list-group list-group-flush">
             <a class="list-group-item list-group-item-action" href="{{route('communication-center.sms')}}">SMS Center <span class="float-end">→</span></a>

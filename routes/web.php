@@ -513,7 +513,7 @@ Route::middleware([
             $unread = \App\Models\NotificationLogs::whereNull('read_by')->count();
             $conversations = \App\Models\SupportTicket::count();
             $openTickets = \App\Models\SupportTicket::whereIn('status',['open','pending','in_progress'])->count();
-            $whatsapp = \App\Models\MainSiteData::where('key','site_whatsapp')->value('value');
+            $whatsapp = \App\Models\MainSiteData::where('type','site_whatsapp')->value('value');
             $recentNotifications = \App\Models\NotificationLogs::latest()->limit(6)->get();
             $recentConversations = \App\Models\SupportTicket::with('customer')->latest()->limit(6)->get();
             return view('xlink.communication-center', compact(
@@ -526,7 +526,7 @@ Route::middleware([
             return view('xlink.communication-center', ['tab'=>'chat','tickets'=>$tickets]);
         })->name('communication-center.chat');
         Route::get('/communication-center/settings', function () {
-            $whatsapp = \App\Models\MainSiteData::where('key','site_whatsapp')->value('value');
+            $whatsapp = \App\Models\MainSiteData::where('type','site_whatsapp')->value('value');
             return view('xlink.communication-center', ['tab'=>'settings','whatsapp'=>$whatsapp]);
         })->name('communication-center.settings');
         Route::get('/communication-center/sms', fn () => redirect()->route('sms-setup'))->name('communication-center.sms');
@@ -535,7 +535,7 @@ Route::middleware([
             $d=$r->validate(['whatsapp'=>'nullable|string|max:30','notification_email'=>'nullable|email|max:190','notification_url'=>'nullable|url|max:500']);
             foreach ([['site_whatsapp',$d['whatsapp']??null],['notification_email',$d['notification_email']??null],['notification_url',$d['notification_url']??null]] as [$k,$v]) {
                 if ($v===null || $v==='') continue;
-                \App\Models\MainSiteData::updateOrCreate(['key'=>$k],['value'=>$v]);
+                \App\Models\MainSiteData::updateOrCreate(['type'=>$k],['value'=>$v]);
             }
             return back()->with('communication_message','Communication settings updated.');
         })->name('communication-center.settings.update');
@@ -592,7 +592,7 @@ Route::middleware([
                 'environment'=>app()->environment(),
                 'debug'=>$debug,
                 'backups'=>$backups,
-                'siteName'=>\App\Models\MainSiteData::where('key','site_name')->value('value') ?: config('app.name'),
+                'siteName'=>\App\Models\MainSiteData::where('type','site_name')->value('value') ?: config('app.name'),
             ]);
         })->name('xlink.system-settings');
         Route::get('/billing-helpline', function () {
