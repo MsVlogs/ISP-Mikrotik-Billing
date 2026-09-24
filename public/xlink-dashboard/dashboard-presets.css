@@ -17,6 +17,26 @@
 @media(max-width:1199px){.analysis-dual{grid-template-columns:1fr}.analysis-chart-compact{height:230px}.analytics-library-view .dashboard-card-deck{--db-cols:3}}
 @media(max-width:991px){.dashboard-panels{grid-template-columns:1fr!important;grid-auto-rows:auto}.dashboard-panels .dashboard-panel,.dashboard-panels .panel-span-full{grid-column:1!important;grid-row-end:auto!important}.analytics-library-view .dashboard-card-deck{--db-cols:2}}
 @media(max-width:575px){.analysis-dual{padding:10px}.analysis-chart-compact{height:215px}.dashboard-chart-shell.tall-chart{height:320px}.analytics-library-view .dashboard-card-deck{--db-cols:1}.analytics-staff-table{font-size:.75rem}}
+
+/* v1.3.0.67 — stable dashboard panel layout. Avoid calculated masonry rows because dynamic chart/content heights can overlap adjacent panels. */
+.dashboard-panels{
+  grid-auto-rows:auto!important;
+  grid-auto-flow:row!important;
+  align-items:stretch!important;
+}
+.dashboard-panels>.dashboard-panel{
+  grid-row:auto!important;
+  align-self:stretch!important;
+  min-height:0;
+}
+@media(min-width:992px){
+  .dashboard-panels{grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr)!important}
+}
+@media(max-width:991px){
+  .dashboard-panels{grid-template-columns:1fr!important;grid-auto-rows:auto!important}
+  .dashboard-panels>.dashboard-panel{grid-column:1!important;grid-row:auto!important}
+}
+
 /* v2.0.12 reference-inspired dashboard presets */
 .preset-informative-isp{--db-radius:8px;--db-gap:9px;--db-shadow:0 3px 10px rgba(15,23,42,.07)}
 .preset-informative-isp .dashboard-card-deck{gap:9px}
