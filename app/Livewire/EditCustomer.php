@@ -859,46 +859,65 @@ class EditCustomer extends Component
                     }
                 } elseif ($relation == 'official' && $attribute == 'status') {
                     try {
-                        \DB::beginTransaction();
-
+                        // Save the local state first. Router synchronization is external
+                        // and must not roll back the customer database state.
                         if ($customer->ppp_user_id != null && $customer->pppUser) {
                             if ($value == 'active') {
-                                app(MikrotikController::class)->enablePPPSecret(decrypt($this->customerId), $customer->pppUser->router_name, $customer->pppUser->username);
-
-                                app(MikrotikController::class)->updatePPPSecret(
-                                    $customer->pppUser->router_name,
-                                    $customer->pppUser->username,
-                                    'profile',
-                                    $customer->pppUser->profile
-                                );
-
-                                try {
-                                    app(MikrotikController::class)->singleWrite(
-                                        $customer->pppUser->router_name,
-                                        '/ppp active remove [find name="'.$customer->pppUser->username.'"]'
-                                    );
-                                } catch (\Exception $e) {
-                                    \Log::debug('EditCustomer enable active session removal skipped: '.$e->getMessage());
-                                }
-
                                 PPPSecrets::where('id', $customer->ppp_user_id)->update(['status' => 'active']);
                             } elseif ($value == 'disable') {
-                                app(MikrotikController::class)->disablePPPSecret(decrypt($this->customerId), $customer->pppUser->router_name, $customer->pppUser->username);
                                 PPPSecrets::where('id', $customer->ppp_user_id)->update(['status' => 'disable']);
                             }
                         }
 
                         $customer->$attribute = $value;
                         $customer->save();
-                        data_set($this->fields, $field, $value); // Update the specific field in the 'customer'
+                        data_set($this->fields, $field, $value);
 
-                        \DB::commit();
-                        flash()->success(ucwords(str_replace('_', ' ', $attribute)).' updated successfully!');
-                    } catch (\Exception $e) {
-                        \DB::rollBack();
+                        $routerSyncFailed = false;
+                        if ($customer->ppp_user_id != null && $customer->pppUser && ! empty($customer->pppUser->router_name)) {
+                            try {
+                                if ($value == 'active') {
+                                    app(MikrotikController::class)->enablePPPSecret(
+                                        decrypt($this->customerId),
+                                        $customer->pppUser->router_name,
+                                        $customer->pppUser->username
+                                    );
+
+                                    app(MikrotikController::class)->updatePPPSecret(
+                                        $customer->pppUser->router_name,
+                                        $customer->pppUser->username,
+                                        'profile',
+                                        $customer->pppUser->profile
+                                    );
+                                } elseif ($value == 'disable') {
+                                    app(MikrotikController::class)->disablePPPSecret(
+                                        decrypt($this->customerId),
+                                        $customer->pppUser->router_name,
+                                        $customer->pppUser->username
+                                    );
+                                }
+                            } catch (\Throwable $routerException) {
+                                $routerSyncFailed = true;
+                                \Log::error('Customer status updated but MikroTik sync failed', [
+                                    'customer_unique_id' => $customer->customer_unique_id,
+                                    'status' => $value,
+                                    'router' => $customer->pppUser->router_name,
+                                    'username' => $customer->pppUser->username,
+                                    'error' => $routerException->getMessage(),
+                                ]);
+                                report($routerException);
+                            }
+                        }
+
+                        if ($routerSyncFailed) {
+                            flash()->warning('Customer status updated, but MikroTik sync failed. Please use Push/Sync to synchronize the router.');
+                        } else {
+                            flash()->success(ucwords(str_replace('_', ' ', $attribute)).' updated successfully!');
+                        }
+                    } catch (\Throwable $e) {
                         \Log::error('Failed to update status for customer '.$customer->customer_unique_id.': '.$e->getMessage());
                         report($e);
-                        flash()->error('Failed to update status on router. Please try again.');
+                        flash()->error('Failed to update customer status. Please try again.');
                     }
                 } elseif ($relation && $customer->$relation) {
                     $relatedModel = $customer->$relation;
