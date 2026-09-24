@@ -686,6 +686,10 @@ class EditCustomer extends Component
 
     public function updateCustomer($field, $value)
     {
+        if (! hasAccess(['Super Admin'], ['edit-customer']) && ! auth()->user()->hasRole('Reseller')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         if (auth()->user()->hasRole('Reseller') && ($field === 'status' || str_ends_with($field, '.status')) && $value === 'free') {
             flash()->error('Unauthorized to set status to free.');
 
