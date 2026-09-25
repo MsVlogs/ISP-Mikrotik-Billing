@@ -30,14 +30,31 @@ class MikrotikClients extends Component
     {
         abort_unless(hasAccess(['Super Admin'], ['all-customer']), 403);
 
-        $routers = RouterList::query()->orderBy('router_name')->get();
-        $profiles = PPPSecrets::query()->when($this->router, fn ($q) => $q->where('router_name', $this->router))
+        // Import From MikroTik must only expose routers that are explicitly connected.
+        // A disconnected/disabled router may still have historical PPPSecrets in the local DB,
+        // but those records must never appear as an import source.
+        $routers = RouterList::query()->where('action', 'connected')->orderBy('router_name')->get();
+        $profiles = PPPSecrets::query()
+            ->whereExists(function ($q) {
+                $q->selectRaw('1')
+                    ->from('router_lists')
+                    ->whereColumn('router_lists.router_name', 'p_p_p_secrets.router_name')
+                    ->where('router_lists.action', 'connected');
+            })
+            ->when($this->router, fn ($q) => $q->where('router_name', $this->router))
             ->whereNotNull('profile')->where('profile', '!=', '')->distinct()->orderBy('profile')->pluck('profile');
 
         $clients = PPPSecrets::query()->with('customer')
             // Manual Client List export: once a PPP secret is exported and linked,
             // remove it from this pending MikroTik import/sync list. Never delete the PPP secret.
             ->whereDoesntHave('customer')
+            // Hard gate: local PPP records are importable only while their router is connected.
+            ->whereExists(function ($q) {
+                $q->selectRaw('1')
+                    ->from('router_lists')
+                    ->whereColumn('router_lists.router_name', 'p_p_p_secrets.router_name')
+                    ->where('router_lists.action', 'connected');
+            })
             ->when($this->router, fn ($q) => $q->where('router_name', $this->router))
             ->when($this->protocol, fn ($q) => $q->whereRaw('upper(service) = ?', [strtoupper($this->protocol)]))
             ->when($this->profile, fn ($q) => $q->where('profile', $this->profile))
@@ -157,7 +174,14 @@ class MikrotikClients extends Component
 
     protected function filteredSecretsQuery()
     {
-        return PPPSecrets::query()->when($this->router, fn ($q) => $q->where('router_name', $this->router))
+        return PPPSecrets::query()
+            ->whereExists(function ($q) {
+                $q->selectRaw('1')
+                    ->from('router_lists')
+                    ->whereColumn('router_lists.router_name', 'p_p_p_secrets.router_name')
+                    ->where('router_lists.action', 'connected');
+            })
+            ->when($this->router, fn ($q) => $q->where('router_name', $this->router))
             ->when($this->protocol, fn ($q) => $q->whereRaw('upper(service) = ?', [strtoupper($this->protocol)]))
             ->when($this->profile, fn ($q) => $q->where('profile', $this->profile))
             ->when($this->userType === 'Unique', fn ($q) => $q->where(function ($q) {
