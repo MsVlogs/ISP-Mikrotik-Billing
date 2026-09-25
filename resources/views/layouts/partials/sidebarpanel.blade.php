@@ -343,6 +343,7 @@
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory') }}"><span class="nav-link-text ps-1">{{ __('Dashboard') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.mikrotik') }}"><span class="nav-link-text ps-1">{{ __('MikroTik Management') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.olt') }}"><span class="nav-link-text ps-1">{{ __('OLT Management') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.olt') }}#olt-provisioning"><span class="nav-link-text ps-1">{{ __('OLT / ONU Provisioning') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.switches') }}"><span class="nav-link-text ps-1">{{ __('Switch Management') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.access-points') }}"><span class="nav-link-text ps-1">{{ __('Access Point Management') }}</span></a>
                 </div>
