@@ -5,6 +5,11 @@
                 <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('reseller.dashboard') }}"
                     role="button">{{ __('Dashboard') }}</a>
             </li>
+            <li class="nav-item">
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('ai-engineer') }}" role="button">
+                    <i class="bi bi-stars me-1"></i>{{ __('AI Engineer') }}
+                </a>
+            </li>
 
             @canany(['view-customer', 'create-customer', 'edit-customer', 'delete-customer'])
                 <li class="nav-item dropdown">
