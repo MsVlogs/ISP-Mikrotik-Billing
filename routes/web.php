@@ -130,6 +130,11 @@ Route::middleware([
         Route::redirect('/', '/dashboard');
 
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/ai-engineer', [\App\Http\Controllers\AiEngineerController::class, 'index'])->name('ai-engineer');
+        Route::post('/ai-engineer/diagnose', [\App\Http\Controllers\AiEngineerController::class, 'diagnose'])->name('ai-engineer.diagnose');
+        Route::post('/ai-engineer/chat', [\App\Http\Controllers\AiEngineerController::class, 'chat'])->name('ai-engineer.chat');
+        Route::get('/ai-engineer/search', [\App\Http\Controllers\AiEngineerController::class, 'search'])->name('ai-engineer.search');
+        Route::post('/ai-engineer/feedback', [\App\Http\Controllers\AiEngineerController::class, 'feedback'])->name('ai-engineer.feedback');
         Route::resources([
             'collection-report' => CollectionReportController::class,
         ]);

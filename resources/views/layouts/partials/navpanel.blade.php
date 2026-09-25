@@ -89,6 +89,11 @@
                     role="button">{{ __('Dashboard') }}</a>
             </li>
             <li class="nav-item">
+                <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('ai-engineer') }}" role="button">
+                    <i class="bi bi-stars me-1"></i>{{ __('AI Engineer') }}
+                </a>
+            </li>
+            <li class="nav-item">
                 <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mikrotik-sync') }}"
                     role="button">{{ __('Mikrotik Sync') }}</a>
             </li>
