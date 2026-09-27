@@ -16,11 +16,16 @@ class NetworkInventoryDevice extends Model
         'last_checked_at', 'location', 'notes', 'olt_type_id', 'host', 'firmware', 'serial_no', 'web_protocol',
         'web_port', 'port', 'pon_ports', 'ge_ports', 'sfp_ports', 'sfp_plus_ports', 'connect_timeout', 'cli_timeout',
         'read_delay_ms', 'diagnostic_command', 'adapter_config', 'is_active', 'latitude', 'longitude',
+        'username', 'password', 'snmp_community', 'api_token', 'api_endpoint', 'snmp_version',
+        'ssh_port', 'telnet_port', 'api_port', 'ssh_enabled', 'telnet_enabled', 'api_enabled',
+        'provisioning_enabled',
     ];
 
     protected $casts = [
         'monitor_enabled' => 'boolean', 'is_active' => 'boolean',
         'last_checked_at' => 'datetime',
+        'ssh_enabled' => 'boolean', 'telnet_enabled' => 'boolean', 'api_enabled' => 'boolean',
+        'provisioning_enabled' => 'boolean',
     ];
 
     public function scopeType($query, string $type)

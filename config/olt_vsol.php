@@ -2,7 +2,7 @@
 return ['profiles'=>[
  'v1600d_ep_series_v1_2'=>[
   'label'=>'VSOL/UPLINK EP Series / V1600D CLI v1.2',
-  'models'=>['V1600D','V1600D Series','EP2','EP4','EP8'],'transport'=>'ssh',
+  'models'=>['V1600D'],'transport'=>'ssh',
   'commands'=>[
    'authorize_mac'=>['configure terminal','interface epon {{pon}}','onu-auth mode mac','onu mac-auth add {{mac}}','exit','exit'],
    'remove_mac'=>['configure terminal','interface epon {{pon}}','onu mac-auth del {{mac}}','exit','exit'],

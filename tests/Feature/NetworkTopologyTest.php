@@ -82,7 +82,7 @@ class NetworkTopologyTest extends TestCase
     {
         $this->get(route('network-topology.designer'))->assertOk()->assertSee('Topology Designer');
         $this->get(route('network-topology.live'))->assertOk()->assertSee('Live Topology');
-        $this->get(route('optical-audit'))->assertOk()->assertSee('Virtual Optical Audit');
+        $this->get(route('optical-audit'))->assertOk()->assertSee('Virtual OTDR / Optical Audit');
     }
 
 }

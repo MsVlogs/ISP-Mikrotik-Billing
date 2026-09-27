@@ -99,15 +99,16 @@ class VsolCliProvisioningService
     private function command(string $type, array $vars): string
     {
         $configured = data_get($this->config, 'commands.'.$type);
-        if (is_array($configured)) $configured = $configured[0] ?? '';
+        if (is_array($configured) && $configured) {
+            return implode("\n", array_map(fn ($line) => (string) $this->render((string) $line, $vars), $configured));
+        }
         if (!$configured) {
             if ($type === 'authorize_mac') return "configure terminal\ninterface epon {$vars['pon']}\nonu-auth mode mac\nonu mac-auth add {$vars['mac']}\nexit\nexit";
             if ($type === 'remove_mac') return "configure terminal\ninterface epon {$vars['pon']}\nonu mac-auth del {$vars['mac']}\nexit\nexit";
             if ($type === 'disable_onu') return "configure terminal\ninterface epon {$vars['pon']}\nonu {$vars['onu']} disable\nexit\nexit";
             if ($type === 'enable_onu') return "configure terminal\ninterface epon {$vars['pon']}\nonu {$vars['onu']} enable\nexit\nexit";
         }
-        if (!$configured) throw new RuntimeException('No safe VSOL command template configured for '.$type.'.');
-        return (string)$this->render($configured,$vars);
+        throw new RuntimeException('No safe VSOL command template configured for '.$type.'.');
     }
 
     private function runMany(array $commands): string { return $this->run(implode("\n", $commands)); }
