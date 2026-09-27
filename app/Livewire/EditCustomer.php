@@ -760,6 +760,14 @@ class EditCustomer extends Component
             ->with('billing', 'customerAddress', 'official', 'pppUser')
             ->first();
 
+        // Customer Unique Id is manual-only: keep it unique while allowing the current customer to retain its own ID.
+        $rules['customer_unique_id'] = [
+            'required',
+            'string',
+            'max:255',
+            Rule::unique('customers_infos', 'customer_unique_id')->ignore($customer?->id),
+        ];
+
         // Validate the specific field being updated
         $validation = Validator::make([], []); // initialize to prevent undefined variable error
         if (str_contains($field, '.')) {
@@ -964,8 +972,38 @@ class EditCustomer extends Component
                     flash()->error('Related model not found or not initialized.');
                 }
             } else {
-                $customer->$field = $value;
-                $customer->save();
+                if ($field === 'customer_unique_id') {
+                    $oldUniqueId = (string) $customer->customer_unique_id;
+                    $newUniqueId = trim((string) $value);
+
+                    if ($newUniqueId === '') {
+                        flash()->error('Customer Unique Id is required.');
+                        return;
+                    }
+
+                    if ($oldUniqueId !== $newUniqueId) {
+                        \Illuminate\Support\Facades\DB::transaction(function () use ($customer, $oldUniqueId, $newUniqueId) {
+                            BillingInfo::where('customer_bill_unique_id', $oldUniqueId)->update(['customer_bill_unique_id' => $newUniqueId]);
+                            OfficialInfo::where('customer_office_unique_id', $oldUniqueId)->update(['customer_office_unique_id' => $newUniqueId]);
+                            CustomersAddress::where('customer_address_unique_id', $oldUniqueId)->update(['customer_address_unique_id' => $newUniqueId]);
+                            \App\Models\PaymentSummary::where('customer_payment_unique_id', $oldUniqueId)->update(['customer_payment_unique_id' => $newUniqueId]);
+                            \App\Models\CollectionSummary::where('customer_collection_unique_id', $oldUniqueId)->update(['customer_collection_unique_id' => $newUniqueId]);
+                            if (\Illuminate\Schema\Schema::hasTable('support_tickets') && \Illuminate\Schema\Schema::hasColumn('support_tickets', 'customer_unique_id')) {
+                                \Illuminate\Support\Facades\DB::table('support_tickets')->where('customer_unique_id', $oldUniqueId)->update(['customer_unique_id' => $newUniqueId]);
+                            }
+                            $customer->customer_unique_id = $newUniqueId;
+                            $customer->save();
+                        });
+
+                        // The component route/state is keyed by the customer Unique Id.
+                        // Keep it synchronized after a successful ID change so the next
+                        // Livewire request continues to target the same customer.
+                        $this->customerId = encrypt($newUniqueId);
+                    }
+                } else {
+                    $customer->$field = $value;
+                    $customer->save();
+                }
                 data_set($this->fields['customer'], $field, $value); // Update the specific field in the 'customer'
 
                 flash()->success(ucwords(str_replace('_', ' ', $field)).' updated successfully!');

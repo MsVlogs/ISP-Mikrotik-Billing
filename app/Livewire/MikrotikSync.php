@@ -179,23 +179,6 @@ class MikrotikSync extends Component
                     ->get()
                     ->keyBy(fn ($item) => strtolower($item->username));
 
-                // 3. Pre-fetch latest customer unique ID count
-                $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
-                $lastCustomerUniqueId = CustomersInfo::orderBy('id', 'desc')->value('customer_unique_id');
-                if ($lastCustomerUniqueId) {
-                    if (str_starts_with($lastCustomerUniqueId, $prefix)) {
-                        $lastIdCount = (int) substr($lastCustomerUniqueId, strlen($prefix));
-                    } else {
-                        if (preg_match('/(\d+)$/', $lastCustomerUniqueId, $matches)) {
-                            $lastIdCount = (int) $matches[1];
-                        } else {
-                            $lastIdCount = 99;
-                        }
-                    }
-                } else {
-                    $lastIdCount = 99;
-                }
-
                 $statusGroups = []; // For bulk status updates
 
                 foreach ($users as $user) {

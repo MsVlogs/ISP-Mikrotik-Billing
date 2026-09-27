@@ -96,6 +96,13 @@
                             required="true"
                         />
                         <x-mikrotik.form-group
+                            label="{{ __('Customer Unique Id') }}"
+                            name="customer_unique_id"
+                            type="text"
+                            placeholder="{{ __('Enter Customer Unique Id manually') }}"
+                            required="true"
+                        />
+                        <x-mikrotik.form-group
                             label="{{ __('Email Address') }}"
                             name="email"
                             type="text"

@@ -43,7 +43,7 @@ class VsolCliProvisioningService
         return $this->run($this->command('remove_mac', ['pon'=>$pon,'mac'=>$mac]));
     }
 
-    public function configurePppoe(string $pon, string $onu, string $username, string $password): string
+    public function configurePppoe(string $pon, string $onu, string $username, string $password, string $server = ''): string
     {
         $this->validatePon($pon); $this->validateOnu($onu);
         if ($username === '' || strlen($username) > 128 || strlen($password) > 128 || strlen($server) > 128) throw new RuntimeException('Invalid PPPoE credentials.');
@@ -51,11 +51,12 @@ class VsolCliProvisioningService
         return $this->runMany($commands);
     }
 
-    public function configureStaticIp(string $pon, string $onu, string $ip, string $netmask, string $gateway): string
+    public function configureStaticIp(string $pon, string $onu, string $ip, string $netmask, string $gateway, string $dns1 = '', string $dns2 = ''): string
     {
         $this->validatePon($pon); $this->validateOnu($onu);
         foreach ([$ip,$gateway] as $value) if (!filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) throw new RuntimeException('Invalid IPv4 address.');
         if (!filter_var($netmask, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) throw new RuntimeException('Invalid IPv4 netmask.');
+        foreach ([$dns1, $dns2] as $dns) if ($dns !== '' && !filter_var($dns, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) throw new RuntimeException('Invalid DNS IPv4 address.');
         return $this->runMany($this->commands('static_ip', compact('pon','onu','ip','netmask','gateway','dns1','dns2')));
     }
 

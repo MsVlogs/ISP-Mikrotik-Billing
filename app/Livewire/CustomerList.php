@@ -257,6 +257,7 @@ class CustomerList extends Component
             })
             ->addColumn('action', function ($row) {
                 $id = encrypt($row->customer_unique_id);
+                $viewBtn = '<a href="'.e(route('customer.details', $row->customer_unique_id)).'" class="view btn btn-outline-secondary" title="View Customer"><i class="bi bi-person-vcard"></i></a>';
                 $editBtn = '<button onclick="Livewire.dispatch(\'open-edit-customer\', { id: \''.$id.'\' })" class="edit btn btn-primary" title="Edit"><i class="bi bi-pencil-square"></i></button>';
                 $billBtn = '<button onclick="Livewire.dispatch(\'open-bill-modal\', { id: \''.$id.'\' })" class="bill btn btn-info" title="Update Bill"><i class="bi bi-journal-arrow-up"></i></button>';
                 $enableBtn = '<button onclick="confirmEnableCustomer(\''.$id.'\')" class="btn btn-success" title="Enable"><i class="bi bi-power"></i></button>';
@@ -264,6 +265,7 @@ class CustomerList extends Component
                 $deleteBtn = '<button onclick="confirmDeleteCustomer(\''.$id.'\')" class="btn btn-danger" title="Delete"><i class="bi bi-trash"></i></button>';
 
                 $btns = '<div class="action-btns d-flex justify-content-center">';
+                $btns .= $viewBtn;
 
                 if (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['edit-customer'])) {
                     $btns .= $editBtn;
@@ -567,17 +569,39 @@ class CustomerList extends Component
                 return;
             }
 
-            // Disable the router-side service first. If this fails, do not
-            // mark the customer disabled in the database.
+            // Record disconnected-router work in the same transaction as the local
+            // status update, so a failed DB update cannot leave a stale remote action.
+            $pendingAction = null;
             if ($customer->pppUser && ! empty($customer->pppUser->router_name)) {
-                app(MikrotikController::class)->disablePPPSecret(
-                    $uniqueId,
-                    $customer->pppUser->router_name,
-                    $customer->pppUser->username
-                );
+                $routerName = $customer->pppUser->router_name;
+                $routerConnected = RouterList::where('router_name', $routerName)
+                    ->where('action', 'connected')
+                    ->exists();
+
+                if ($routerConnected) {
+                    app(MikrotikController::class)->disablePPPSecret(
+                        $uniqueId,
+                        $routerName,
+                        $customer->pppUser->username
+                    );
+                } else {
+                    $pendingAction = [
+                        'customer_unique_id' => $uniqueId,
+                        'router_name' => $routerName,
+                        'username' => $customer->pppUser->username,
+                        'action' => 'disable',
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
             }
 
-            \DB::transaction(function () use ($customer) {
+            $pendingId = \DB::transaction(function () use ($customer, $pendingAction) {
+                $pendingId = $pendingAction
+                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
+                    : null;
+
                 $customer->status = 'disable';
                 $customer->save();
 
@@ -585,7 +609,18 @@ class CustomerList extends Component
                     PPPSecrets::where('id', $customer->ppp_user_id)
                         ->update(['status' => 'disable']);
                 }
+
+                return $pendingId;
             });
+
+            if ($pendingId) {
+                \Log::warning('Customer disabled locally while router is unavailable; remote action queued', [
+                    'customer_id' => $uniqueId,
+                    'router_name' => $pendingAction['router_name'],
+                    'username' => $pendingAction['username'],
+                    'pending_action_id' => $pendingId,
+                ]);
+            }
 
             flash()->addSuccess('Customer disabled successfully.');
         } catch (\Throwable $e) {
@@ -629,24 +664,57 @@ class CustomerList extends Component
                 return;
             }
 
-            // Perform the router-side removal before deleting local records.
-            // A router failure must not leave the database claiming the customer is deleted.
+            // Keep the queued remote removal atomic with local deletion. Otherwise,
+            // a failed local transaction could still remove a customer's PPP secret later.
             $pppUser = $customerDelete->pppUser;
+            $pendingAction = null;
             if ($pppUser && ! empty($pppUser->router_name)) {
-                app(MikrotikController::class)->removePPPSecret(
-                    $decryptedId,
-                    $pppUser->router_name,
-                    $pppUser->username
-                );
+                $routerName = $pppUser->router_name;
+                $routerConnected = RouterList::where('router_name', $routerName)
+                    ->where('action', 'connected')
+                    ->exists();
+
+                if ($routerConnected) {
+                    app(MikrotikController::class)->removePPPSecret(
+                        $decryptedId,
+                        $routerName,
+                        $pppUser->username
+                    );
+                } else {
+                    $pendingAction = [
+                        'customer_unique_id' => $decryptedId,
+                        'router_name' => $routerName,
+                        'username' => $pppUser->username,
+                        'action' => 'remove',
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
             }
 
-            \DB::transaction(function () use ($customerDelete, $pppUser) {
+            $pendingId = \DB::transaction(function () use ($customerDelete, $pppUser, $pendingAction) {
+                $pendingId = $pendingAction
+                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
+                    : null;
+
                 if ($pppUser) {
                     $pppUser->delete();
                 }
 
                 $customerDelete->delete();
+
+                return $pendingId;
             });
+
+            if ($pendingId) {
+                \Log::warning('Customer deleted locally while router is unavailable; remote removal queued', [
+                    'customer_id' => $decryptedId,
+                    'router_name' => $pendingAction['router_name'],
+                    'username' => $pendingAction['username'],
+                    'pending_action_id' => $pendingId,
+                ]);
+            }
 
             flash()->addSuccess('Customer deleted successfully.');
         } catch (\Exception $e) {

@@ -18,7 +18,7 @@
                                     <tr>
                                         <th>{{ __(ucwords(str_replace('_', ' ', $field))) }}:</th>
                                         <td>
-                                            @if ($field === 'customer_unique_id' || $field === 'created_at' || $field === 'updated_at')
+                                            @if ($field === 'created_at' || $field === 'updated_at')
                                                 <span>
                                                     {!! !empty($fields['customer'][$field]) ? $fields['customer'][$field] : '<span class="text-danger">' . __('Empty') . '</span>' !!}
                                                 </span>

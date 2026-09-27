@@ -177,7 +177,7 @@
                 </a>
                 <ul class="nav collapse" id="broadbandMenu">
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('customer-add') }}"><span class="nav-link-text ps-1">{{ __('Add Customer') }}</span></a></li>
-                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customers') }}"><span class="nav-link-text ps-1">{{ __('Customer List') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('customers.index') }}"><span class="nav-link-text ps-1">{{ __('Customer List') }}</span></a></li>
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customer-search') }}"><span class="nav-link-text ps-1">{{ __('Customer Search') }}</span></a></li>
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-online-customers') }}"><span class="nav-link-text ps-1">{{ __('Online Customers') }}</span></a></li>
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-due-customers') }}"><span class="nav-link-text ps-1">{{ __('Due Customers') }}</span></a></li>
@@ -324,6 +324,8 @@
                     <div class="d-flex align-items-center"><span class="nav-link-icon"><i class="bi bi-activity"></i></span><span class="nav-link-text ps-1">{{ __('Network Monitoring') }}</span></div>
                 </a>
                 <div class="collapse ps-4" id="networkMonitoringMenu">
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('device-manager') }}"><span class="nav-link-text ps-1">{{ __('Device Manager') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-events') }}"><span class="nav-link-text ps-1">{{ __('Events & Alerts') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-map') }}"><span class="nav-link-text ps-1">{{ __('Network Map') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('traffic-monitor') }}"><span class="nav-link-text ps-1">{{ __('Traffic Monitor') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('high-usage-monitor') }}"><span class="nav-link-text ps-1">{{ __('High Usage Monitor') }}</span></a>

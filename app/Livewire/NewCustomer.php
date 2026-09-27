@@ -28,6 +28,8 @@ class NewCustomer extends Component
 
     public $customer_name;
 
+    public $customer_unique_id;
+
     public $email;
 
     public $identification_no;
@@ -213,6 +215,7 @@ class NewCustomer extends Component
         // Start with the base rules
         $rules = [
             'customer_name' => 'required|min:3|max:255',
+            'customer_unique_id' => 'required|string|max:255|unique:customers_infos,customer_unique_id',
             'mobile' => ['nullable', 'string', new ValidPhoneDigits],
             'email' => 'nullable|email',
             'alternative_mobile' => ['nullable', 'string', new ValidPhoneDigits],
@@ -616,22 +619,17 @@ class NewCustomer extends Component
                 }
             }
 
-            // create customers_info table record
-            $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
-            $lastCustomer = CustomersInfo::orderBy('id', 'desc')->value('customer_unique_id');
-            if ($lastCustomer) {
-                if (str_starts_with($lastCustomer, $prefix)) {
-                    $lastId = (int) substr($lastCustomer, strlen($prefix));
-                } else {
-                    if (preg_match('/(\d+)$/', $lastCustomer, $matches)) {
-                        $lastId = (int) $matches[1];
-                    } else {
-                        $lastId = 99;
-                    }
-                }
-                $newId = $prefix.($lastId + 1);
-            } else {
-                $newId = $prefix.'100';
+            // Customer Unique Id is manual only. Never auto-generate an ID.
+            $newId = trim((string) $this->customer_unique_id);
+            if ($newId === '') {
+                throw ValidationException::withMessages([
+                    'customer_unique_id' => 'Customer Unique Id is required.',
+                ]);
+            }
+            if (CustomersInfo::where('customer_unique_id', $newId)->exists()) {
+                throw ValidationException::withMessages([
+                    'customer_unique_id' => 'This Customer Unique Id is already in use.',
+                ]);
             }
             $customer = new CustomersInfo;
             if (auth()->user()->hasRole('Reseller')) {

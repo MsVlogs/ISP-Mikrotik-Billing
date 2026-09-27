@@ -139,6 +139,7 @@ Route::middleware([
             'collection-report' => CollectionReportController::class,
         ]);
         Route::get('customers/data', [CustomerList::class, 'getData'])->name('customers.data');
+        Route::get('customer/{id}', [\App\Http\Controllers\CustomerDetailsController::class, 'show'])->name('customer.details');
         Route::get('customers/{id}/edit', [CustomerList::class, 'edit'])->name('customers.edit');
         Route::get('customers/{id}', [CustomerList::class, 'show'])->name('customers.show');
         Route::get('customers', CustomerList::class)->name('customers.index');
@@ -155,6 +156,9 @@ Route::middleware([
 
         // Network Monitoring suite
         Route::get('/network-map', NetworkMap::class)->name('network-map');
+        Route::get('/device-manager', \App\Livewire\DeviceManager::class)->name('device-manager');
+        Route::get('/device-manager/{kind}/{device}', \App\Livewire\DeviceDetail::class)->name('device-manager.detail');
+        Route::get('/network-events', \App\Livewire\NetworkEvents::class)->name('network-events');
         Route::get('/traffic-monitor', TrafficMonitor::class)->name('traffic-monitor');
         Route::get('/high-usage-monitor', HighUsageMonitor::class)->name('high-usage-monitor');
         Route::get('/device-watcher', DeviceWatcher::class)->name('device-watcher');

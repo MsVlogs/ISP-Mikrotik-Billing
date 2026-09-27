@@ -96,6 +96,11 @@ class MikrotikClients extends Component
     {
         abort_unless(hasAccess(['Super Admin'], ['enable-pending-customer']), 403);
         $secret = PPPSecrets::findOrFail($id);
+        $router = RouterList::where('router_name', $secret->router_name)->first();
+        if (! $router || $router->action !== 'connected') {
+            flash()->warning("Router {$secret->router_name} is disabled/disconnected. Network action blocked.");
+            return;
+        }
         $disabled = in_array(strtolower((string) $secret->status), ['disabled', 'inactive'], true);
         app(MikrotikController::class)->togglePPPSecret($secret->customer?->customer_unique_id ?? $secret->username, $secret->router_name, $secret->username, $disabled ? 'enable' : 'disable');
         $secret->status = $disabled ? 'enabled' : 'disabled';
@@ -120,6 +125,11 @@ class MikrotikClients extends Component
 
         if ($id !== null) {
             $secret = PPPSecrets::with('customer')->findOrFail($id);
+            $router = RouterList::where('router_name', $secret->router_name)->first();
+            if (! $router || $router->action !== 'connected') {
+                flash()->warning("Router {$secret->router_name} is disabled/disconnected. Import is unavailable.");
+                return;
+            }
             if ($secret->customer) {
                 flash()->info("{$secret->username} is already in Client List.");
                 return;
@@ -128,38 +138,27 @@ class MikrotikClients extends Component
             return;
         }
 
+        // Customer Unique Id is manual-only. Bulk export must never invent an ID.
+        // Use the single-client flow so the operator can enter the Customer Unique Id manually.
         $secrets = $this->filteredSecretsQuery()->with('customer')->get();
-        $prefix = siteUrlSettings('customer_id_prefix') ?: 'FCNET';
-        $last = CustomersInfo::orderBy('id', 'desc')->value('customer_unique_id');
-        $counter = $last && preg_match('/(\d+)$/', (string) $last, $m) ? (int) $m[1] : 99;
         $created = 0;
         $skipped = 0;
+        $manualRequired = 0;
 
-        DB::transaction(function () use ($secrets, $prefix, &$counter, &$created, &$skipped) {
-            foreach ($secrets as $secret) {
-                if ($secret->customer) { $skipped++; continue; }
-                do {
-                    $counter++;
-                    $uniqueId = $prefix.$counter;
-                } while (CustomersInfo::where('customer_unique_id', $uniqueId)->exists());
-                CustomersInfo::create([
-                    'customer_unique_id' => $uniqueId,
-                    'ppp_user_id' => $secret->id,
-                    'customer_name' => $secret->username,
-                    'status' => 'pending',
-                    'connection_date' => Carbon::now(),
-                ]);
-                BillingInfo::create([
-                    'customer_bill_unique_id' => $uniqueId,
-                    'billing_type' => 'prepaid',
-                    'auto_disable_date' => Carbon::now(),
-                ]);
-                OfficialInfo::create(['customer_office_unique_id' => $uniqueId]);
-                $created++;
+        foreach ($secrets as $secret) {
+            if ($secret->customer) {
+                $skipped++;
+                continue;
             }
-        });
+            $manualRequired++;
+        }
+
+        if ($manualRequired > 0) {
+            flash()->warning("{$manualRequired} client(s) require a manually entered Customer Unique Id. No automatic Customer Id was generated and no customer records were created by bulk export.");
+        } else {
+            flash()->info("No new clients required export. {$skipped} existing clients were skipped.");
+        }
         $this->dispatch('customer-list-updated');
-        flash()->success("Added {$created} new clients to Client List. {$skipped} existing clients skipped.");
     }
 
     public function exportCsv()

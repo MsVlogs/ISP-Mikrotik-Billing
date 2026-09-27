@@ -61,3 +61,4 @@ Artisan::command('inspire', function () {
 // })->everyMinute();
 
 Schedule::command('app:check-network-inventory')->everyMinute()->withoutOverlapping();
+Schedule::command('app:reconcile-mikrotik-pending-actions')->everyMinute()->withoutOverlapping();

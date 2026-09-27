@@ -258,6 +258,7 @@ class ResellerTest extends TestCase
 
         Livewire::test(NewCustomer::class)
             ->set('customer_name', 'Reseller Customer')
+            ->set('customer_unique_id', 'RES-TEST-001')
             ->set('mobile', '01711111111')
             ->set('package_name', 'ResellerPackage')
             ->set('monthly_rent', 500)
