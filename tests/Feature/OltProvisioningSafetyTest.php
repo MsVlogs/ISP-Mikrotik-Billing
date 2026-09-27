@@ -94,6 +94,19 @@ class OltProvisioningSafetyTest extends TestCase
         $this->assertTrue($olt->provisioning_enabled);
     }
 
+    public function test_olt_form_exposes_snmp_configuration(): void
+    {
+        $olt = NetworkInventoryDevice::create([
+            'type'=>'olt','name'=>'SNMP Form OLT','ip_address'=>'192.0.2.240',
+            'status'=>'unknown','health_status'=>'unknown','snmp_version'=>'2C',
+        ]);
+        $this->get(route('network-inventory.olt.edit',$olt))
+            ->assertOk()
+            ->assertSee('SNMP Version')
+            ->assertSee('SNMP Community')
+            ->assertSee('name="snmp_community"', false);
+    }
+
     public function test_vsol_model_detector_selects_exact_v1600d_profile(): void
     {
         $result = (new VsolModelDetector())->detect('VSOL V1600D EPON OLT Software Version 1.2');
