@@ -327,6 +327,9 @@
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('device-manager') }}"><span class="nav-link-text ps-1">{{ __('Device Manager') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-events') }}"><span class="nav-link-text ps-1">{{ __('Events & Alerts') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-map') }}"><span class="nav-link-text ps-1">{{ __('Network Map') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-topology.designer') }}"><span class="nav-link-text ps-1">{{ __('Topology Designer') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-topology.live') }}"><span class="nav-link-text ps-1">{{ __('Live Topology') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('optical-audit') }}"><span class="nav-link-text ps-1">{{ __('Virtual OTDR / Optical Audit') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('traffic-monitor') }}"><span class="nav-link-text ps-1">{{ __('Traffic Monitor') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('high-usage-monitor') }}"><span class="nav-link-text ps-1">{{ __('High Usage Monitor') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('device-watcher') }}"><span class="nav-link-text ps-1">{{ __('Device Watcher') }}</span></a>

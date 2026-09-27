@@ -156,6 +156,9 @@ Route::middleware([
 
         // Network Monitoring suite
         Route::get('/network-map', NetworkMap::class)->name('network-map');
+        Route::get('/network-topology', \App\Livewire\NetworkTopology::class)->defaults('mode', 'designer')->name('network-topology.designer');
+        Route::get('/network-topology/live', \App\Livewire\NetworkTopology::class)->defaults('mode', 'live')->name('network-topology.live');
+        Route::get('/optical-audit', \App\Livewire\OpticalAudit::class)->name('optical-audit');
         Route::get('/device-manager', \App\Livewire\DeviceManager::class)->name('device-manager');
         Route::get('/device-manager/{kind}/{device}', \App\Livewire\DeviceDetail::class)->name('device-manager.detail');
         Route::get('/network-events', \App\Livewire\NetworkEvents::class)->name('network-events');

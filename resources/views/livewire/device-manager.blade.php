@@ -14,6 +14,7 @@
     <div class="toolbar">
         <button class="btn btn-outline-dark" wire:click="refreshBoard"><i class="bi bi-arrow-repeat me-1"></i>Refresh Board</button>
         <a class="btn btn-outline-primary" href="{{ route('network-map') }}"><i class="bi bi-diagram-3 me-1"></i>Network Map</a>
+        <a class="btn btn-outline-info" href="{{ route('optical-audit') }}"><i class="bi bi-activity me-1"></i>Optical Audit</a>
         <a class="btn btn-outline-primary" href="{{ route('network-inventory') }}"><i class="bi bi-hdd-network me-1"></i>Inventory</a>
         <a class="btn btn-outline-warning" href="{{ route('network-events') }}"><i class="bi bi-bell me-1"></i>Events <span class="badge bg-danger">{{ $criticalAlerts }}</span></a>
         <button class="btn btn-primary" wire:click="$set('showAddDevice', true)"><i class="bi bi-plus-lg me-1"></i>Add New Device</button>
