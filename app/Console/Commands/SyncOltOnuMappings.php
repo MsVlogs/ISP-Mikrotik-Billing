@@ -27,11 +27,12 @@ class SyncOltOnuMappings extends Command
             $rows = is_array($result['onus'] ?? null) ? $result['onus'] : [];
             if (!$rows) { $this->info("OLT {$olt->id}: no normalized ONU rows returned; no mapping writes performed."); continue; }
 
-            $count = 0;
+            $count = 0; $skipped = 0; $issues = [];
             foreach ($rows as $row) {
                 if (!is_array($row)) continue;
                 $onuId = $row['onu_id'] ?? $row['onuId'] ?? $row['id'] ?? $row['snmp_index'] ?? null;
-                if ($onuId === null || $onuId === '') continue;
+                if ($onuId === null || trim((string) $onuId) === '') { $skipped++; $issues[] = 'missing ONU id'; continue; }
+                $onuId = trim((string) $onuId);
 
                 $username = $row['pppoe_username'] ?? $row['pppoeUsername'] ?? $row['username'] ?? null;
                 $pppId = null; $customerId = null;
@@ -40,8 +41,19 @@ class SyncOltOnuMappings extends Command
                     if ($ppp) { $pppId = $ppp->id; $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id'); }
                 }
 
+                $status = $this->normalizeStatus($row);
+                if (!in_array($status, ['online', 'offline', 'unknown'], true)) {
+                    $issues[] = "ONU {$onuId}: invalid status normalized to unknown";
+                    $status = 'unknown';
+                }
+                $lastSeen = $row['last_seen'] ?? $row['lastSeen'] ?? null;
+                if ($lastSeen !== null && $lastSeen !== '' && !strtotime((string) $lastSeen)) {
+                    $issues[] = "ONU {$onuId}: invalid last_seen ignored";
+                    $lastSeen = null;
+                }
+
                 if ($this->option('dry-run')) {
-                    $this->line("OLT {$olt->id}: ONU {$onuId} → customer=".($customerId ?? 'unmapped').", ppp=".($pppId ?? 'unmapped'));
+                    $this->line("OLT {$olt->id}: ONU {$onuId} → customer=".($customerId ?? 'unmapped').", ppp=".($pppId ?? 'unmapped').", status={$status}");
                     $count++;
                     continue;
                 }
@@ -54,17 +66,19 @@ class SyncOltOnuMappings extends Command
                         'onu_mac' => $row['onu_mac'] ?? $row['mac'] ?? $row['onuMac'] ?? null,
                         'pon_port' => $row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? null,
                         'onu_type' => $row['onu_type'] ?? $row['type'] ?? null,
-                        'status' => $this->normalizeStatus($row),
+                        'status' => $status,
                         'rx_power' => $row['rx_power'] ?? $row['opticalRx'] ?? null,
                         'tx_power' => $row['tx_power'] ?? $row['opticalTx'] ?? null,
                         'onu_ip' => $row['onu_ip'] ?? $row['ip'] ?? $row['onuIp'] ?? null,
-                        'last_seen_at' => $row['last_seen'] ?? $row['lastSeen'] ?? null,
+                        'last_seen_at' => $lastSeen,
                         'notes' => $row['detail'] ?? null,
                     ]
                 );
                 $count++;
             }
-            $this->info("OLT {$olt->id}: normalized {$count} ONU rows synced.");
+            $this->info("OLT {$olt->id}: normalized {$count} ONU rows synced; skipped {$skipped} invalid rows.");
+            foreach (array_slice($issues, 0, 10) as $issue) $this->warn($issue);
+            if (count($issues) > 10) $this->warn('Additional mapping validation issues: '.(count($issues)-10));
         }
         return self::SUCCESS;
     }
