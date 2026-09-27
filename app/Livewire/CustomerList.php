@@ -62,7 +62,7 @@ class CustomerList extends Component
         }
 
         $this->routers = RouterList::all();
-        $resellers = Reseller::with('user')->get();
+        $resellers = Reseller::with('user')->get()->reject(fn ($reseller) => in_array(trim((string) ($reseller->company ?: $reseller->user?->name)), ['MS Online', 'Mr. Abu Hanif'], true));
 
         return view('livewire.customer-list', compact('resellers'))->layout('layouts.app');
     }
