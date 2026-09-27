@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CustomersInfo;
 use App\Models\OltOnuCustomerMapping;
+use App\Models\NetworkInventoryDevice;
 use App\Models\RouterList;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -48,6 +49,9 @@ class AiEngineerDiagnosticService
             ? OltOnuCustomerMapping::where('customer_id', $customer->id)->latest('id')->first() : null;
         $router = $ppp?->router_name ? RouterList::where('router_name', $ppp->router_name)->first() : null;
         $livePpp = $this->readLivePppSession($router, $ppp?->username);
+        $routerAge = $router?->last_checked_at ? max(0, now()->diffInSeconds($router->last_checked_at, false) * -1) : null;
+        $olt = $mapping ? NetworkInventoryDevice::find($mapping->olt_device_id) : null;
+        $oltHealth = $olt ? $olt->healthChecks()->latest('checked_at')->first() : null;
         $tickets = $this->customerTickets($customer->customer_unique_id);
         $path = [
             'customer' => ['status'=>$customer->status, 'state'=>$this->stateForCustomer($customer->status)],
@@ -63,8 +67,8 @@ class AiEngineerDiagnosticService
                 'last_disconnect_reason'=>$ppp->last_disconnect_reason,
                 'live_session'=>$livePpp,
             ] : ['state'=>'missing'],
-            'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'unknown','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
-            'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'unknown','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at] : ['state'=>'not_mapped'],
+            'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'unknown','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at,'check_age_seconds'=>$routerAge,'check_freshness'=>$routerAge === null ? 'unknown' : ($routerAge <= 900 ? 'fresh' : 'stale')] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
+            'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'olt_name'=>$olt?->name,'olt_ip'=>$olt?->ip_address,'olt_state'=>$olt?->health_status ?: $olt?->status ?: 'unknown','olt_latency_ms'=>$olt?->last_latency_ms,'olt_last_checked_at'=>$olt?->last_checked_at,'health_check'=>$oltHealth ? ['status'=>$oltHealth->status,'latency_ms'=>$oltHealth->latency_ms,'checked_at'=>$oltHealth->checked_at] : null,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'unknown','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at,'last_seen_age_seconds'=>$mapping->last_seen_at ? max(0, now()->diffInSeconds($mapping->last_seen_at, false) * -1) : null] : ['state'=>'not_mapped'],
             'billing' => $billing ? ['state'=>$this->billingState($billing),'due'=>$this->billingDue($billing)] : ['state'=>'not_found'],
         ];
         $findings=[]; $causes=[]; $checks=[]; $severity='info';
@@ -97,11 +101,28 @@ class AiEngineerDiagnosticService
         if ($router) {
             $rs=strtolower((string)($router->action??''));
             $findings[]='Assigned router: '.$router->router_name.' ('.$router->ip_address.') · state '.($router->action?:'unknown');
+            if ($router->last_latency_ms !== null) $findings[]='Last recorded router latency: '.$router->last_latency_ms.' ms.';
+            if ($router->last_checked_at) $findings[]='Router health last checked: '.$router->last_checked_at.' ('.(($routerAge ?? 0) > 900 ? 'stale, over 15 minutes old' : 'within 15 minutes').').';
+            else $findings[]='Router health has no recorded last-check timestamp.';
             if (in_array($rs,['offline','down','disabled'],true)) { $severity='critical'; $causes[]='Assigned MikroTik/router is marked '.$rs.'.'; $checks[]='Check router reachability and monitoring status.'; }
         } elseif ($ppp?->router_name) { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Assigned router "'.$ppp->router_name.'" was not found in router inventory.'; $checks[]='Verify Router List mapping.'; }
 
         if ($mapping) {
             $findings[]='ONU mapping: PON '.($mapping->pon_port?:'unknown').', ONU '.($mapping->onu_id?:'unknown').', status '.($mapping->status?:'unknown').'.';
+            if ($mapping->rx_power !== null) $findings[]='ONU RX power: '.$mapping->rx_power.' dBm (interpret against this OLT/ONU vendor thresholds).';
+            if ($mapping->tx_power !== null) $findings[]='ONU TX power: '.$mapping->tx_power.' dBm.';
+            if ($mapping->last_seen_at) $findings[]='ONU last seen: '.$mapping->last_seen_at.'.';
+            else $findings[]='ONU mapping has no last-seen timestamp.';
+            if ($olt) {
+                $findings[]='OLT '.$olt->name.' ('.$olt->ip_address.') health state: '.($olt->health_status ?: $olt->status ?: 'unknown').'.';
+                if ($oltHealth) $findings[]='Latest OLT health check: '.$oltHealth->status.($oltHealth->latency_ms !== null ? ' · '.$oltHealth->latency_ms.' ms' : '').' at '.$oltHealth->checked_at.'.';
+                $os = strtolower((string)($olt->health_status ?: $olt->status ?: 'unknown'));
+                if (in_array($os, ['offline','down','critical','unreachable'], true)) {
+                    $severity = $os === 'critical' ? 'critical' : ($severity === 'critical' ? 'critical' : 'warning');
+                    $causes[] = 'Linked OLT inventory is marked '.$os.'.';
+                    $checks[] = 'Verify OLT reachability and review recent OLT/PON alarms; no provisioning action was taken.';
+                }
+            }
             $ms=strtolower((string)$mapping->status);
             if (in_array($ms,['los','offline','down'],true)) { $severity=$ms==='los'?'critical':($severity==='critical'?'critical':'warning'); $causes[]='ONU is reported as '.strtoupper($ms).'.'; $checks[]='Check fiber/ONU power and OLT PON alarms.'; }
         } else $findings[]='No discovered OLT/ONU mapping is currently linked to this customer.';
