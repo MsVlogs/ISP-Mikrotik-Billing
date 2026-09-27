@@ -1,0 +1,107 @@
+<?php
+
+namespace App\Services\Olt\Adapters;
+
+use App\Contracts\OltReadOnlyAdapter;
+use App\Models\NetworkInventoryDevice;
+use Illuminate\Support\Facades\Crypt;
+
+/**
+ * Vendor-neutral, read-only SNMP adapter with model/vendor OID profiles.
+ * Vendor-specific OIDs are configuration-driven; no write operation is exposed.
+ */
+class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
+{
+    public function key(): string { return 'multivendor_snmp_readonly'; }
+
+    public function supports(NetworkInventoryDevice $device): bool
+    {
+        return $device->type === 'olt' && $this->profile($device) !== null;
+    }
+
+    public function read(NetworkInventoryDevice $device): array
+    {
+        if (!function_exists('snmp2_get')) return $this->fail($device, 'PHP SNMP extension is not installed.');
+
+        $profile = $this->profile($device);
+        $config = $this->config($device);
+        $host = trim((string) ($device->ip_address ?: $device->host));
+        $community = (string) ($config['community'] ?? $this->storedCommunity($device));
+        if ($host === '') return $this->fail($device, 'OLT management host/IP is not configured.');
+        if ($community === '') return $this->fail($device, 'SNMP community is not configured for the adapter.');
+
+        $timeout = max(100000, (int) ($config['timeout_us'] ?? 1000000));
+        $retries = max(0, (int) ($config['retries'] ?? 1));
+        $oids = $this->mergedOids($profile, $config);
+        $result = [
+            'ok' => false, 'status' => 'reachable',
+            'message' => 'Read-only multi-vendor SNMP probe completed.',
+            'device' => ['id'=>$device->id,'host'=>$host,'vendor'=>$device->vendor,'model'=>$device->model,'transport'=>'snmp','version'=>strtoupper((string)($config['version'] ?? $device->snmp_version ?? '2C'))],
+            'onus' => [],
+            'meta' => ['read_only'=>true,'writes_performed'=>false,'profile'=>$profile['key'],'enterprise_oid'=>$profile['enterprise_oid'],'oid_count'=>0,'onu_count'=>0,'failed_oids'=>[],'oid_source'=>$profile['source']],
+        ];
+
+        foreach ($oids as $name => $oid) {
+            if (!is_string($oid) || !preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/', trim($oid))) continue;
+            $value = @snmp2_get($host, $community, trim($oid), $timeout, $retries);
+            $result['meta']['oid_count']++;
+            if ($value === false) { $result['meta']['failed_oids'][] = $name; continue; }
+            $result['device'][$name] = $this->clean($value);
+        }
+
+        $onuConfig = $config['onu_oids'] ?? ($profile['onu_oids'] ?? []);
+        if (is_array($onuConfig) && $onuConfig) {
+            $result['onus'] = $this->discoverOnus($host, $community, $onuConfig, $timeout, $retries);
+            $result['meta']['onu_count'] = count($result['onus']);
+        }
+
+        $result['ok'] = $result['meta']['oid_count'] > 0 && count($result['meta']['failed_oids']) < $result['meta']['oid_count'];
+        $result['status'] = $result['ok'] ? (empty($result['meta']['failed_oids']) ? 'ok' : 'partial') : 'unreachable';
+        $result['message'] = $result['ok']
+            ? 'Configured vendor OIDs returned read-only data.'
+            : 'SNMP read failed or returned no configured vendor OID data. No OLT changes were made.';
+        return $result;
+    }
+
+    private function profile(NetworkInventoryDevice $device): ?array
+    {
+        $vendor = strtoupper(trim((string) $device->vendor));
+        $profiles = [
+            'BDCOM'=>['key'=>'bdcom','enterprise_oid'=>'1.3.6.1.4.1.3320','source'=>'BDCOM/Huawei-compatible NMS MIB','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>['onu_id'=>'1.3.6.1.4.1.3320.10.3.1.1.1','onu_serial'=>'1.3.6.1.4.1.3320.10.3.1.1.4','status'=>'1.3.6.1.4.1.3320.10.3.1.1.8']],
+            'HUAWEI'=>['key'=>'huawei','enterprise_oid'=>'1.3.6.1.4.1.2011','source'=>'Huawei private MIB + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0','onuStatus'=>'1.3.6.1.4.1.2011.6.128.1.1.2.62.1.22'],'onu_oids'=>[]],
+            'VSOL'=>['key'=>'vsol','enterprise_oid'=>'1.3.6.1.4.1.37950','source'=>'VSOL profile / configured model OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+            'C-DATA'=>['key'=>'cdata','enterprise_oid'=>'1.3.6.1.4.1.17409','source'=>'C-Data FD/common MIB + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+            'HSGQ'=>['key'=>'hsgq','enterprise_oid'=>null,'source'=>'HSGQ model-specific MIB/configuration','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+            'PHOTON'=>['key'=>'photon','enterprise_oid'=>null,'source'=>'PHOTON model-specific MIB/configuration','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+            'ZTE'=>['key'=>'zte','enterprise_oid'=>'1.3.6.1.4.1.3902','source'=>'ZTE private MIB + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+            'FIBERHOME'=>['key'=>'fiberhome','enterprise_oid'=>'1.3.6.1.4.1.5875','source'=>'FiberHome private MIB + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+            'NOKIA'=>['key'=>'nokia','enterprise_oid'=>'1.3.6.1.4.1.637.61','source'=>'Nokia private MIB + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+            'GENERIC'=>['key'=>'generic','enterprise_oid'=>null,'source'=>'RFC standard system MIB','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
+        ];
+        return $profiles[$vendor] ?? null;
+    }
+
+    private function mergedOids(array $profile, array $config): array
+    {
+        return array_merge($profile['oids'] ?? [], is_array($config['oids'] ?? null) ? $config['oids'] : []);
+    }
+
+    private function discoverOnus(string $host, string $community, array $onuConfig, int $timeout, int $retries): array
+    {
+        $tables=[];
+        foreach ($onuConfig as $field=>$baseOid) {
+            if (!is_string($field)||!is_string($baseOid)||!preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/',trim($baseOid))) continue;
+            $walk=@snmp2_real_walk($host,$community,trim($baseOid),$timeout,$retries);
+            if(!is_array($walk)) continue;
+            foreach($walk as $returnedOid=>$value){$index=$this->oidIndex((string)$returnedOid,trim($baseOid));if($index===null)continue;$tables[$index][$field]=$this->clean($value);}
+        }
+        $out=[];
+        foreach($tables as $index=>$row){$row['snmp_index']=$index;$row['onu_id']=$row['onu_id']??$row['id']??$index;$row['onu_serial']=$row['onu_serial']??$row['serial']??null;$row['onu_mac']=$row['onu_mac']??$row['mac']??null;$row['pon_port']=$row['pon_port']??$row['pon']??null;$row['status']=$row['status']??($row['online']??null);$row['rx_power']=$row['rx_power']??$row['optical_rx']??null;$row['tx_power']=$row['tx_power']??$row['optical_tx']??null;$out[]=$row;}
+        return $out;
+    }
+    private function oidIndex(string $returned,string $base):?string{$returned=ltrim($returned,'.');$base=ltrim($base,'.');$prefix=$base.'.';return $returned===$base?'':(str_starts_with($returned,$prefix)?substr($returned,strlen($prefix)):null);}
+    private function clean(mixed $value):mixed{if(!is_string($value))return $value;return preg_replace('/^[A-Z0-9-]+:\\s*/i','',trim($value))??trim($value);}
+    private function storedCommunity(NetworkInventoryDevice $device):string{$raw=$device->getRawOriginal('snmp_community');if(!$raw)return '';try{return (string)Crypt::decryptString($raw);}catch(\Throwable){return (string)$raw;}}
+    private function config(NetworkInventoryDevice $device):array{$raw=$device->adapter_config;if(is_array($raw))return $raw;if(!is_string($raw)||trim($raw)==='')return []; $v=json_decode($raw,true);return is_array($v)?$v:[];}
+    private function fail(NetworkInventoryDevice $device,string $message):array{return ['ok'=>false,'status'=>'not_ready','message'=>$message,'device'=>['id'=>$device->id,'host'=>$device->ip_address?:$device->host,'vendor'=>$device->vendor,'model'=>$device->model,'transport'=>'snmp'],'onus'=>[],'meta'=>['read_only'=>true,'writes_performed'=>false,'oid_count'=>0]];}
+}

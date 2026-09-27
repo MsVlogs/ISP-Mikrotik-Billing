@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\Olt\Adapters\VsolSnmpReadOnlyAdapter;
+use App\Services\Olt\Adapters\MultiVendorSnmpReadOnlyAdapter;
 use App\Services\Olt\OltReadOnlyAdapterManager;
 
 use Illuminate\Auth\EloquentUserProvider;
@@ -25,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(OltReadOnlyAdapterManager::class, function ($app) {
             $manager = new OltReadOnlyAdapterManager();
             $manager->register($app->make(VsolSnmpReadOnlyAdapter::class));
+            $manager->register($app->make(MultiVendorSnmpReadOnlyAdapter::class));
             return $manager;
         });
 
