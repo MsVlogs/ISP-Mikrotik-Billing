@@ -1112,6 +1112,38 @@ class MikrotikController extends Controller
         return $this->getItems($routerName, '/ppp/active');
     }
 
+    public function getLivePppSessionCounts(): array
+    {
+        return \Cache::remember('mikrotik:live_ppp_session_counts', now()->addSeconds(30), function () {
+            $counts = [];
+
+            foreach (RouterList::query()->get() as $router) {
+                try {
+                    $result = $this->checkConnection(
+                        $router->ip_address,
+                        $router->ssh_port,
+                        $router->api_port,
+                        $router->username,
+                        $router->password,
+                        '/ppp/active/print',
+                        '/ppp active print without-paging terse',
+                        [],
+                        false
+                    );
+
+                    if (($result['status'] ?? false) === true) {
+                        $counts[$router->router_name] = count($result['data'] ?? []);
+                    }
+                } catch (\Throwable $e) {
+                    \Log::debug("MikroTik live PPP read failed [{$router->router_name}]: ".$e->getMessage());
+                }
+            }
+
+            return $counts;
+        });
+    }
+
+
     // =========================================================================
     // HOTSPOT
     // =========================================================================
