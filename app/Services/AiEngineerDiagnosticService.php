@@ -45,6 +45,13 @@ class AiEngineerDiagnosticService
             ? OltOnuCustomerMapping::where('customer_id', $customer->id)->latest('id')->first() : null;
         $router = $ppp?->router_name ? RouterList::where('router_name', $ppp->router_name)->first() : null;
         $tickets = $this->customerTickets($customer->customer_unique_id);
+        $path = [
+            'customer' => ['status'=>$customer->status, 'state'=>$this->stateForCustomer($customer->status)],
+            'pppoe' => $ppp ? ['username'=>$ppp->username, 'status'=>$ppp->status, 'state'=>$this->stateForPpp($ppp->status), 'router'=>$ppp->router_name] : ['state'=>'missing'],
+            'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'unknown','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
+            'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'unknown','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at] : ['state'=>'not_mapped'],
+            'billing' => $billing ? ['state'=>$this->billingState($billing),'due'=>$this->billingDue($billing)] : ['state'=>'not_found'],
+        ];
         $findings=[]; $causes=[]; $checks=[]; $severity='info';
 
         $status = strtolower((string)$customer->status);
@@ -78,7 +85,30 @@ class AiEngineerDiagnosticService
         if ($tickets['count']>0) { $findings[]='Support tickets linked: '.$tickets['count'].($tickets['open']!==null?' · open: '.$tickets['open']:''); if (($tickets['open']??0)>0) $checks[]='Review the latest open support ticket before changing service state.'; }
         if (!$causes) { $causes[]='No clear offline cause is recorded in the available billing/network data.'; $checks[]='Check live router session state, last-seen time, and upstream OLT/ONU alarms.'; }
 
-        return ['ok'=>true,'customer'=>['id'=>$customer->customer_unique_id,'name'=>$customer->customer_name,'status'=>$customer->status,'mobile'=>$customer->mobile,'package'=>$customer->package?->package], 'severity'=>$severity,'summary'=>$this->summary($severity,$customer,$causes),'likely_causes'=>array_values(array_unique($causes)),'evidence'=>array_values(array_unique($findings)),'support'=>$tickets,'recommended_checks'=>array_values(array_unique($checks)),'read_only'=>true,'generated_at'=>now()->toIso8601String()];
+        return ['ok'=>true,'customer'=>['id'=>$customer->customer_unique_id,'name'=>$customer->customer_name,'status'=>$customer->status,'mobile'=>$customer->mobile,'package'=>$customer->package?->package], 'severity'=>$severity,'summary'=>$this->summary($severity,$customer,$causes),'likely_causes'=>array_values(array_unique($causes)),'evidence'=>array_values(array_unique($findings)),'support'=>$tickets,'recommended_checks'=>array_values(array_unique($checks)),'service_path'=>$path,'read_only'=>true,'generated_at'=>now()->toIso8601String()];
+    }
+
+    private function stateForCustomer(?string $status): string
+    {
+        $s=strtolower((string)$status);
+        return in_array($s,['active','free'],true)?'active':(in_array($s,['disable','disabled','inactive'],true)?'disabled':($s==='pending'?'pending':'unknown'));
+    }
+
+    private function stateForPpp(?string $status): string
+    {
+        $s=strtolower((string)$status);
+        return $s==='active'?'active':($s===''?'unknown':'inactive');
+    }
+
+    private function billingDue($billing): float
+    {
+        return (float)($billing->total_due_amount ?? $billing->due_amount ?? 0);
+    }
+
+    private function billingState($billing): string
+    {
+        $due=$this->billingDue($billing);
+        return $due>0?'due':'clear';
     }
 
     public function chat(string $question, ?string $customerId=null, array $history=[]): array
