@@ -240,10 +240,24 @@ class NetworkTopology extends Component
             }
         }
 
+        $mappingHealth = null;
+        if ($this->mode === 'live') {
+            $mappingQuery = OltOnuCustomerMapping::query();
+            $mappingHealth = [
+                'total' => (clone $mappingQuery)->count(),
+                'missing_olt' => (clone $mappingQuery)->whereDoesntHave('olt')->count(),
+                'unmapped_customer' => (clone $mappingQuery)->whereNull('customer_id')->count(),
+                'stale' => (clone $mappingQuery)->whereNotNull('last_seen_at')->where('last_seen_at', '<', now()->subMinutes(15))->count(),
+                'missing_identifier' => (clone $mappingQuery)->where(function ($q) { $q->whereNull('onu_id')->orWhere('onu_id', ''); })->count(),
+                'missing_identity' => (clone $mappingQuery)->where(function ($q) { $q->whereNull('onu_serial')->whereNull('onu_mac'); })->count(),
+                'invalid_status' => (clone $mappingQuery)->whereNotIn('status', ['online', 'offline', 'unknown'])->count(),
+            ];
+        }
+
         $nodeOptions = $this->nodeOptions();
         $customNodes = NetworkTopologyNode::query()->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->latest()->get();
         $statusSummary = collect($nodes)->countBy('status')->all();
-        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary'))
+        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary', 'mappingHealth'))
             ->layout('layouts.app');
     }
 }
