@@ -9,6 +9,8 @@ use App\Models\HotspotSale;
 use App\Models\PPPSecrets;
 use App\Models\Reseller;
 use App\Models\ResellerCommission;
+use App\Models\SupportTicket;
+use App\Models\KycRequest;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -199,6 +201,21 @@ class DashboardController extends Controller
         $weekCollection = (float) $weekPppoe + (float) $weekHotspot;
 
         $mfsKeywords = ['bkash', 'nagad', 'rocket', 'upay', 'sslcommerz', 'mobile', 'mfs', 'sms', 'banking'];
+        $activeTicketStatuses = ['new', 'open', 'pending', 'in_progress'];
+        $openTickets = SupportTicket::whereIn('status', $activeTicketStatuses)->count();
+        $overdueTickets = SupportTicket::whereIn('status', $activeTicketStatuses)
+            ->where('created_at', '<=', Carbon::now()->subDay())->count();
+        $ticketsToday = SupportTicket::whereDate('created_at', $today)->count();
+        $pendingKyc = KycRequest::where('status', 'pending')->count();
+        $kycApprovedMonth = KycRequest::where('status', 'reviewed')
+            ->whereBetween('reviewed_at', [$monthStart, $monthEnd])->count();
+
+        $mfsMethods = ['bkash', 'nagad', 'rocket', 'upay', 'sslcommerz'];
+        $mfsPending = CollectionSummary::whereIn('payment_status', ['pending', 'processing', 'initiated'])
+            ->where(function ($query) use ($mfsMethods) {
+                $query->where('payment_type', 'online')->orWhereIn('payment_method', $mfsMethods);
+            })->count();
+
         $mfsCollection = (float) CollectionSummary::whereBetween('collection_date', [$monthStart, $monthEnd])
             ->where(function ($q) use ($mfsKeywords) {
                 foreach ($mfsKeywords as $keyword) {
@@ -235,6 +252,7 @@ class DashboardController extends Controller
             'results', 'customersData', 'billInformationData', 'systemOverview', 'resellerData',
             'onlineNow', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
             'todayCollection', 'mfsCollection', 'resellerDue', 'activeCustomerTotal', 'activeCompany', 'activeReseller',
+            'openTickets', 'overdueTickets', 'ticketsToday', 'pendingKyc', 'kycApprovedMonth', 'mfsPending',
             'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'attendanceToday', 'deviceStats', 'monthCollectionPppoe', 'monthCollectionHotspot', 'todayPppoe', 'todayHotspot', 'weekPppoe', 'weekHotspot'
         ));
     }
