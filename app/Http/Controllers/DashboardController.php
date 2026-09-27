@@ -179,14 +179,17 @@ class DashboardController extends Controller
         $onlineReseller = (clone $activeCustomers)->whereNotNull('reseller_id')->whereHas('pppUser', fn ($query) => $query->where('status', 'active'))->count();
         $onlineNow = $onlineCompany + $onlineReseller;
         // Live MikroTik telemetry is read-only and independent of RouterList 'connected' UI state.
-        $livePppSessionsByRouter = [];
-        $livePppSessions = 0;
+        $livePppTelemetry = [
+            'status' => 'unavailable', 'total' => null, 'successful_routers' => 0,
+            'router_count' => 0, 'routers' => [], 'checked_at' => null,
+        ];
         try {
-            $livePppSessionsByRouter = app(MikrotikController::class)->getLivePppSessionCounts();
-            $livePppSessions = array_sum($livePppSessionsByRouter);
+            $livePppTelemetry = app(MikrotikController::class)->getLivePppTelemetry();
         } catch (\Throwable $e) {
             \Log::debug('Dashboard live PPP session read failed: '.$e->getMessage());
         }
+        $livePppSessionsByRouter = $livePppTelemetry['routers'] ?? [];
+        $livePppSessions = $livePppTelemetry['total'] ?? null;
 
         // Expired means active accounts whose billing disable/expiry date has passed.
         $expired = BillingInfo::join('customers_infos', 'billing_infos.customer_bill_unique_id', '=', 'customers_infos.customer_unique_id')
@@ -263,7 +266,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'results', 'customersData', 'billInformationData', 'systemOverview', 'resellerData',
-            'onlineNow', 'onlineCompany', 'onlineReseller', 'livePppSessions', 'livePppSessionsByRouter', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
+            'onlineNow', 'onlineCompany', 'onlineReseller', 'livePppSessions', 'livePppSessionsByRouter', 'livePppTelemetry', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
             'todayCollection', 'mfsCollection', 'resellerDue', 'activeCustomerTotal', 'activeCompany', 'activeReseller',
             'openTickets', 'overdueTickets', 'ticketsToday', 'pendingKyc', 'kycApprovedMonth', 'mfsPending',
             'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'attendanceToday', 'deviceStats', 'monthCollectionPppoe', 'monthCollectionHotspot', 'todayPppoe', 'todayHotspot', 'weekPppoe', 'weekHotspot'

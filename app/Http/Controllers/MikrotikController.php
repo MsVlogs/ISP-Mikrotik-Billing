@@ -1112,12 +1112,21 @@ class MikrotikController extends Controller
         return $this->getItems($routerName, '/ppp/active');
     }
 
-    public function getLivePppSessionCounts(): array
+    /**
+     * Read-only live PPP telemetry for every configured router.
+     * The result is cached for 30 seconds, but the last successful read time
+     * is retained per router so the dashboard can distinguish stale/unavailable
+     * telemetry from a real zero-session result.
+     */
+    public function getLivePppTelemetry(): array
     {
-        return \Cache::remember('mikrotik:live_ppp_session_counts', now()->addSeconds(30), function () {
-            $counts = [];
+        return \Cache::remember('mikrotik:live_ppp_telemetry', now()->addSeconds(30), function () {
+            $routers = [];
+            $total = 0;
+            $successful = 0;
 
             foreach (RouterList::query()->get() as $router) {
+                $name = (string) $router->router_name;
                 try {
                     $result = $this->checkConnection(
                         $router->ip_address,
@@ -1132,15 +1141,60 @@ class MikrotikController extends Controller
                     );
 
                     if (($result['status'] ?? false) === true) {
-                        $counts[$router->router_name] = count($result['data'] ?? []);
+                        $count = count($result['data'] ?? []);
+                        $syncedAt = now()->toIso8601String();
+                        \Cache::forever("mikrotik:live_ppp_last_success:{$name}", $syncedAt);
+                        $routers[$name] = [
+                            'status' => 'ok',
+                            'count' => $count,
+                            'synced_at' => $syncedAt,
+                            'type' => $result['type'] ?? null,
+                        ];
+                        $total += $count;
+                        $successful++;
+                    } else {
+                        $routers[$name] = [
+                            'status' => 'unavailable',
+                            'count' => null,
+                            'synced_at' => \Cache::get("mikrotik:live_ppp_last_success:{$name}"),
+                            'type' => null,
+                        ];
                     }
                 } catch (\Throwable $e) {
-                    \Log::debug("MikroTik live PPP read failed [{$router->router_name}]: ".$e->getMessage());
+                    \Log::debug("MikroTik live PPP read failed [{$name}]: ".$e->getMessage());
+                    $routers[$name] = [
+                        'status' => 'unavailable',
+                        'count' => null,
+                        'synced_at' => \Cache::get("mikrotik:live_ppp_last_success:{$name}"),
+                        'type' => null,
+                    ];
                 }
             }
 
-            return $counts;
+            return [
+                'status' => $successful > 0 ? 'ok' : 'unavailable',
+                'total' => $successful > 0 ? $total : null,
+                'successful_routers' => $successful,
+                'router_count' => count($routers),
+                'routers' => $routers,
+                'checked_at' => now()->toIso8601String(),
+            ];
         });
+    }
+
+    /**
+     * Backward-compatible count-only helper.
+     */
+    public function getLivePppSessionCounts(): array
+    {
+        $telemetry = $this->getLivePppTelemetry();
+        $counts = [];
+        foreach ($telemetry['routers'] ?? [] as $name => $router) {
+            if (($router['status'] ?? null) === 'ok') {
+                $counts[$name] = (int) $router['count'];
+            }
+        }
+        return $counts;
     }
 
 
