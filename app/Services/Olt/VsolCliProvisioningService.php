@@ -13,22 +13,40 @@ class VsolCliProvisioningService
 
     public function connect(NetworkInventoryDevice $device): void
     {
-        $this->config = $this->config($device);
-        $host = (string)($device->ip_address ?: $device->host);
-        if ($host === '') throw new RuntimeException('OLT management IP/host is not configured.');
+        $this->connectReadOnly($device);
         if (!$device->provisioning_enabled) throw new RuntimeException('OLT provisioning is disabled.');
         $profileKey=(string)($this->config['vsol_model_profile'] ?? ''); $profiles=config('olt_vsol.profiles',[]);
         if ($profileKey==='' || !isset($profiles[$profileKey])) throw new RuntimeException('No exact VSOL model command profile selected.');
         $profile=$profiles[$profileKey]; $model=trim((string)$device->model);
         if ($model==='' || !collect($profile['models']??[])->contains(fn($m)=>strcasecmp(trim($m),$model)===0)) throw new RuntimeException('OLT model does not exactly match the selected VSOL command profile.');
-        $transport = strtolower((string)($this->config['write_transport'] ?? ($device->ssh_enabled ? 'ssh' : 'telnet')));
-        if ($transport !== 'ssh') throw new RuntimeException('Only SSH provisioning is enabled by this service; configure VSOL SSH before enabling writes.');
+    }
+
+    public function connectReadOnly(NetworkInventoryDevice $device): void
+    {
+        $this->config = $this->config($device);
+        $host = (string)($device->ip_address ?: $device->host);
+        if ($host === '') throw new RuntimeException('OLT management IP/host is not configured.');
+        if (!$device->ssh_enabled) throw new RuntimeException('OLT SSH access is disabled.');
         $username = $this->secret($device, 'username');
         $password = $this->secret($device, 'password');
-        if ($username === '' || $password === '') throw new RuntimeException('OLT provisioning credentials are not configured.');
+        if ($username === '' || $password === '') throw new RuntimeException('OLT SSH credentials are not configured.');
         $port = (int)($device->ssh_port ?: 22);
         $this->ssh = new SSH2($host, $port, max(3, (int)($device->cli_timeout ?: 10)));
         if (!$this->ssh->login($username, $password)) throw new RuntimeException('VSOL SSH login failed.');
+    }
+
+    public function discoverVersion(): string
+    {
+        return $this->runReadOnly('show version');
+    }
+
+    private function runReadOnly(string $command): string
+    {
+        if (preg_match('/[\r\n;$]/', $command) || !in_array($command, ['show version', 'show system'], true)) {
+            throw new RuntimeException('Unsafe read-only discovery command rejected.');
+        }
+        $this->ssh->write($command."\n");
+        return trim((string)$this->ssh->read('/(?:#|>)\s*$/m'));
     }
 
     public function authorizeByMac(string $pon, string $mac): string

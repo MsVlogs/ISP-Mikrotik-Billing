@@ -7,6 +7,21 @@ use Illuminate\Http\Request;
 use Throwable;
 class OltProvisioningController extends Controller {
  public function index(NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); $profiles=config('olt_vsol.profiles',[]); $audits=OltProvisioningAudit::where('olt_device_id',$device->id)->latest()->paginate(25); $selected=data_get($this->adapter($device),'vsol_model_profile'); return view('xlink.olt-provisioning',compact('device','profiles','audits','selected')); }
+ public function discover(Request $request, NetworkInventoryDevice $device)
+ {
+  abort_unless($device->type==='olt',404);
+  $audit=OltProvisioningAudit::create(['olt_device_id'=>$device->id,'user_id'=>auth()->id(),'action'=>'discover_model','target'=>'read-only','model_profile'=>'discovery','transport'=>'ssh','request_payload'=>['command'=>'show version'],'status'=>'pending','source_ip'=>$request->ip()]);
+  $start=microtime(true);
+  try {
+   $s=new VsolCliProvisioningService(); $s->connectReadOnly($device); $result=$s->discoverVersion();
+   $audit->update(['status'=>'success','result'=>$this->redact($result),'duration_ms'=>(int)round((microtime(true)-$start)*1000)]);
+   return back()->with('discovery_message','Read-only VSOL version discovery completed. Review the CLI output before setting the exact model.');
+  } catch (Throwable $e) {
+   $audit->update(['status'=>'failed','error'=>$e->getMessage(),'duration_ms'=>(int)round((microtime(true)-$start)*1000)]);
+   return back()->withErrors(['discovery'=>$e->getMessage()]);
+  }
+ }
+
  public function execute(Request $request, NetworkInventoryDevice $device){
   abort_unless($device->type==='olt',404); $profiles=config('olt_vsol.profiles',[]); $profileKey=(string)$request->input('profile'); abort_unless(isset($profiles[$profileKey]),422,'Unknown VSOL model profile.'); $profile=$profiles[$profileKey];
   $action=(string)$request->input('action'); $rules=['profile'=>'required|string','action'=>'required|in:authorize_mac,remove_mac,configure_pppoe,configure_static_ip,disable_onu,enable_onu'];

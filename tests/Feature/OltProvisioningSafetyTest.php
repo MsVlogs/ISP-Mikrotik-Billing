@@ -93,6 +93,21 @@ class OltProvisioningSafetyTest extends TestCase
         $this->assertTrue($olt->provisioning_enabled);
     }
 
+    public function test_discovery_route_is_available_without_enabling_provisioning(): void
+    {
+        $olt = NetworkInventoryDevice::create([
+            'type' => 'olt', 'name' => 'Discovery OLT', 'vendor' => 'VSOL',
+            'ip_address' => '192.0.2.252', 'model' => null,
+            'status' => 'unknown', 'health_status' => 'unknown',
+            'ssh_enabled' => false, 'provisioning_enabled' => false,
+        ]);
+
+        $this->get(route('network-inventory.olt.provisioning', $olt))
+            ->assertOk()
+            ->assertSee('Read-only: Discover VSOL version')
+            ->assertSee('show version');
+    }
+
     public function test_configured_multi_line_commands_are_not_truncated_to_the_first_line(): void
     {
         $service = new VsolCliProvisioningService();
