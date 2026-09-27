@@ -224,10 +224,20 @@ class AiEngineerDiagnosticService
     public function searchCustomers(string $q): array
     {
         $q=trim($q); if($q==='')return [];
-        $query=CustomersInfo::query()->with('pppUser')->search($q);
-        $customers=$query->limit(12)->get(['id','customer_unique_id','customer_name','mobile','status']);
-        $needle=mb_strtolower($q);
-        return $customers->filter(function($c)use($needle){$u=mb_strtolower((string)$c->pppUser?->username);return str_contains($u,$needle)||true;})->map(fn($c)=>['id'=>$c->id,'customer_unique_id'=>$c->customer_unique_id,'customer_name'=>$c->customer_name,'mobile'=>$c->mobile,'status'=>$c->status,'ppp_username'=>$c->pppUser?->username])->values()->all();
+        $customers = CustomersInfo::query()
+            ->with('pppUser')
+            ->search($q)
+            ->limit(12)
+            ->get(['id', 'customer_unique_id', 'customer_name', 'mobile', 'status', 'ppp_user_id']);
+
+        return $customers->map(fn ($customer) => [
+            'id' => $customer->id,
+            'customer_unique_id' => $customer->customer_unique_id,
+            'customer_name' => $customer->customer_name,
+            'mobile' => $customer->mobile,
+            'status' => $customer->status,
+            'ppp_username' => $customer->pppUser?->username,
+        ])->values()->all();
     }
 
 

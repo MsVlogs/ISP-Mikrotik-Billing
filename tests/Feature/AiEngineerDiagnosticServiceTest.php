@@ -72,6 +72,25 @@ class AiEngineerDiagnosticServiceTest extends TestCase
         $this->assertGreaterThan(900, $result['service_path']['router']['check_age_seconds']);
     }
 
+    public function test_customer_search_matches_ppp_username_and_returns_selectable_customer(): void
+    {
+        [$customer] = $this->makeCustomerWithRouter();
+
+        $results = (new AiEngineerDiagnosticService($this->mikrotik))->searchCustomers('customer-ppp');
+
+        $this->assertCount(1, $results);
+        $this->assertSame($customer->id, $results[0]['id']);
+        $this->assertSame('TEST-001', $results[0]['customer_unique_id']);
+        $this->assertSame('customer-ppp', $results[0]['ppp_username']);
+    }
+
+    public function test_customer_search_returns_empty_for_blank_query(): void
+    {
+        $this->makeCustomerWithRouter();
+
+        $this->assertSame([], (new AiEngineerDiagnosticService($this->mikrotik))->searchCustomers('   '));
+    }
+
     public function test_customer_without_onu_mapping_is_reported_not_mapped(): void
     {
         [$customer] = $this->makeCustomerWithRouter();
@@ -143,7 +162,7 @@ class AiEngineerDiagnosticServiceTest extends TestCase
         });
         Schema::create('customers_infos', function (Blueprint $table) {
             $table->id(); $table->string('customer_unique_id')->unique(); $table->string('customer_name')->nullable();
-            $table->string('mobile')->nullable(); $table->string('status')->default('pending');
+            $table->string('mobile')->nullable(); $table->string('email')->nullable(); $table->string('status')->default('pending');
             $table->unsignedBigInteger('ppp_user_id')->nullable(); $table->string('package_name')->nullable();
             $table->softDeletes(); $table->timestamps();
         });
