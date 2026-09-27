@@ -84,6 +84,27 @@ class AiEngineerDiagnosticServiceTest extends TestCase
         $this->assertSame('customer-ppp', $results[0]['ppp_username']);
     }
 
+    public function test_customer_search_matches_additional_customer_details(): void
+    {
+        [$customer] = $this->makeCustomerWithRouter();
+        $customer->forceFill([
+            'contact_person' => 'Contact Person X',
+            'parents_name' => 'Parent Name Y',
+            'spouse_name' => 'Spouse Name Z',
+            'address' => 'House 22, Example Road',
+            'email' => 'customer@example.test',
+            'mobile' => '01700000000',
+            'alternative_mobile' => '01811112222',
+            'identification_no' => 'ID-ABC-77',
+            'profession' => 'Teacher',
+        ])->save();
+
+        foreach (['Contact Person X', 'Parent Name Y', 'Spouse Name Z', 'Example Road', 'customer@example.test', '01811112222', 'ID-ABC-77', 'Teacher'] as $term) {
+            $results = (new AiEngineerDiagnosticService($this->mikrotik))->searchCustomers($term);
+            $this->assertSame($customer->id, $results[0]['id'] ?? null, 'Search failed for: '.$term);
+        }
+    }
+
     public function test_customer_search_returns_empty_for_blank_query(): void
     {
         $this->makeCustomerWithRouter();
@@ -162,7 +183,10 @@ class AiEngineerDiagnosticServiceTest extends TestCase
         });
         Schema::create('customers_infos', function (Blueprint $table) {
             $table->id(); $table->string('customer_unique_id')->unique(); $table->string('customer_name')->nullable();
-            $table->string('mobile')->nullable(); $table->string('email')->nullable(); $table->string('status')->default('pending');
+            $table->string('contact_person')->nullable(); $table->string('parents_name')->nullable(); $table->string('spouse_name')->nullable();
+            $table->string('address')->nullable(); $table->string('mobile')->nullable(); $table->string('alternative_mobile')->nullable();
+            $table->string('identification_no')->nullable(); $table->string('profession')->nullable();
+            $table->string('email')->nullable(); $table->string('status')->default('pending');
             $table->unsignedBigInteger('ppp_user_id')->nullable(); $table->string('package_name')->nullable();
             $table->softDeletes(); $table->timestamps();
         });

@@ -97,13 +97,24 @@ class CustomersInfo extends Model
 
     public function scopeSearch($query, $search)
     {
-        return $query->where('customer_unique_id', 'like', '%'.$search.'%')
-            ->orWhere('customer_name', 'like', '%'.$search.'%')
-            ->orWhere('email', 'like', '%'.$search.'%')
-            ->orWhere('mobile', 'like', '%'.$search.'%')
-            ->orWhereHas('pppUser', function ($q) use ($search) {
-                $q->where('username', 'like', '%'.$search.'%');
-            });
+        $term = '%'.$search.'%';
+
+        return $query->where(function ($query) use ($term) {
+            $query->where('customer_unique_id', 'like', $term)
+                ->orWhere('customer_name', 'like', $term)
+                ->orWhere('contact_person', 'like', $term)
+                ->orWhere('parents_name', 'like', $term)
+                ->orWhere('spouse_name', 'like', $term)
+                ->orWhere('address', 'like', $term)
+                ->orWhere('email', 'like', $term)
+                ->orWhere('mobile', 'like', $term)
+                ->orWhere('alternative_mobile', 'like', $term)
+                ->orWhere('identification_no', 'like', $term)
+                ->orWhere('profession', 'like', $term)
+                ->orWhereHas('pppUser', function ($q) use ($term) {
+                    $q->where('username', 'like', $term);
+                });
+        });
     }
 
     public function kycRequests()
