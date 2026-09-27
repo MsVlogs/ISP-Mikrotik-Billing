@@ -4,6 +4,7 @@ use App\Models\CustomersAddress;
 use App\Models\CustomersInfo;
 use App\Models\RouterList;
 use App\Models\NetworkInventoryDevice;
+use App\Models\NetworkTopologyLink;
 use Livewire\Component;
 class NetworkMap extends Component
 {
@@ -26,6 +27,19 @@ class NetworkMap extends Component
             ->get(['customers_addresses.latitude','customers_addresses.longitude','customers_addresses.customer_address_unique_id','customers_addresses.label_name','ci.status as customer_status','ps.router_name'])
             ->map(fn($a)=>['lat'=>(float)$a->latitude,'lng'=>(float)$a->longitude,'id'=>$a->customer_address_unique_id,'label'=>$a->label_name,'status'=>$a->customer_status ?: 'unknown','router'=>$a->router_name,'kind'=>'customer'])->values()->toArray();
         $nodes = collect(array_merge($nodes, $routerNodes, $deviceLocations));
-        return view('livewire.network-map',compact('routers','nodes','customers','routerNodes','deviceLocations'))->layout('layouts.app');
+        $coordinates = $nodes->keyBy(fn ($node) => ($node['kind'] === 'router' ? 'router:' : 'device:').$node['id']);
+        $mapEdges = NetworkTopologyLink::query()->where('is_published', true)->get()->map(function ($link) use ($coordinates) {
+            if (! $coordinates->has($link->source_key) || ! $coordinates->has($link->target_key)) return null;
+            $source = $coordinates->get($link->source_key); $target = $coordinates->get($link->target_key);
+            return ['from'=>[(float)$source['lat'],(float)$source['lng']], 'to'=>[(float)$target['lat'],(float)$target['lng']], 'type'=>$link->connection_type, 'label'=>$link->label ?: str_replace('_',' ',$link->connection_type)];
+        })->filter()->values()->toArray();
+        return view('livewire.network-map',compact('routers','nodes','customers','routerNodes','deviceLocations','mapEdges'))->layout('layouts.app');
+    }
+
+    private function normalizeStatus(?string $status): string
+    {
+        $raw = strtolower(trim((string) $status));
+        return in_array($raw, ['online','ready','connected','up','active','running'], true) ? 'online'
+            : (in_array($raw, ['offline','failed','down','unreachable','disabled'], true) ? 'offline' : 'unknown');
     }
 }
