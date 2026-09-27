@@ -118,7 +118,8 @@ class SyncOltOnuMappings extends Command
         if (array_key_exists('online', $row)) return ($row['online'] === true || $row['online'] === 1 || $row['online'] === '1') ? 'online' : 'offline';
         $status = strtolower(trim((string) ($row['status'] ?? 'unknown')));
         if (in_array($status, ['1', 'online', 'up', 'active', 'registered'], true)) return 'online';
-        if (in_array($status, ['0', 'offline', 'down', 'inactive', 'unregistered'], true)) return 'offline';
+        if (in_array($status, ['2', '4', 'offline', 'down', 'inactive', 'unregistered', 'deregistered', 'lost'], true)) return 'offline';
+        if (in_array($status, ['0', '3', '5', 'authenticated', 'auto_config', 'standby', 'unknown'], true)) return 'unknown';
         return $status !== '' ? $status : 'unknown';
     }
 }
