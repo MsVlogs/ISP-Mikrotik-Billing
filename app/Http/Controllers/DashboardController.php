@@ -173,7 +173,11 @@ class DashboardController extends Controller
         $activeCompany = (clone $activeCustomers)->whereNull('reseller_id')->count();
         $activeReseller = (clone $activeCustomers)->whereNotNull('reseller_id')->count();
         $activeCustomerTotal = $activeCompany + $activeReseller;
-        $onlineNow = PPPSecrets::where('status', 'online')->count();
+        // Match the existing Online Customers page: an active billing customer linked to an enabled PPP secret.
+        // This is account readiness, not a live MikroTik active-session measurement.
+        $onlineCompany = (clone $activeCustomers)->whereNull('reseller_id')->whereHas('pppUser', fn ($query) => $query->where('status', 'active'))->count();
+        $onlineReseller = (clone $activeCustomers)->whereNotNull('reseller_id')->whereHas('pppUser', fn ($query) => $query->where('status', 'active'))->count();
+        $onlineNow = $onlineCompany + $onlineReseller;
 
         // Expired means active accounts whose billing disable/expiry date has passed.
         $expired = BillingInfo::join('customers_infos', 'billing_infos.customer_bill_unique_id', '=', 'customers_infos.customer_unique_id')
@@ -250,7 +254,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'results', 'customersData', 'billInformationData', 'systemOverview', 'resellerData',
-            'onlineNow', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
+            'onlineNow', 'onlineCompany', 'onlineReseller', 'expired', 'lockedDisabled', 'runningDue', 'monthCollection', 'weekCollection',
             'todayCollection', 'mfsCollection', 'resellerDue', 'activeCustomerTotal', 'activeCompany', 'activeReseller',
             'openTickets', 'overdueTickets', 'ticketsToday', 'pendingKyc', 'kycApprovedMonth', 'mfsPending',
             'recentTransactions', 'newConnections', 'hotspotCustomers', 'hotspotCardStock', 'attendanceTotal', 'attendanceToday', 'deviceStats', 'monthCollectionPppoe', 'monthCollectionHotspot', 'todayPppoe', 'todayHotspot', 'weekPppoe', 'weekHotspot'
