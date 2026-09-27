@@ -31,7 +31,7 @@ class NetworkMap extends Component
         $mapEdges = NetworkTopologyLink::query()->where('is_published', true)->get()->map(function ($link) use ($coordinates) {
             if (! $coordinates->has($link->source_key) || ! $coordinates->has($link->target_key)) return null;
             $source = $coordinates->get($link->source_key); $target = $coordinates->get($link->target_key);
-            return ['from'=>[(float)$source['lat'],(float)$source['lng']], 'to'=>[(float)$target['lat'],(float)$target['lng']], 'type'=>$link->connection_type, 'label'=>$link->label ?: str_replace('_',' ',$link->connection_type)];
+            return ['fromKey'=>$link->source_key, 'toKey'=>$link->target_key, 'from'=>[(float)$source['lat'],(float)$source['lng']], 'to'=>[(float)$target['lat'],(float)$target['lng']], 'type'=>$link->connection_type, 'label'=>$link->label ?: str_replace('_',' ',$link->connection_type)];
         })->filter()->values()->toArray();
         return view('livewire.network-map',compact('routers','nodes','customers','routerNodes','deviceLocations','mapEdges'))->layout('layouts.app');
     }
