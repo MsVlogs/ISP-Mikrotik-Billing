@@ -85,8 +85,13 @@ class AiEngineerDiagnosticService
     {
         $diagnosis=$customerId?$this->diagnoseCustomer($customerId):null;
         $apiKey=(string)config('services.openai.api_key');
-        if ($apiKey==='') return ['ok'=>false,'configured'=>false,'message'=>'Conversational AI is not configured. Local read-only diagnostics are available.'];
         $context=$diagnosis&&($diagnosis['ok']??false)?json_encode($diagnosis,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES):json_encode($this->overview());
+
+        // Keep the conversational assistant useful even when no external AI key is configured.
+        // This local mode is deliberately read-only and answers from the same verified diagnostics.
+        if ($apiKey==='') {
+            return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true];
+        }
         $safeHistory=array_slice(array_map(fn($m)=>['role'=>in_array($m['role']??'', ['user','assistant'],true)?$m['role']:'user','content'=>mb_substr((string)($m['content']??''),0,4000)],$history),-8);
         $input=[['role'=>'developer','content'=>'You are an ISP AI Engineer. READ-ONLY. Never claim to have changed, provisioned, rebooted, enabled, disabled, deleted, or configured anything. Use only supplied context; distinguish evidence from likely causes; never invent live status; answer concisely in the user language.'],['role'=>'user','content'=>'Diagnostic context: '.$context]];
         foreach($safeHistory as $m)$input[]=$m; $input[]=['role'=>'user','content'=>mb_substr($question,0,4000)];
@@ -94,6 +99,47 @@ class AiEngineerDiagnosticService
         if(!$response->successful()){\Log::error('AI Engineer OpenAI request failed',['status'=>$response->status()]);return ['ok'=>false,'configured'=>true,'message'=>'AI service request failed. Local diagnostics remain available.'];}
         $body=$response->json(); $text=$body['output_text']??''; if($text==='')foreach(($body['output']??[]) as $item)foreach(($item['content']??[]) as $content)if(($content['type']??'')==='output_text')$text.=$content['text']??'';
         return ['ok'=>true,'configured'=>true,'message'=>trim($text),'read_only'=>true];
+    }
+
+    private function localChatResponse(string $question, ?array $diagnosis): string
+    {
+        $q=mb_strtolower(trim($question));
+        if (!$diagnosis || !($diagnosis['ok']??false)) {
+            if (str_contains($q,'billing') || str_contains($q,'bill') || str_contains($q,'due')) return 'For billing, check the customer\'s outstanding amount, auto-disable setting, account status, and any open support ticket. Select a customer to get customer-specific evidence.';
+            if (str_contains($q,'device') || str_contains($q,'router') || str_contains($q,'mikrotik')) return 'For a device issue, check the assigned router inventory state, last-seen/session information, and any linked ONU mapping. Select a customer for a service-path diagnosis.';
+            return 'Local read-only diagnostics are active. Select a customer and ask about service path, billing, PPPoE, router, ONU, or outage symptoms.';
+        }
+
+        $c=$diagnosis['customer']??[];
+        $causes=$diagnosis['likely_causes']??[];
+        $evidence=$diagnosis['evidence']??[];
+        $checks=$diagnosis['recommended_checks']??[];
+        $billingQuestion=str_contains($q,'billing')||str_contains($q,'bill')||str_contains($q,'due')||str_contains($q,'payment');
+        $pathQuestion=str_contains($q,'service path')||str_contains($q,'offline')||str_contains($q,'outage')||str_contains($q,'connection')||str_contains($q,'internet');
+        $pppQuestion=str_contains($q,'pppoe')||str_contains($q,'ppp');
+        $routerQuestion=str_contains($q,'router')||str_contains($q,'mikrotik');
+        $onuQuestion=str_contains($q,'onu')||str_contains($q,'olt')||str_contains($q,'fiber');
+
+        if ($billingQuestion) {
+            $items=array_values(array_filter($evidence,fn($x)=>str_contains(mb_strtolower($x),'billing')||str_contains(mb_strtolower($x),'due')||str_contains(mb_strtolower($x),'ticket')));
+            $answer=$items ? implode(' ',$items) : 'No outstanding billing amount is recorded in the available customer data.';
+            if ($diagnosis['severity']==='critical' || $diagnosis['severity']==='warning') $answer.=' Also review: '.implode(' ',$checks);
+            return 'Billing check for '.($c['id']??'customer').': '.$answer;
+        }
+
+        if ($pppQuestion) $focus=array_values(array_filter($causes,fn($x)=>str_contains(mb_strtolower($x),'ppp')));
+        elseif ($routerQuestion) $focus=array_values(array_filter($causes,fn($x)=>str_contains(mb_strtolower($x),'router')));
+        elseif ($onuQuestion) $focus=array_values(array_filter($causes,fn($x)=>str_contains(mb_strtolower($x),'onu')));
+        else $focus=[];
+
+        if ($pathQuestion || $pppQuestion || $routerQuestion || $onuQuestion) {
+            $answer=$focus ?: $causes;
+            $text=implode(' ',$answer);
+            if ($text==='') $text='No specific fault is recorded in the available data.';
+            return 'Service-path analysis for '.($c['id']??'customer').': '.$text.' Recommended checks: '.implode(' ',$checks);
+        }
+
+        return 'For '.($c['id']??'this customer').', current severity is '.($diagnosis['severity']??'unknown').'. '.($diagnosis['summary']??'No summary available.').' Evidence: '.implode(' ',$evidence). ' Recommended checks: '.implode(' ',$checks);
     }
 
     public function searchCustomers(string $q): array
