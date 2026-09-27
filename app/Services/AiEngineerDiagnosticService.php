@@ -7,10 +7,13 @@ use App\Models\OltOnuCustomerMapping;
 use App\Models\RouterList;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use App\Http\Controllers\MikrotikController;
 use Illuminate\Support\Facades\Schema;
 
 class AiEngineerDiagnosticService
 {
+    public function __construct(private ?MikrotikController $mikrotik = null) {}
+
     public function overview(): array
     {
         $customerCount = CustomersInfo::count();
@@ -44,10 +47,22 @@ class AiEngineerDiagnosticService
         $mapping = Schema::hasTable('olt_onu_customer_mappings')
             ? OltOnuCustomerMapping::where('customer_id', $customer->id)->latest('id')->first() : null;
         $router = $ppp?->router_name ? RouterList::where('router_name', $ppp->router_name)->first() : null;
+        $livePpp = $this->readLivePppSession($router, $ppp?->username);
         $tickets = $this->customerTickets($customer->customer_unique_id);
         $path = [
             'customer' => ['status'=>$customer->status, 'state'=>$this->stateForCustomer($customer->status)],
-            'pppoe' => $ppp ? ['username'=>$ppp->username, 'status'=>$ppp->status, 'state'=>$this->stateForPpp($ppp->status), 'router'=>$ppp->router_name] : ['state'=>'missing'],
+            'pppoe' => $ppp ? [
+                'username'=>$ppp->username,
+                'status'=>$ppp->status,
+                'state'=>$this->stateForPpp($ppp->status),
+                'router'=>$ppp->router_name,
+                'remote_ip'=>$ppp->ppp_remote_ip,
+                'uptime'=>$ppp->uptime,
+                'downtime'=>$ppp->downtime,
+                'last_logged_out'=>$ppp->last_logged_out,
+                'last_disconnect_reason'=>$ppp->last_disconnect_reason,
+                'live_session'=>$livePpp,
+            ] : ['state'=>'missing'],
             'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'unknown','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
             'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'unknown','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at] : ['state'=>'not_mapped'],
             'billing' => $billing ? ['state'=>$this->billingState($billing),'due'=>$this->billingDue($billing)] : ['state'=>'not_found'],
@@ -65,6 +80,19 @@ class AiEngineerDiagnosticService
             if ($ppp->last_disconnect_reason) $findings[]='Last disconnect reason: '.$ppp->last_disconnect_reason;
             if ($ppp->last_logged_out) $findings[]='Last logged out: '.$ppp->last_logged_out;
             if ($ppp->username) $findings[]='PPPoE username: '.$ppp->username;
+            if ($ppp->ppp_remote_ip) $findings[]='PPP remote IP: '.$ppp->ppp_remote_ip;
+            if ($ppp->uptime) $findings[]='PPP uptime recorded: '.$ppp->uptime;
+            if ($ppp->last_disconnect_reason) $findings[]='Disconnect evidence: '.$ppp->last_disconnect_reason;
+            if (($livePpp['state'] ?? null) === 'online') {
+                $findings[]='Live MikroTik PPPoE session found for this username.';
+            } elseif (($livePpp['state'] ?? null) === 'offline') {
+                $findings[]='No live MikroTik PPPoE session found for this username.';
+                if (strtolower((string)$ppp->status) === 'active') {
+                    $severity=$severity==='critical'?'critical':'warning';
+                    $causes[]='PPP secret is active in billing data, but no live PPPoE session was found on the assigned router.';
+                    $checks[]='Check router logs, PPPoE authentication errors, and customer CPE reachability.';
+                }
+            }
         }
         if ($router) {
             $rs=strtolower((string)($router->action??''));
@@ -179,6 +207,41 @@ class AiEngineerDiagnosticService
         $customers=$query->limit(12)->get(['id','customer_unique_id','customer_name','mobile','status']);
         $needle=mb_strtolower($q);
         return $customers->filter(function($c)use($needle){$u=mb_strtolower((string)$c->pppUser?->username);return str_contains($u,$needle)||true;})->map(fn($c)=>['id'=>$c->id,'customer_unique_id'=>$c->customer_unique_id,'customer_name'=>$c->customer_name,'mobile'=>$c->mobile,'status'=>$c->status,'ppp_username'=>$c->pppUser?->username])->values()->all();
+    }
+
+
+    private function readLivePppSession(?RouterList $router, ?string $username): array
+    {
+        if (! $router || ! $username || strtolower((string)$router->action) !== 'connected') {
+            return ['state'=>'not_checked','reason'=>'router_not_connected'];
+        }
+        try {
+            $controller = $this->mikrotik ?: app(MikrotikController::class);
+            $rows = $controller->singleRead(
+                $router->router_name,
+                '/ppp/active/print',
+                '/ppp active print without-paging terse',
+                [],
+                false,
+                true
+            );
+            foreach ($rows as $row) {
+                $name = $row['name'] ?? $row['user'] ?? $row['username'] ?? null;
+                if ((string)$name === (string)$username) {
+                    return [
+                        'state'=>'online',
+                        'address'=>$row['address'] ?? $row['remote-address'] ?? null,
+                        'caller_id'=>$row['caller-id'] ?? $row['caller_id'] ?? null,
+                        'uptime'=>$row['uptime'] ?? null,
+                        'service'=>$row['service'] ?? null,
+                    ];
+                }
+            }
+            return ['state'=>'offline','checked_at'=>now()->toIso8601String()];
+        } catch (\Throwable $e) {
+            \Log::debug('AI Engineer live PPP read failed', ['router'=>$router->router_name,'error'=>$e->getMessage()]);
+            return ['state'=>'not_checked','reason'=>'router_read_failed'];
+        }
     }
 
     private function customerTickets(string $id): array
