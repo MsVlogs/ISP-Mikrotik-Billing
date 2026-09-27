@@ -206,10 +206,18 @@ class NetworkTopology extends Component
                 if (! $mapping->olt || ! $mapping->onu_id) continue;
                 $onuKey = 'onu:'.$mapping->id;
                 $customerName = $mapping->customer?->customer_name ?: $mapping->customer?->customer_unique_id ?: 'Unmapped ONU';
+                $mappingStatus = strtolower(trim((string) $mapping->status));
+                $status = in_array($mappingStatus, ['online', 'up', 'active', 'connected', 'ready'], true)
+                    ? 'online'
+                    : (in_array($mappingStatus, ['offline', 'down', 'failed', 'unreachable'], true) ? 'offline' : 'unknown');
+                if ($mapping->last_seen_at && $mapping->last_seen_at->lt(now()->subMinutes(15)) && $status === 'online') {
+                    $status = 'unknown';
+                }
+                $lastSeen = $mapping->last_seen_at?->format('Y-m-d H:i:s') ?: 'Not available';
                 $nodes[] = [
                     'id' => $onuKey, 'label' => 'ONU '.$mapping->onu_id, 'group' => 'onu',
-                    'status' => $mapping->status ?: 'unknown',
-                    'title' => $customerName.' · PON '.($mapping->pon_port ?: '—').' · '.($mapping->onu_serial ?: $mapping->onu_mac ?: 'No serial/MAC'),
+                    'status' => $status,
+                    'title' => $customerName.' · PON '.($mapping->pon_port ?: '—').' · '.($mapping->onu_serial ?: $mapping->onu_mac ?: 'No serial/MAC').' · Last seen '.$lastSeen,
                     'url' => route('network-inventory.olt.customers', $mapping->olt_device_id),
                 ];
                 $oltKey = 'device:'.$mapping->olt_device_id;
