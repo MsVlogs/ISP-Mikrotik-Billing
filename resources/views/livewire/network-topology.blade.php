@@ -15,8 +15,9 @@
 <div class="row g-3">
  <div class="{{ $mode==='designer'?'col-xl-8':'col-12' }}"><div class="nt-card p-3">
   <div class="d-flex justify-content-between align-items-center mb-2"><div><strong>Network Graph</strong><div class="nt-muted">{{ count($nodes) }} nodes · {{ count($graphEdges) }} connections</div></div><span class="badge bg-light text-dark">Click a node to open its workspace</span></div>
+  <div class="d-flex flex-wrap gap-2 mb-2" id="xlink-topology-filters"><button type="button" class="btn btn-sm btn-outline-dark active" data-status-filter="all">All</button><button type="button" class="btn btn-sm btn-outline-success" data-status-filter="online">Online</button><button type="button" class="btn btn-sm btn-outline-danger" data-status-filter="offline">Offline</button><button type="button" class="btn btn-sm btn-outline-secondary" data-status-filter="unknown">Unknown</button></div>
   <div id="xlink-topology-graph" class="nt-canvas"></div>
-  <div class="nt-muted mt-2">Green = online · Red = offline · Grey = unknown · Dashed lines = logical service links. Layout is interactive; drag nodes and zoom to inspect.</div>
+  <div class="d-flex flex-wrap gap-2 mt-2"><span class="badge bg-success">Online {{ $statusSummary['online'] ?? 0 }}</span><span class="badge bg-danger">Offline {{ $statusSummary['offline'] ?? 0 }}</span><span class="badge bg-secondary">Unknown {{ $statusSummary['unknown'] ?? 0 }}</span><span class="badge bg-light text-dark border">{{ count($graphEdges) }} paths</span></div><div class="nt-muted mt-2">Green = online · Red = offline · Grey = unknown · Dashed lines = logical service links. Use the status filters below to isolate affected paths.</div>
  </div></div>
  @if($mode==='designer')
  <div class="col-xl-4"><div class="nt-card p-3"><h5 class="mb-1">Create Connection</h5><p class="nt-muted">Select existing inventory nodes. New connections remain drafts until published.</p>
@@ -60,7 +61,8 @@ window.initXlinkTopology = function () {
   shape: n.group === 'router' ? 'box' : (n.group === 'olt' ? 'database' : (n.group === 'onu' ? 'diamond' : (n.group === 'customer' ? 'ellipse' : (n.group === 'splitter' ? 'triangle' : (n.group === 'odf' ? 'hexagon' : (n.group === 'pop' ? 'star' : (n.group === 'fiber_segment' ? 'text' : 'box'))))))),
   font: {color:'#172033', size:13}, borderWidth:1, margin:12
  })));
- const edges = new vis.DataSet(rawEdges.map(e => ({...e, color:{color:e.connection_type==='fiber_core'?'#16a34a':(e.connection_type==='uplink'?'#2563eb':'#94a3b8')}, font:{size:10,align:'middle'}, smooth:{type:'dynamic'}})));
+ const edgeRows = rawEdges.map(e => ({...e, color:{color:e.connection_type==='fiber_core'?'#16a34a':(e.connection_type==='uplink'?'#2563eb':'#94a3b8')}, font:{size:10,align:'middle'}, smooth:{type:'dynamic'}}));
+ const edges = new vis.DataSet(edgeRows);
  const network = new vis.Network(el, {nodes, edges}, {
   autoResize:true, interaction:{hover:true,navigationButtons:true,keyboard:{enabled:true}},
   physics:{enabled:true, stabilization:{iterations:180}, barnesHut:{gravitationalConstant:-4500,springLength:150,springConstant:0.035}},
@@ -68,6 +70,14 @@ window.initXlinkTopology = function () {
   groups:{router:{shape:'box'},olt:{shape:'database'},onu:{shape:'diamond'},customer:{shape:'ellipse'},splitter:{shape:'triangle'},odf:{shape:'hexagon'},rack:{shape:'box'},pop:{shape:'star'},fiber_segment:{shape:'text'}}
  });
  el._network = network;
+ const filterRoot = document.getElementById('xlink-topology-filters');
+ filterRoot?.querySelectorAll('[data-status-filter]').forEach(button => button.addEventListener('click', () => {
+  const wanted = button.dataset.statusFilter || 'all';
+  filterRoot.querySelectorAll('[data-status-filter]').forEach(b => b.classList.toggle('active', b === button));
+  const visible = new Set(rawNodes.filter(n => wanted === 'all' || n.status === wanted).map(n => n.id));
+  nodes.update(rawNodes.map(n => ({id:n.id, hidden: !visible.has(n.id)})));
+  edges.update(edgeRows.map(e => ({id:e.id, hidden: !(visible.has(e.from) && visible.has(e.to))})));
+ }));
  network.on('click', function(params) {
   if (!params.nodes.length) return;
   const node = nodes.get(params.nodes[0]);

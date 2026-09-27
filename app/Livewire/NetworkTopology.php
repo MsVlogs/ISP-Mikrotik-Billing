@@ -242,7 +242,8 @@ class NetworkTopology extends Component
 
         $nodeOptions = $this->nodeOptions();
         $customNodes = NetworkTopologyNode::query()->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->latest()->get();
-        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes'))
+        $statusSummary = collect($nodes)->countBy('status')->all();
+        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary'))
             ->layout('layouts.app');
     }
 }
