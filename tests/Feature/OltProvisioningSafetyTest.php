@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Olt\VsolCliProvisioningService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use App\Services\Olt\VsolModelDetector;
 use ReflectionClass;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -91,6 +92,20 @@ class OltProvisioningSafetyTest extends TestCase
         $this->assertSame(2222, (int) $olt->ssh_port);
         $this->assertTrue($olt->ssh_enabled);
         $this->assertTrue($olt->provisioning_enabled);
+    }
+
+    public function test_vsol_model_detector_selects_exact_v1600d_profile(): void
+    {
+        $result = (new VsolModelDetector())->detect('VSOL V1600D EPON OLT Software Version 1.2');
+        $this->assertSame('detected', $result['status']);
+        $this->assertSame('V1600D', $result['model']);
+        $this->assertSame('v1600d_ep_series_v1_2', $result['profile']);
+    }
+
+    public function test_vsol_model_detector_does_not_guess_unknown_hardware(): void
+    {
+        $result = (new VsolModelDetector())->detect('VSOL EPON OLT Software Version 9.9');
+        $this->assertSame('unknown', $result['status']);
     }
 
     public function test_discovery_route_is_available_without_enabling_provisioning(): void

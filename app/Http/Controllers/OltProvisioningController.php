@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 use App\Models\NetworkInventoryDevice;
 use App\Models\OltProvisioningAudit;
 use App\Services\Olt\VsolCliProvisioningService;
+use App\Services\Olt\VsolModelDetector;
 use Illuminate\Http\Request;
 use Throwable;
 class OltProvisioningController extends Controller {
@@ -14,8 +15,25 @@ class OltProvisioningController extends Controller {
   $start=microtime(true);
   try {
    $s=new VsolCliProvisioningService(); $s->connectReadOnly($device); $result=$s->discoverVersion();
-   $audit->update(['status'=>'success','result'=>$this->redact($result),'duration_ms'=>(int)round((microtime(true)-$start)*1000)]);
-   return back()->with('discovery_message','Read-only VSOL version discovery completed. Review the CLI output before setting the exact model.');
+   $detection=(new VsolModelDetector())->detect($result);
+   $cfg=$this->adapter($device);
+   if ($detection['status']==='detected') {
+    $cfg['vsol_model_profile']=$detection['profile'];
+    $device->adapter_config=$cfg;
+    $device->save();
+   }
+   $audit->update([
+    'status'=>'success',
+    'result'=>$this->redact($result),
+    'request_payload'=>['command'=>'show version','detection'=>$detection],
+    'model_profile'=>$detection['profile'] ?? 'discovery',
+    'target'=>$detection['model'] ?? 'read-only',
+    'duration_ms'=>(int)round((microtime(true)-$start)*1000)
+   ]);
+   $message=$detection['status']==='detected'
+    ? 'VSOL model detected: '.$detection['model'].'. Matching command profile has been selected automatically.'
+    : 'VSOL version discovery completed, but no unique exact model profile was detected. Manual model selection is required.';
+   return back()->with('discovery_message',$message);
   } catch (Throwable $e) {
    $audit->update(['status'=>'failed','error'=>$e->getMessage(),'duration_ms'=>(int)round((microtime(true)-$start)*1000)]);
    return back()->withErrors(['discovery'=>$e->getMessage()]);
