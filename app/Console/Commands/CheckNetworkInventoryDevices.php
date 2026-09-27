@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\NetworkEvent;
 use App\Models\NetworkInventoryDevice;
 use App\Models\NetworkInventoryHealthCheck;
+use App\Services\NetworkInventoryHealthProbe;
 use Illuminate\Console\Command;
 
 class CheckNetworkInventoryDevices extends Command
@@ -23,18 +24,10 @@ class CheckNetworkInventoryDevices extends Command
                 foreach ($devices as $device) {
                     $checkedAt = now();
                     $previous = $device->health_status ?: $device->status;
-                    $host = $device->ip_address ?: $device->host;
-                    $port = (int) ($device->health_port ?: $device->port ?: ($device->type === 'olt' ? 23 : 80));
-                    if (! $host) {
-                        continue;
-                    }
-                    $started = microtime(true);
-                    $socket = @fsockopen($host, $port, $errno, $errorMessage, 3);
-                    $latency = (int) round((microtime(true) - $started) * 1000);
-                    $status = $socket !== false ? 'online' : 'down';
-                    if ($socket !== false) {
-                        fclose($socket);
-                    }
+                    $probe = (new NetworkInventoryHealthProbe())->check($device);
+                    $latency = (int) $probe['latency_ms'];
+                    $status = $probe['status'] === 'online' ? 'online' : ($probe['status'] === 'not_ready' ? 'unknown' : 'down');
+                    $errorMessage = $probe['message'];
 
                     $device->update([
                         'health_status' => $status,
@@ -81,7 +74,7 @@ class CheckNetworkInventoryDevices extends Command
                 'occurrences' => 1,
                 'first_seen_at' => $checkedAt,
                 'last_seen_at' => $checkedAt,
-                'metadata' => ['ip_address' => $device->ip_address ?: $device->host, 'port' => $device->health_port ?: $device->port, 'previous_status' => $previous],
+                'metadata' => ['ip_address' => $device->ip_address ?: $device->host, 'port' => $device->health_port ?: $device->port, 'protocol' => $probe['protocol'] ?? 'tcp', 'previous_status' => $previous],
             ]);
             return;
         }
