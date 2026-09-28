@@ -71,6 +71,14 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         }
 
         $onuConfig = (array) ($config['onu_oids'] ?? []);
+        if (!$onuConfig) {
+            $onuConfig = [
+                'onu_id' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.1',
+                'pon_port' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.2',
+                'status' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.4',
+                'onu_mac' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.5',
+            ];
+        }
         if ($onuConfig) {
             $result['onus'] = $this->discoverOnus($host, $community, $onuConfig, $timeout, $retries);
             $result['meta']['onu_count'] = count($result['onus']);
@@ -104,10 +112,12 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             if (!is_string($field) || !is_string($baseOid) || !preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/', trim($baseOid))) continue;
             $walk = @snmp2_real_walk($host, $community, trim($baseOid), $timeout, $retries);
             if (!is_array($walk)) continue;
+            $position = 0;
             foreach ($walk as $returnedOid => $value) {
                 $index = $this->oidIndex((string) $returnedOid, trim($baseOid));
-                if ($index === null) continue;
+                if ($index === null) $index = (string) $position;
                 $tables[$index][$field] = $this->cleanSnmpValue($value);
+                $position++;
             }
         }
 
@@ -119,7 +129,8 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             $row['onu_mac'] = $row['onu_mac'] ?? $row['mac'] ?? null;
             $row['pon_port'] = $row['pon_port'] ?? $row['pon'] ?? null;
             $row['onu_type'] = $row['onu_type'] ?? $row['type'] ?? null;
-            $row['status'] = $row['status'] ?? ($row['online'] ?? null);
+            $rawStatus = strtolower(trim((string) ($row['status'] ?? ($row['online'] ?? ''))));
+            $row['status'] = in_array($rawStatus, ['1', 'online', 'up', 'active', 'registered', 'auth success'], true) ? 'online' : (in_array($rawStatus, ['0', 'offline', 'down', 'inactive', 'lost', 'deregistered'], true) ? 'offline' : ($rawStatus !== '' ? $rawStatus : 'unknown'));
             $row['rx_power'] = $row['rx_power'] ?? $row['optical_rx'] ?? null;
             $row['tx_power'] = $row['tx_power'] ?? $row['optical_tx'] ?? null;
             $row['onu_ip'] = $row['onu_ip'] ?? $row['ip'] ?? null;
@@ -132,7 +143,8 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
 
     private function oidIndex(string $returnedOid, string $baseOid): ?string
     {
-        $returned = ltrim($returnedOid, '.');
+        $returned = preg_replace('/^iso\\./i', '', $returnedOid) ?? $returnedOid;
+        $returned = ltrim($returned, '.');
         $base = ltrim($baseOid, '.');
         if ($returned === $base) return '';
         $prefix = $base . '.';
@@ -143,7 +155,8 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
     {
         if (!is_string($value)) return $value;
         $value = trim($value);
-        return preg_replace('/^[A-Z0-9-]+:\\s*/i', '', $value) ?? $value;
+        $value = preg_replace('/^[A-Z0-9-]+:\\s*/i', '', $value) ?? $value;
+        return trim($value, '"');
     }
 
     private function storedCommunity(NetworkInventoryDevice $device): string

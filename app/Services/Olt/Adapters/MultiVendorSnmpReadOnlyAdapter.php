@@ -32,6 +32,12 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
 
         $timeout = max(100000, (int) ($config['timeout_us'] ?? 1000000));
         $retries = max(0, (int) ($config['retries'] ?? 1));
+        // Keep ONU table discovery strictly bounded; failed SNMP walks must not
+        // stall the sync command for every ONU column.
+        $onuDefaultTimeout = strtoupper(trim((string) $device->vendor)) === 'VSOL' ? 700000 : min($timeout, 250000);
+        $onuTimeout = max(100000, (int) ($config['onu_walk_timeout_us'] ?? $onuDefaultTimeout));
+        $onuRetries = max(0, (int) ($config['onu_walk_retries'] ?? 0));
+        if (function_exists('snmp_set_oid_output_format') && defined('SNMP_OID_OUTPUT_NUMERIC')) snmp_set_oid_output_format(SNMP_OID_OUTPUT_NUMERIC);
         $oids = $this->mergedOids($profile, $config);
         $result = [
             'ok' => false, 'status' => 'reachable',
@@ -51,7 +57,7 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
 
         $onuConfig = $config['onu_oids'] ?? ($profile['onu_oids'] ?? []);
         if (is_array($onuConfig) && $onuConfig) {
-            $result['onus'] = $this->discoverOnus($host, $community, $onuConfig, $timeout, $retries);
+            $result['onus'] = $this->discoverOnus($host, $community, $onuConfig, $onuTimeout, $onuRetries);
             $result['meta']['onu_count'] = count($result['onus']);
         }
 
@@ -67,9 +73,9 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
     {
         $vendor = strtoupper(trim((string) $device->vendor));
         $profiles = [
-            'BDCOM'=>['key'=>'bdcom_epon','enterprise_oid'=>'1.3.6.1.4.1.3320.101','source'=>'BDCOM P3616-2TE EPON NMS MIB','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>['onu_id'=>'1.3.6.1.4.1.3320.101.10.1.1.3','onu_vendor'=>'1.3.6.1.4.1.3320.101.10.1.1.1','onu_model'=>'1.3.6.1.4.1.3320.101.10.1.1.2','status'=>'1.3.6.1.4.1.3320.101.11.4.1.5','distance'=>'1.3.6.1.4.1.3320.101.10.1.1.27','onu_uptime'=>'1.3.6.1.4.1.3320.101.10.1.1.80','onu_mac'=>'1.3.6.1.4.1.3320.101.10.4.1.1','rx_power'=>'1.3.6.1.4.1.3320.101.10.5.1.5','tx_power'=>'1.3.6.1.4.1.3320.101.10.5.1.6','__table_root'=>'1.3.6.1.4.1.3320.101.10.1.1','__column_map'=>[1=>'onu_vendor',2=>'onu_model',3=>'onu_id',27=>'distance']]],
+            'BDCOM'=>['key'=>'bdcom_epon','enterprise_oid'=>'1.3.6.1.4.1.3320.101','source'=>'BDCOM P3616-2TE EPON NMS MIB','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>['onu_id'=>'1.3.6.1.4.1.3320.101.10.1.1.3','onu_vendor'=>'1.3.6.1.4.1.3320.101.10.1.1.1','onu_model'=>'1.3.6.1.4.1.3320.101.10.1.1.2','status'=>'1.3.6.1.4.1.3320.101.10.1.1.26','distance'=>'1.3.6.1.4.1.3320.101.10.1.1.27','onu_uptime'=>'1.3.6.1.4.1.3320.101.10.1.1.80','onu_mac'=>'1.3.6.1.4.1.3320.101.10.4.1.1','rx_power'=>'1.3.6.1.4.1.3320.101.10.5.1.5','tx_power'=>'1.3.6.1.4.1.3320.101.10.5.1.6','__table_root'=>'1.3.6.1.4.1.3320.101.10.1.1','__column_map'=>[1=>'onu_vendor',2=>'onu_model',3=>'onu_id',27=>'distance']]],
             'HUAWEI'=>['key'=>'huawei','enterprise_oid'=>'1.3.6.1.4.1.2011','source'=>'Huawei private MIB + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0','onuStatus'=>'1.3.6.1.4.1.2011.6.128.1.1.2.62.1.22'],'onu_oids'=>['onu_serial'=>'1.3.6.1.4.1.2011.6.128.1.1.2.43.1.3','status'=>'1.3.6.1.4.1.2011.6.128.1.1.2.62.1.22','rx_power'=>'1.3.6.1.4.1.2011.6.128.1.1.2.51.1.4']],
-            'VSOL'=>['key'=>'vsol','enterprise_oid'=>'1.3.6.1.4.1.37950','source'=>'VSOL V1600D MIB; model-specific overrides supported','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>['onu_table'=>'1.3.6.1.4.1.37950.1.1.5.12.1.12']],
+            'VSOL'=>['key'=>'vsol','enterprise_oid'=>'1.3.6.1.4.1.37950','source'=>'VSOL V1600D MIB; ONU list table with auth-info enrichment','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>['__entry_root'=>'1.3.6.1.4.1.37950.1.1.5.12.1.9.1','__column_map'=>[1=>'onu_id',2=>'pon_port',3=>'llid',4=>'status',5=>'onu_mac'],'onu_model'=>'1.3.6.1.4.1.37950.1.1.5.12.1.12.1.7']],
             'C-DATA'=>['key'=>'cdata','enterprise_oid'=>'1.3.6.1.4.1.25355','source'=>'C-Data GPON profile + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>['onu_name'=>'1.3.6.1.4.1.25355.3.3.1.1.1.2','onu_serial'=>'1.3.6.1.4.1.25355.3.3.1.1.1.5','status'=>'1.3.6.1.4.1.25355.3.3.1.1.1.11','tx_power'=>'1.3.6.1.4.1.25355.3.3.1.1.4.1.2','rx_power'=>'1.3.6.1.4.1.25355.3.3.1.1.4.1.1']],
             'HSGQ'=>['key'=>'hsgq','enterprise_oid'=>null,'source'=>'HSGQ model-specific MIB/configuration; no unverified ONU OIDs embedded','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
             'PHOTON'=>['key'=>'photon','enterprise_oid'=>null,'source'=>'PHOTON model-specific MIB/configuration','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>[]],
@@ -91,9 +97,33 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         $tables = [];
         $tableRootLoaded = false;
         $columnMap = $onuConfig['__column_map'] ?? [];
+
+        if (isset($onuConfig['__entry_root']) && is_array($columnMap)) {
+            $root = trim((string) $onuConfig['__entry_root']);
+            foreach ($columnMap as $column => $field) {
+                $columnOid = $root . '.' . (int) $column;
+                $walk = @snmp2_real_walk($host, $community, $columnOid, $timeout, $retries);
+                if (!is_array($walk)) continue;
+                foreach ($walk as $returnedOid => $value) {
+                    $normalized = preg_replace('/^iso\\./i', '', (string) $returnedOid) ?? (string) $returnedOid;
+                    $normalized = ltrim($normalized, '.');
+                    if (!preg_match('/\\.([0-9]+)$/', $normalized, $m)) continue;
+                    $tables[$m[1]][$field] = $this->clean($value);
+                    $tableRootLoaded = true;
+                }
+            }
+        }
         if (isset($onuConfig['__table_root']) && is_array($columnMap) && $columnMap) {
             $root = trim((string) $onuConfig['__table_root']);
             $walk = @snmp2_real_walk($host, $community, $root, $timeout, $retries);
+            if (!is_array($walk)) {
+                // Fall back to a small set of useful ONU columns instead of
+                // abandoning discovery when the aggregate table root is unsupported.
+                $onuConfig = array_intersect_key($onuConfig, array_flip([
+                    'onu_id', 'onu_mac', 'status', 'distance', 'rx_power', 'tx_power', 'onu_uptime',
+                ]));
+                $columnMap = [];
+            }
             if (is_array($walk)) {
                 foreach ($walk as $returnedOid => $value) {
                     $suffix = $this->oidIndex((string) $returnedOid, $root);
@@ -115,6 +145,13 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             if ($tableRootLoaded && in_array($field, $columnMap, true)) continue;
             if (!is_string($field)||!is_string($baseOid)||!preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/',trim($baseOid))) continue;
             $walk=@snmp2_real_walk($host,$community,trim($baseOid),$timeout,$retries);
+            if(!is_array($walk)) {
+                $plain=@snmp2_walk($host,$community,trim($baseOid),$timeout,$retries);
+                if(is_array($plain)) {
+                    $walk=[];
+                    foreach($plain as $i=>$value) $walk[trim($baseOid,'.').'.'.(string)$i]=$value;
+                }
+            }
             if(!is_array($walk)) continue;
             foreach($walk as $returnedOid=>$value){$index=$this->oidIndex((string)$returnedOid,trim($baseOid));if($index===null)continue;$tables[$index][$field]=$this->clean($value);}
         }
@@ -122,7 +159,7 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         foreach($tables as $index=>$row){$row['snmp_index']=$index;$row['onu_id']=$row['onu_id']??$row['id']??$index;$row['onu_serial']=$row['onu_serial']??$row['serial']??null;$row['onu_mac']=$this->normalizeMac($row['onu_mac']??$row['mac']??$row['onu_id']??null);$row['onu_id']=$this->normalizeMac($row['onu_id'])??$row['onu_id'];$row['pon_port']=$row['pon_port']??$row['pon']??(str_contains((string)$index,'.')?explode('.',(string)$index,2)[0]:null);$row['status']=$this->normalizeEponStatus($row['status']??($row['online']??null));$row['onu_type']=$row['onu_model']??$row['onu_type']??null;$row['rx_power']=$row['rx_power']??$row['optical_rx']??null;$row['tx_power']=$row['tx_power']??$row['optical_tx']??null;$out[]=$row;}
         return $out;
     }
-    private function oidIndex(string $returned,string $base):?string{$returned=ltrim($returned,'.');$base=ltrim($base,'.');$prefix=$base.'.';return $returned===$base?'':(str_starts_with($returned,$prefix)?substr($returned,strlen($prefix)):null);}
+    private function oidIndex(string $returned,string $base):?string{$returned=preg_replace('/^iso\\./i','',$returned)??$returned;$returned=ltrim($returned,'.');$base=ltrim($base,'.');$prefix=$base.'.';return $returned===$base?'':(str_starts_with($returned,$prefix)?substr($returned,strlen($prefix)):null);}
     private function clean(mixed $value):mixed{if(!is_string($value))return $value;return preg_replace('/^[A-Z0-9-]+:\\s*/i','',trim($value))??trim($value);}
     private function normalizeMac(mixed $value):?string{if(!is_string($value)||trim($value)==='')return null;$v=trim($value);if(preg_match('/^(?:[0-9A-Fa-f]{2}[ :.-]?){6}$/',$v)){$hex=preg_replace('/[^0-9A-Fa-f]/','',$v);return implode(':',str_split(strtolower($hex),2));}return $v;}
     private function normalizeEponStatus(mixed $value):string{$v=strtolower(trim((string)$value));return match($v){'1','registered'=>'online','2','deregistered','4','lost'=>'offline','0','authenticated','3','auto_config','5','standby',''=>'unknown',default=>$v};}
