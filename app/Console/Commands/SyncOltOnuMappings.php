@@ -35,13 +35,34 @@ class SyncOltOnuMappings extends Command
                 $onuId = trim((string) $onuId);
 
                 $username = $row['pppoe_username'] ?? $row['pppoeUsername'] ?? $row['username'] ?? null;
-                $pppId = null; $customerId = null;
+                $onuMac = $row['onu_mac'] ?? $row['mac'] ?? $row['onuMac'] ?? null;
+                $pppId = null; $customerId = null; $autoMatch = null;
                 $existingMapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)
                     ->where('onu_id', $onuId)->first();
                 if ($username !== null && $username !== '') {
-                    $ppp = PPPSecrets::where('username', (string) $username)->first();
-                    if ($ppp) { $pppId = $ppp->id; $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id'); }
-                } elseif ($existingMapping) {
+                    $ppps = PPPSecrets::where('username', (string) $username)->limit(2)->get();
+                    if ($ppps->count() === 1) {
+                        $ppp = $ppps->first();
+                        $pppId = $ppp->id; $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id');
+                        $autoMatch = 'username';
+                    }
+                }
+                if ($pppId === null && $onuMac !== null && trim((string) $onuMac) !== '') {
+                    $normalizedMac = $this->normalizeMac($onuMac);
+                    if ($normalizedMac !== '') {
+                        $ppps = PPPSecrets::query()
+                            ->where(function ($q) use ($normalizedMac) {
+                                $q->whereRaw("LOWER(REPLACE(REPLACE(REPLACE(caller_id, ':', ''), '-', ''), '.', '')) = ?", [$normalizedMac])
+                                  ->orWhereRaw("LOWER(REPLACE(REPLACE(REPLACE(last_caller_id, ':', ''), '-', ''), '.', '')) = ?", [$normalizedMac]);
+                            })->limit(2)->get();
+                        if ($ppps->count() === 1) {
+                            $ppp = $ppps->first();
+                            $pppId = $ppp->id; $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id');
+                            $autoMatch = 'mac';
+                        }
+                    }
+                }
+                if ($pppId === null && $existingMapping) {
                     // OLT telemetry often has no PPPoE username. Never erase an operator's
                     // existing customer/PPPoE mapping just because telemetry omitted it.
                     $pppId = $existingMapping->ppp_user_id;
@@ -68,9 +89,10 @@ class SyncOltOnuMappings extends Command
                 OltOnuCustomerMapping::updateOrCreate(
                     ['olt_device_id' => $olt->id, 'onu_id' => (string) $onuId],
                     [
-                        'customer_id' => $customerId, 'ppp_user_id' => $pppId,
+                        'customer_id' => $existingMapping?->customer_id ?? $customerId,
+                        'ppp_user_id' => $existingMapping?->ppp_user_id ?? $pppId,
                         'onu_serial' => $row['onu_serial'] ?? $row['serial'] ?? $row['onuSerial'] ?? null,
-                        'onu_mac' => $row['onu_mac'] ?? $row['mac'] ?? $row['onuMac'] ?? null,
+                        'onu_mac' => $onuMac,
                         'pon_port' => $row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? null,
                         'onu_type' => $row['onu_type'] ?? $row['type'] ?? null,
                         'status' => $status,
@@ -78,7 +100,7 @@ class SyncOltOnuMappings extends Command
                         'tx_power' => $row['tx_power'] ?? $row['opticalTx'] ?? null,
                         'onu_ip' => $row['onu_ip'] ?? $row['ip'] ?? $row['onuIp'] ?? null,
                         'last_seen_at' => $lastSeen,
-                        'notes' => $row['detail'] ?? null,
+                        'notes' => $autoMatch ? 'Auto-mapped by '.$autoMatch : ($existingMapping?->notes ?? $row['detail'] ?? null),
                     ]
                 );
                 $count++;
@@ -118,6 +140,11 @@ class SyncOltOnuMappings extends Command
         } catch (\Throwable) {
             return ['ok' => false, 'status' => 'unreachable', 'message' => 'Legacy OLT telemetry is unavailable; no write performed.', 'onus' => []];
         }
+    }
+
+    private function normalizeMac($mac): string
+    {
+        return strtolower(preg_replace('/[^a-fA-F0-9]/', '', (string) $mac) ?? '');
     }
 
     private function normalizeStatus(array $row): string
