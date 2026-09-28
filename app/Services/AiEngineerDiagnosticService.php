@@ -31,6 +31,8 @@ class AiEngineerDiagnosticService
             'routers' => ['total'=>$routerTotal,'connected'=>$routerConnected,'disconnected'=>max(0,$routerTotal-$routerConnected)],
             'olt_onu' => ['mapped'=>$oltMapped],
             'support' => ['tickets'=>$tickets],
+            'ai_provider' => (string) config('services.ai.provider', 'gemini'),
+            'ai_configured' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
             'openai_configured' => (string) config('services.openai.api_key') !== '',
             'read_only' => true,
             'generated_at' => now()->toIso8601String(),
@@ -163,21 +165,38 @@ class AiEngineerDiagnosticService
     public function chat(string $question, ?string $customerId=null, array $history=[]): array
     {
         $diagnosis=$customerId?$this->diagnoseCustomer($customerId):null;
-        $apiKey=(string)config('services.openai.api_key');
+        $provider=strtolower((string)config('services.ai.provider','gemini'));
+        if(!in_array($provider,['gemini','openai'],true))$provider='gemini';
+        $apiKey=(string)config("services.{$provider}.api_key");
         $context=$diagnosis&&($diagnosis['ok']??false)?json_encode($diagnosis,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES):json_encode($this->overview());
 
-        // Keep the conversational assistant useful even when no external AI key is configured.
-        // This local mode is deliberately read-only and answers from the same verified diagnostics.
+        // Local diagnostics remain available if the selected provider has no key.
         if ($apiKey==='') {
             return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true];
         }
         $safeHistory=array_slice(array_map(fn($m)=>['role'=>in_array($m['role']??'', ['user','assistant'],true)?$m['role']:'user','content'=>mb_substr((string)($m['content']??''),0,4000)],$history),-8);
-        $input=[['role'=>'developer','content'=>'You are an ISP AI Engineer. READ-ONLY. Never claim to have changed, provisioned, rebooted, enabled, disabled, deleted, or configured anything. Use only supplied context; distinguish evidence from likely causes; never invent live status; answer concisely in the user language.'],['role'=>'user','content'=>'Diagnostic context: '.$context]];
-        foreach($safeHistory as $m)$input[]=$m; $input[]=['role'=>'user','content'=>mb_substr($question,0,4000)];
+        $systemPrompt='You are an ISP AI Engineer. READ-ONLY. Never claim to have changed, provisioned, rebooted, enabled, disabled, deleted, or configured anything. Use only supplied context; distinguish evidence from likely causes; never invent live status; answer concisely in the user language.';
+        if($provider==='gemini') {
+            $messages=[['role'=>'system','content'=>$systemPrompt],['role'=>'user','content'=>'Diagnostic context: '.$context]];
+            foreach($safeHistory as $m)$messages[]=$m;
+            $messages[]=['role'=>'user','content'=>mb_substr($question,0,4000)];
+            $baseUrl=rtrim((string)config('services.gemini.base_url','https://generativelanguage.googleapis.com/v1beta/openai'),'/');
+            $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->post($baseUrl.'/chat/completions',['model'=>config('services.gemini.model','gemini-3.8-flash'),'messages'=>$messages]);
+            if(!$response->successful()){\Log::error('AI Engineer Gemini request failed',['status'=>$response->status()]);return ['ok'=>false,'configured'=>true,'provider'=>'gemini','message'=>'Gemini request failed. Local diagnostics remain available.'];}
+            $body=$response->json();
+            $text=$body['choices'][0]['message']['content']??'';
+            if(is_array($text))$text=implode("\n",array_map(fn($part)=>(string)($part['text']??''),$text));
+            return ['ok'=>true,'configured'=>true,'provider'=>'gemini','message'=>trim((string)$text),'read_only'=>true];
+        }
+
+        $input=[['role'=>'developer','content'=>$systemPrompt],['role'=>'user','content'=>'Diagnostic context: '.$context]];
+        foreach($safeHistory as $m)$input[]=$m;
+        $input[]=['role'=>'user','content'=>mb_substr($question,0,4000)];
         $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->post('https://api.openai.com/v1/responses',['model'=>config('services.openai.model'),'store'=>false,'input'=>$input]);
-        if(!$response->successful()){\Log::error('AI Engineer OpenAI request failed',['status'=>$response->status()]);return ['ok'=>false,'configured'=>true,'message'=>'AI service request failed. Local diagnostics remain available.'];}
-        $body=$response->json(); $text=$body['output_text']??''; if($text==='')foreach(($body['output']??[]) as $item)foreach(($item['content']??[]) as $content)if(($content['type']??'')==='output_text')$text.=$content['text']??'';
-        return ['ok'=>true,'configured'=>true,'message'=>trim($text),'read_only'=>true];
+        if(!$response->successful()){\Log::error('AI Engineer OpenAI request failed',['status'=>$response->status()]);return ['ok'=>false,'configured'=>true,'provider'=>'openai','message'=>'OpenAI request failed. Local diagnostics remain available.'];}
+        $body=$response->json(); $text=$body['output_text']??'';
+        if($text==='')foreach(($body['output']??[]) as $item)foreach(($item['content']??[]) as $content)if(($content['type']??'')==='output_text')$text.=$content['text']??'';
+        return ['ok'=>true,'configured'=>true,'provider'=>'openai','message'=>trim($text),'read_only'=>true];
     }
 
     private function localChatResponse(string $question, ?array $diagnosis): string
