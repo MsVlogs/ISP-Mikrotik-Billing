@@ -88,15 +88,10 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
 
     private function discoverOnus(string $host, string $community, array $onuConfig, int $timeout, int $retries): array
     {
-        $tables=[];
-        foreach ($onuConfig as $field=>$baseOid) {
-            if (str_starts_with((string) $field, '__')) continue;
-            if (!is_string($field)||!is_string($baseOid)||!preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/',trim($baseOid))) continue;
-            $walk=@snmp2_real_walk($host,$community,trim($baseOid),$timeout,$retries);
-            if(!is_array($walk)) continue;
-            foreach($walk as $returnedOid=>$value){$index=$this->oidIndex((string)$returnedOid,trim($baseOid));if($index===null)continue;$tables[$index][$field]=$this->clean($value);}
-        }
-        if (!$tables && isset($onuConfig['__table_root'], $onuConfig['__column_map']) && is_array($onuConfig['__column_map'])) {
+        $tables = [];
+        $tableRootLoaded = false;
+        $columnMap = $onuConfig['__column_map'] ?? [];
+        if (isset($onuConfig['__table_root']) && is_array($columnMap) && $columnMap) {
             $root = trim((string) $onuConfig['__table_root']);
             $walk = @snmp2_real_walk($host, $community, $root, $timeout, $retries);
             if (is_array($walk)) {
@@ -104,12 +99,25 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
                     $suffix = $this->oidIndex((string) $returnedOid, $root);
                     if ($suffix === null || !str_contains($suffix, '.')) continue;
                     [$column, $index] = explode('.', $suffix, 2);
-                    $field = $onuConfig['__column_map'][(int) $column] ?? null;
-                    if ($field && $index !== '') $tables[$index][$field] = $this->clean($value);
+                    $field = $columnMap[(int) $column] ?? null;
+                    if ($field && $index !== '') {
+                        $tables[$index][$field] = $this->clean($value);
+                        $tableRootLoaded = true;
+                    }
                 }
             }
         }
 
+        foreach ($onuConfig as $field=>$baseOid) {
+            if (str_starts_with((string) $field, '__')) continue;
+            // The root walk already returns these columns. Avoid walking the same
+            // table once per column, which can multiply SNMP latency on large OLTs.
+            if ($tableRootLoaded && in_array($field, $columnMap, true)) continue;
+            if (!is_string($field)||!is_string($baseOid)||!preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/',trim($baseOid))) continue;
+            $walk=@snmp2_real_walk($host,$community,trim($baseOid),$timeout,$retries);
+            if(!is_array($walk)) continue;
+            foreach($walk as $returnedOid=>$value){$index=$this->oidIndex((string)$returnedOid,trim($baseOid));if($index===null)continue;$tables[$index][$field]=$this->clean($value);}
+        }
         $out=[];
         foreach($tables as $index=>$row){$row['snmp_index']=$index;$row['onu_id']=$row['onu_id']??$row['id']??$index;$row['onu_serial']=$row['onu_serial']??$row['serial']??null;$row['onu_mac']=$this->normalizeMac($row['onu_mac']??$row['mac']??$row['onu_id']??null);$row['onu_id']=$this->normalizeMac($row['onu_id'])??$row['onu_id'];$row['pon_port']=$row['pon_port']??$row['pon']??(str_contains((string)$index,'.')?explode('.',(string)$index,2)[0]:null);$row['status']=$this->normalizeEponStatus($row['status']??($row['online']??null));$row['onu_type']=$row['onu_model']??$row['onu_type']??null;$row['rx_power']=$row['rx_power']??$row['optical_rx']??null;$row['tx_power']=$row['tx_power']??$row['optical_tx']??null;$out[]=$row;}
         return $out;
