@@ -503,11 +503,15 @@ Route::middleware([
             abort_unless($device->type==='olt',404);
             $data=$request->validate(['customer_id'=>['required','integer','exists:customers_infos,id'],'onu_id'=>['required','string','max:120'],'onu_mac'=>['nullable','string','max:80'],'pon_port'=>['nullable','string','max:80'],'confirm_overwrite'=>['nullable','boolean']]);
             $customer=\App\Models\CustomersInfo::with('pppUser')->findOrFail($data['customer_id']);
-            abort_if($customer->status!=='active',422,'Only active customers can be mapped.');
+            if ($customer->status !== 'active') return back()->withErrors(['customer_id'=>'Only active customers can be mapped.']);
             // PPPoE is optional for customer-to-ONU mapping; never guess a username.
-            $live=$manager->read($device); abort_unless(($live['status']??'')==='ok',422,'Live ONU verification failed; no mapping was saved.');
+            $live=$manager->read($device);
+            if (($live['status'] ?? '') !== 'ok') return back()->withErrors(['onu_id'=>'Live ONU verification failed; no mapping was saved.']);
             $onu=collect($live['onus']??[])->first(fn($row)=>(string)($row['onu_id']??'')===(string)$data['onu_id']);
-            abort_unless($onu && (string)($onu['onu_mac']??'')===(string)($data['onu_mac']??''),422,'ONU telemetry changed or did not match. Refresh the page and try again.');
+            $normalizeMac=fn($mac)=>strtolower(preg_replace('/[^a-f0-9]/i','',(string)$mac));
+            $postedMac=$normalizeMac($data['onu_mac'] ?? '');
+            $liveMac=$normalizeMac($onu['onu_mac'] ?? '');
+            if (!$onu || ($postedMac !== '' && $liveMac !== '' && $postedMac !== $liveMac)) return back()->withErrors(['onu_id'=>'ONU telemetry changed or did not match. Refresh the page and try again.']);
             $existing=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->where('onu_id',$data['onu_id'])->first();
             abort_if($existing && !$request->boolean('confirm_overwrite'),409,'This ONU already has a saved mapping. Confirm replacement before saving.');
             \App\Models\OltOnuCustomerMapping::updateOrCreate(['olt_device_id'=>$device->id,'onu_id'=>$data['onu_id']],['customer_id'=>$customer->id,'ppp_user_id'=>$customer->ppp_user_id,'onu_serial'=>$onu['onu_serial']??null,'onu_mac'=>$onu['onu_mac']??null,'pon_port'=>$onu['pon_port']??null,'onu_type'=>$onu['onu_type']??null,'rx_power'=>$onu['rx_power']??null,'tx_power'=>$onu['tx_power']??null,'onu_ip'=>$onu['onu_ip']??null,'status'=>$onu['status']??'unknown','last_seen_at'=>now(),'notes'=>$existing?'Manually updated by operator':'Manually mapped by operator']);
