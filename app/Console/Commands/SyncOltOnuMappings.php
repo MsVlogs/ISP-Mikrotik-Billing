@@ -36,9 +36,16 @@ class SyncOltOnuMappings extends Command
 
                 $username = $row['pppoe_username'] ?? $row['pppoeUsername'] ?? $row['username'] ?? null;
                 $pppId = null; $customerId = null;
+                $existingMapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)
+                    ->where('onu_id', $onuId)->first();
                 if ($username !== null && $username !== '') {
                     $ppp = PPPSecrets::where('username', (string) $username)->first();
                     if ($ppp) { $pppId = $ppp->id; $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id'); }
+                } elseif ($existingMapping) {
+                    // OLT telemetry often has no PPPoE username. Never erase an operator's
+                    // existing customer/PPPoE mapping just because telemetry omitted it.
+                    $pppId = $existingMapping->ppp_user_id;
+                    $customerId = $existingMapping->customer_id;
                 }
 
                 $status = $this->normalizeStatus($row);
