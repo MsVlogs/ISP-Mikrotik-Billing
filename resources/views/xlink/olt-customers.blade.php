@@ -14,6 +14,27 @@
 @empty<tr><td colspan="5" class="text-center py-3 text-muted">No live ONU rows available.</td></tr>@endforelse
 </tbody></table></div></div></div>
 @endif
+<div class="card shadow-sm mb-3">
+<div class="card-header d-flex justify-content-between align-items-center"><strong>Needs Review / Unmapped ONU</strong><span class="badge bg-warning text-dark">{{ $mappings->whereNull('customer_id')->count() }}</span></div>
+<div class="card-body p-0">
+@if($mappings->whereNull('customer_id')->count())
+<div class="table-responsive"><table class="table mb-0 align-middle"><thead><tr><th>ONU</th><th>MAC / Serial</th><th>PON</th><th>Status</th><th>RX / TX</th><th>Reason</th><th>Action</th></tr></thead><tbody>
+@foreach($mappings->whereNull('customer_id') as $review)
+<tr>
+<td><strong>{{ $review->onu_id !== null && $review->onu_id !== '' ? $review->onu_id : '—' }}</strong></td>
+<td>{{ $review->onu_mac ?: '—' }}<small class="d-block text-muted">{{ $review->onu_serial ?: '—' }}</small></td>
+<td>{{ $review->pon_port !== null && $review->pon_port !== '' ? $review->pon_port : '—' }}</td>
+<td><span class="badge {{ $review->status==='online'?'bg-success':($review->status==='offline'?'bg-danger':'bg-secondary') }}">{{ ucfirst($review->status) }}</span></td>
+<td>{{ $review->rx_power !== null ? $review->rx_power.' dBm' : '—' }} / {{ $review->tx_power !== null ? $review->tx_power.' dBm' : '—' }}</td>
+<td><span class="text-muted small">No unique PPPoE/MAC match found; manual review required.</span></td>
+<td><a class="btn btn-sm btn-outline-primary" href="{{ route('network-inventory.olt.customers',$device,['q'=>$review->onu_id]) }}">Review / Map</a></td>
+</tr>
+@endforeach
+</tbody></table></div>
+@else
+<div class="p-3 text-success">All discovered ONU rows are currently mapped.</div>
+@endif
+</div></div>
 <div class="card shadow-sm"><div class="card-header d-flex justify-content-between align-items-center"><strong>ONU / Customer Mappings</strong><span class="text-muted small">{{ $mappings->count() }} result(s)</span></div><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 align-middle"><thead><tr><th>Customer</th><th>PPPoE</th><th>ONU ID</th><th>Serial / MAC</th><th>PON</th><th>Status</th><th>RX / TX</th><th>Last Seen</th></tr></thead><tbody>
 @forelse($mappings as $m)<tr><td><strong>{{ optional($m->customer)->customer_name ?: optional($m->customer)->customer_unique_id ?: 'Unmapped' }}</strong><small class="d-block text-muted">{{ optional($m->customer)->mobile }}</small></td><td>{{ optional($m->pppUser)->username ?: '—' }}</td><td>{{ $m->onu_id !== null && $m->onu_id !== '' ? $m->onu_id : '—' }}</td><td>{{ $m->onu_serial ?: '—' }}<small class="d-block text-muted">{{ $m->onu_mac ?: '' }}</small></td><td>{{ $m->pon_port !== null && $m->pon_port !== '' ? $m->pon_port : '—' }}</td><td><span class="badge {{ $m->status==='online'?'bg-success':($m->status==='offline'?'bg-danger':'bg-secondary') }}">{{ ucfirst($m->status) }}</span></td><td>{{ $m->rx_power !== null ? $m->rx_power.' dBm' : '—' }} / {{ $m->tx_power !== null ? $m->tx_power.' dBm' : '—' }}</td><td>{{ optional($m->last_seen_at)->format('d M Y H:i:s') ?: '—' }}</td></tr>@empty<tr><td colspan="8" class="text-center py-5 text-muted">No customer mappings are saved yet. Live ONU telemetry is shown above; mapping records remain separate.</td></tr>@endforelse
 </tbody></table></div></div></div>
