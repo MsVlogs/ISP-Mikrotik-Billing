@@ -81,6 +81,7 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         }
         if ($onuConfig) {
             $result['onus'] = $this->discoverOnus($host, $community, $onuConfig, $timeout, $retries);
+            $result['onus'] = $this->enrichOnus($host, $community, $result['onus'], $timeout, $retries);
             $result['meta']['onu_count'] = count($result['onus']);
             $result['meta']['onu_discovery_configured'] = true;
         }
@@ -143,7 +144,7 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
 
     private function oidIndex(string $returnedOid, string $baseOid): ?string
     {
-        $returned = preg_replace('/^iso\\./i', '', $returnedOid) ?? $returnedOid;
+        $returned = preg_replace('/^iso\\./i', '1.', $returnedOid) ?? $returnedOid;
         $returned = ltrim($returned, '.');
         $base = ltrim($baseOid, '.');
         if ($returned === $base) return '';
@@ -192,5 +193,98 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             'onus' => [],
             'meta' => ['read_only' => true, 'writes_performed' => false, 'oid_count' => 0],
         ];
+    }
+
+    // VSOL enrichment helpers.
+    private function enrichOnus(string $host, string $community, array $onus, int $timeout, int $retries): array
+{
+    $tables = [
+        'auth' => [
+            'onu_no' => '1.3.6.1.4.1.37950.1.1.5.12.1.12.1.3',
+            'mac' => '1.3.6.1.4.1.37950.1.1.5.12.1.12.1.6',
+            'type' => '1.3.6.1.4.1.37950.1.1.5.12.1.12.1.7',
+        ],
+        'sn' => [
+            'vendor' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.3',
+            'model' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.4',
+            'onu_id' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.5',
+            'hw' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.6',
+            'sw' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.7',
+        ],
+        'opm' => [
+            'tx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.6',
+            'rx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.7',
+        ],
+    ];
+    $lookup = [];
+    foreach ($tables as $group => $fields) {
+        foreach ($fields as $field => $base) {
+            $walk = @snmp2_real_walk($host, $community, $base, $timeout, $retries);
+            if (!is_array($walk)) continue;
+            foreach ($walk as $oid => $value) {
+                $idx = $this->oidIndex((string) $oid, $base);
+                if ($idx === null) continue;
+                $parts = array_values(array_filter(explode('.', $idx), 'strlen'));
+                $key = count($parts) >= 2 ? $parts[count($parts)-2].'.'.$parts[count($parts)-1] : (string) ($parts[0] ?? '');
+                if (in_array($group, ['sn','opm'], true) && count($parts) >= 2 && ctype_digit((string) $parts[count($parts)-1])) {
+                    $key = $parts[count($parts)-2].'.'.max(0, ((int) $parts[count($parts)-1]) - 1);
+                }
+                $lookup[$group][$key][$field] = $this->cleanSnmpValue($value);
+            }
+        }
+    }
+    foreach ($onus as &$onu) {
+        $pon = (string) ($onu['pon_port'] ?? '');
+        $id = (string) ($onu['onu_id'] ?? '');
+        $key = $pon !== '' ? $pon.'.'.$id : $id;
+        $shiftedKey = $pon !== '' && ctype_digit($id) ? $pon.'.'.((int) $id + 1) : null;
+        $snKey = $shiftedKey ?: $key;
+        $snExtra = [];
+        $targetMac = $this->normalizeMac($onu['onu_mac'] ?? '');
+        if ($targetMac !== '') {
+            foreach ($lookup['sn'] ?? [] as $candidateKey => $candidate) {
+                if ($this->normalizeMac($candidate['onu_id'] ?? '') === $targetMac) {
+                    $snKey = $candidateKey;
+                    $snExtra = $candidate;
+                    break;
+                }
+            }
+        }
+        foreach (['auth','sn','opm'] as $group) {
+            $extra = $group === 'sn'
+                ? ($snExtra ?: ($lookup[$group][$snKey] ?? []))
+                : ($group === 'opm' ? ($lookup[$group][$snKey] ?? $lookup[$group][$key] ?? []) : ($lookup[$group][$key] ?? $lookup[$group][$id] ?? []));
+            if ($group === 'auth') {
+                $onu['onu_type'] = $onu['onu_type'] ?? ($extra['type'] ?? null);
+                $onu['onu_mac'] = $onu['onu_mac'] ?? ($extra['mac'] ?? null);
+            } elseif ($group === 'sn') {
+                $onu['onu_vendor'] = $extra['vendor'] ?? null;
+                $onu['onu_model'] = $extra['model'] ?? null;
+                $onu['onu_serial'] = $extra['onu_id'] ?? ($onu['onu_serial'] ?? null);
+                $onu['hardware_version'] = $extra['hw'] ?? null;
+                $onu['software_version'] = $extra['sw'] ?? null;
+            } else {
+                $onu['tx_power'] = $this->normalizeOpticalPower($extra['tx'] ?? ($onu['tx_power'] ?? null));
+                $onu['rx_power'] = $this->normalizeOpticalPower($extra['rx'] ?? ($onu['rx_power'] ?? null));
+            }
+        }
+    }
+    unset($onu);
+        return $onus;
+    }
+
+    private function normalizeOpticalPower(mixed $value): mixed
+    {
+        if ($value === null || $value === '') return null;
+        if (preg_match('/\((-?\d+(?:\.\d+)?)\s*dBm\)/i', (string) $value, $m)) return (float) $m[1];
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function normalizeMac(mixed $value): string
+    {
+        $raw = preg_replace('/^0x/i', '', (string) $value) ?? (string) $value;
+        $hex = preg_replace('/[^0-9a-f]/i', '', $raw) ?? '';
+        if (strlen($hex) !== 12) return '';
+        return strtolower(implode(':', str_split($hex, 2)));
     }
 }
