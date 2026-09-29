@@ -11,11 +11,16 @@
     <a class="olt-kpi-card" href="{{ route('customers.index') }}"><span class="olt-kpi-icon"><i class="bi bi-person-check"></i></span><span><small>Customers</small><strong>{{ $devices->sum('customer_count') }}</strong></span></a>
   </div>
   @if(session('inventory_message'))<div class="alert alert-success py-2">{{ session('inventory_message') }}</div>@endif
+  @if(session('onu_sync_message'))<div class="alert alert-{{ session('onu_sync_success') ? 'success' : 'warning' }} py-2 mb-2"><strong>ONU Sync:</strong><pre class="mb-0 mt-1 text-wrap">{{ session('onu_sync_message') }}</pre></div>@endif
   @if($errors->any())<div class="alert alert-danger py-2">{{ $errors->first() }}</div>@endif
   <div class="card shadow-sm border-0 olt-list-card">
     <div class="card-header olt-toolbar-main">
       <div class="olt-toolbar-actions">
         <a class="btn btn-success" href="{{ url()->current() }}"><i class="bi bi-arrow-repeat"></i><span>Refresh</span></a>
+        <form method="POST" action="{{ route('network-inventory.olt.sync') }}" class="d-inline" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button span').textContent='Syncing…';">
+          @csrf
+          <button class="btn btn-outline-success" type="submit" title="Synchronize ONU inventory and customer mappings"><i class="bi bi-arrow-repeat"></i><span>Sync ONU</span></button>
+        </form>
         <a class="btn btn-outline-primary" href="{{ route('customers.index') }}"><i class="bi bi-people"></i><span>Customers</span></a>
         <a class="btn btn-primary" href="{{ route('network-inventory.olt.add') }}"><i class="bi bi-plus-lg"></i><span>Add OLT</span></a>
       </div>

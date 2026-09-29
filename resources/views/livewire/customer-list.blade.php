@@ -1,4 +1,10 @@
 <div>
+    @if(session('onu_sync_message'))
+        <div class="alert alert-{{ session('onu_sync_success') ? 'success' : 'warning' }} mx-sm-0 mx-md-3 mt-3 mb-0">
+            <strong><i class="bi bi-arrow-repeat me-1"></i> ONU Sync:</strong>
+            <pre class="mb-0 mt-1 text-wrap">{{ session('onu_sync_message') }}</pre>
+        </div>
+    @endif
     <div class="card border-0 shadow-sm mx-sm-0 mx-md-3 my-3 customer-filter-card">
         <div class="card-body p-3">
             <div class="row align-items-center">
@@ -64,7 +70,13 @@
                                 </label>
                             @endforeach
                         </div>
-                        <div class="ms-auto border-start ps-1 d-flex gap-1">
+                        <div class="ms-auto border-start ps-1 d-flex flex-wrap gap-1">
+                            <form method="POST" action="{{ route('network-inventory.olt.sync') }}" class="d-inline" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button span').textContent='Syncing…';">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Synchronize ONU inventory and customer mappings">
+                                    <i class="bi bi-arrow-repeat me-1"></i><span>Sync ONU</span>
+                                </button>
+                            </form>
                             @if(auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['create-customer']))
                                 <a href="{{ route('customer-add') }}" class="btn btn-primary btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;">
                                     <i class="bi bi-person-plus-fill me-1"></i> {{ __('Add Customer') }}

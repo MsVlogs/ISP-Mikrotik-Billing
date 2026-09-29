@@ -455,6 +455,13 @@ Route::middleware([
             return back()->with('inventory_message', 'Inventory record deleted.');
         })->name('network-inventory.devices.destroy');
 
+        Route::post('/network-inventory/olt/sync-onu-mappings', function (\Illuminate\Http\Request $request) {
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('olt:sync-onu-mappings');
+            $output = trim(\Illuminate\Support\Facades\Artisan::output());
+            $message = $output !== '' ? $output : ($exitCode === 0 ? 'ONU synchronization completed.' : 'ONU synchronization failed.');
+            return back()->with('onu_sync_message', $message)->with('onu_sync_success', $exitCode === 0);
+        })->name('network-inventory.olt.sync');
+
         Route::get('/network-inventory/olt-management', function (\App\Services\Olt\OltReadOnlyAdapterManager $manager) {
             $query = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name');
             if ($q = trim((string) request('q',''))) {
