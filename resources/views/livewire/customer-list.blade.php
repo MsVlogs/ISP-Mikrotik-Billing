@@ -21,7 +21,7 @@
                 @endif
                 <div class="{{ $routers->count() > 1 ? 'col-md-10' : 'col-md-12' }}">
                     <label class="small text-muted fw-bold ps-1">{{ __('FILTERS') }}</label>
-                    <div class="d-flex flex-wrap gap-1">
+                    <div class="d-flex flex-wrap gap-1 customer-filter-toolbar">
                         <div class="filter-group d-flex gap-1 overflow-auto pb-1">
                             <input type="radio" class="btn-check" name="collection" id="all_list" autocomplete="off">
                             <label class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-none fw-600" for="all_list">
@@ -70,7 +70,7 @@
                                 </label>
                             @endforeach
                         </div>
-                        <div class="ms-auto border-start ps-1 d-flex flex-wrap gap-1">
+                        <div class="ms-auto border-start ps-1 d-flex flex-nowrap gap-1 customer-filter-actions">
                             <form method="POST" action="{{ route('network-inventory.olt.sync') }}" class="d-inline" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button span').textContent='Syncing…';">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Synchronize ONU inventory and customer mappings">
@@ -278,6 +278,22 @@
             scrollbar-width: thin;
             -webkit-overflow-scrolling: touch;
         }
+        /* Keep filters and action buttons on one row on desktop.
+           Let the filter chips scroll instead of pushing actions onto a second line. */
+        .customer-filter-toolbar {
+            display: flex;
+            flex-wrap: nowrap !important;
+            align-items: center;
+            min-width: 0;
+        }
+        .customer-filter-toolbar > .filter-group {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .customer-filter-toolbar > .customer-filter-actions {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
         .customer-table-card .table-responsive {
             border-radius: 14px;
         }
@@ -305,6 +321,21 @@
             background-color: #f8f9ff !important;
         }
         @media (max-width: 767.98px) {
+            .customer-filter-toolbar {
+                flex-wrap: wrap !important;
+            }
+            .customer-filter-toolbar > .filter-group {
+                flex: 1 1 100%;
+                width: 100%;
+            }
+            .customer-filter-toolbar > .customer-filter-actions {
+                flex-wrap: wrap !important;
+                width: 100%;
+                margin-left: 0 !important;
+                border-left: 0 !important;
+                border-top: 1px solid #dee2e6;
+                padding-top: .5rem;
+            }
             .customer-filter-card,
             .customer-table-card {
                 margin-left: 0 !important;
