@@ -455,7 +455,7 @@ Route::middleware([
             return back()->with('inventory_message', 'Inventory record deleted.');
         })->name('network-inventory.devices.destroy');
 
-        Route::get('/network-inventory/olt-management', function () {
+        Route::get('/network-inventory/olt-management', function (\App\Services\Olt\OltReadOnlyAdapterManager $manager) {
             $query = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name');
             if ($q = trim((string) request('q',''))) {
                 $query->where(function($x) use ($q) {
@@ -464,6 +464,34 @@ Route::middleware([
             }
             if (in_array(request('status'),['online','offline','unknown'],true)) $query->where('status',request('status'));
             $devices=$query->paginate(20)->withQueryString();
+
+            // Refresh the OLT summary counters from read-only live ONU discovery.
+            // Keep the last known values if an OLT cannot be reached.
+            foreach ($devices as $device) {
+                try {
+                    $live = $manager->read($device);
+                    if (($live['status'] ?? '') !== 'ok') continue;
+
+                    $onus = collect($live['onus'] ?? []);
+                    $onlineOnus = $onus->filter(fn ($onu) => strtolower((string) ($onu['status'] ?? '')) === 'online')->count();
+                    $customerCount = \App\Models\OltOnuCustomerMapping::where('olt_device_id', $device->id)
+                        ->whereNotNull('customer_id')
+                        ->distinct()
+                        ->count('customer_id');
+
+                    $device->update([
+                        'onu_total' => $onus->count(),
+                        'onu_online' => $onlineOnus,
+                        'customer_count' => $customerCount,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::warning('OLT list live ONU summary refresh failed', [
+                        'olt_id' => $device->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             return view('xlink.olts',['devices'=>$devices]);
         })->name('network-inventory.olt');
 
