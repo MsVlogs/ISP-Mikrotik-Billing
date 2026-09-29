@@ -181,8 +181,12 @@ class AiEngineerDiagnosticService
             foreach($safeHistory as $m)$messages[]=$m;
             $messages[]=['role'=>'user','content'=>mb_substr($question,0,4000)];
             $baseUrl=rtrim((string)config('services.gemini.base_url','https://generativelanguage.googleapis.com/v1beta/openai'),'/');
-            $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->post($baseUrl.'/chat/completions',['model'=>config('services.gemini.model','gemini-3.8-flash'),'messages'=>$messages]);
-            if(!$response->successful()){\Log::error('AI Engineer Gemini request failed',['status'=>$response->status()]);return ['ok'=>false,'configured'=>true,'provider'=>'gemini','message'=>'Gemini request failed. Local diagnostics remain available.'];}
+            $payload=['model'=>config('services.gemini.model','gemini-3.8-flash'),'messages'=>$messages,'reasoning_effort'=>'low'];
+            $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->retry(2,500,fn($exception,$request)=>true)->post($baseUrl.'/chat/completions',$payload);
+            if(!$response->successful()){
+                \Log::error('AI Engineer Gemini request failed',['status'=>$response->status(),'body'=>mb_substr($response->body(),0,1000)]);
+                return ['ok'=>false,'configured'=>true,'provider'=>'gemini','message'=>'Gemini request failed (HTTP '.$response->status().'). Local diagnostics remain available.'];
+            }
             $body=$response->json();
             $text=$body['choices'][0]['message']['content']??'';
             if(is_array($text))$text=implode("\n",array_map(fn($part)=>(string)($part['text']??''),$text));
