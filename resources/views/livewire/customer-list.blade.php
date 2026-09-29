@@ -286,13 +286,49 @@
             align-items: center;
             min-width: 0;
         }
+        .customer-filter-toolbar {
+            width: 100%;
+            gap: .3rem !important;
+        }
         .customer-filter-toolbar > .filter-group {
-            flex: 1 1 auto;
+            flex: 1 1 0% !important;
+            width: 0;
             min-width: 0;
+            overflow-x: auto !important;
+            overflow-y: hidden;
+            flex-wrap: nowrap !important;
+            gap: .25rem !important;
+            white-space: nowrap;
+        }
+        .customer-filter-toolbar > .filter-group > label {
+            flex: 0 0 auto;
+            padding-left: .45rem !important;
+            padding-right: .45rem !important;
+            font-size: .72rem !important;
+            min-height: 29px;
+        }
+        .customer-filter-toolbar > .filter-group .badge {
+            font-size: .65rem;
+            padding: .2em .35em;
         }
         .customer-filter-toolbar > .customer-filter-actions {
-            flex: 0 0 auto;
+            flex: 0 0 auto !important;
+            width: auto !important;
+            margin-left: auto !important;
             white-space: nowrap;
+            gap: .25rem !important;
+            padding-left: .4rem !important;
+        }
+        .customer-filter-actions .btn {
+            padding-left: .5rem !important;
+            padding-right: .5rem !important;
+            font-size: .74rem !important;
+            height: 1.85rem !important;
+            white-space: nowrap;
+        }
+        .customer-filter-actions form {
+            flex: 0 0 auto;
+            margin: 0;
         }
         .customer-table-card .table-responsive {
             border-radius: 14px;
@@ -322,19 +358,25 @@
         }
         @media (max-width: 767.98px) {
             .customer-filter-toolbar {
-                flex-wrap: wrap !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: .25rem;
             }
             .customer-filter-toolbar > .filter-group {
-                flex: 1 1 100%;
-                width: 100%;
+                flex: 0 0 42%;
+                width: 42%;
+                min-width: 42%;
             }
-            .customer-filter-toolbar > .customer-filter-actions {
-                flex-wrap: wrap !important;
-                width: 100%;
+            .customer-filter-toolbar > .customer-filter-actions,
+            .customer-filter-card .ms-auto.customer-filter-actions {
+                flex: 0 0 auto !important;
+                flex-wrap: nowrap !important;
+                width: max-content !important;
                 margin-left: 0 !important;
-                border-left: 0 !important;
-                border-top: 1px solid #dee2e6;
-                padding-top: .5rem;
+                border-left: 1px solid #dee2e6 !important;
+                border-top: 0 !important;
+                padding-top: 0 !important;
             }
             .customer-filter-card,
             .customer-table-card {
