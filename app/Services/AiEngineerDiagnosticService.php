@@ -177,6 +177,7 @@ class AiEngineerDiagnosticService
             $contextData['network_snapshot']=$this->networkSnapshot();
             $contextData['incident_summary']=$this->incidentSummary();
             $contextData['unmapped_onus']=$this->unmappedOnus(12);
+            $contextData['optical_power']=$this->opticalPowerList(50);
         }
         $context=json_encode($contextData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 
@@ -192,10 +193,15 @@ class AiEngineerDiagnosticService
             $messages[]=['role'=>'user','content'=>mb_substr($question,0,4000)];
             $baseUrl=rtrim((string)config('services.gemini.base_url','https://generativelanguage.googleapis.com/v1beta/openai'),'/');
             $payload=['model'=>config('services.gemini.model','gemini-3.8-flash'),'messages'=>$messages,'reasoning_effort'=>'low'];
-            $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->retry(2,500,fn($exception,$request)=>true)->post($baseUrl.'/chat/completions',$payload);
+            try {
+                $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->retry(2,500,fn($exception,$request)=>true,false)->post($baseUrl.'/chat/completions',$payload);
+            } catch (\Throwable $e) {
+                \Log::error('AI Engineer Gemini request exception',['error'=>$e->getMessage()]);
+                return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+            }
             if(!$response->successful()){
                 \Log::error('AI Engineer Gemini request failed',['status'=>$response->status(),'body'=>mb_substr($response->body(),0,1000)]);
-                return ['ok'=>false,'configured'=>true,'provider'=>'gemini','message'=>'Gemini request failed (HTTP '.$response->status().'). Local diagnostics remain available.'];
+                return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
             }
             $body=$response->json();
             $text=$body['choices'][0]['message']['content']??'';
@@ -217,6 +223,12 @@ class AiEngineerDiagnosticService
     {
         $q=mb_strtolower(trim($question));
         if (!$diagnosis || !($diagnosis['ok']??false)) {
+            if (str_contains($q,'optical') || str_contains($q,'power') || str_contains($q,'rx') || str_contains($q,'tx') || str_contains($q,'অপ্টিকাল') || str_contains($q,'পাওয়ার')) {
+                $rows=$this->opticalPowerList(50);
+                if (!$rows) return 'No ONU optical-power readings are available in the current mapping data.';
+                $parts=array_map(fn($r)=>($r['olt']?:'OLT').' | ONU '.($r['onu_id']??'—').' | MAC '.($r['mac']??'—').' | PON '.($r['pon']??'—').' | RX '.($r['rx']??'—').' dBm | TX '.($r['tx']??'—').' dBm | '.($r['status']??'unknown'),$rows);
+                return 'বর্তমান ONU optical power তালিকা:\n'.implode("\n",$parts);
+            }
             if (str_contains($q,'billing') || str_contains($q,'bill') || str_contains($q,'due')) return 'For billing, check the customer\'s outstanding amount, auto-disable setting, account status, and any open support ticket. Select a customer to get customer-specific evidence.';
             if (str_contains($q,'device') || str_contains($q,'router') || str_contains($q,'mikrotik')) return 'For a device issue, check the assigned router inventory state, last-seen/session information, and any linked ONU mapping. Select a customer for a service-path diagnosis.';
             return 'Local read-only diagnostics are active. Select a customer and ask about service path, billing, PPPoE, router, ONU, or outage symptoms.';
@@ -305,6 +317,15 @@ class AiEngineerDiagnosticService
         return OltOnuCustomerMapping::with('olt')->whereNull('customer_id')->latest('id')->limit($limit)->get()->map(fn($m)=>[
             'id'=>$m->id,'olt'=>$m->olt?->name,'onu_id'=>$m->onu_id,'mac'=>$m->onu_mac,'serial'=>$m->onu_serial,'pon'=>$m->pon_port,
             'status'=>$m->status,'rx'=>$m->rx_power,'tx'=>$m->tx_power,'last_seen'=>$m->last_seen_at,'reason'=>$m->notes?:'No exact customer/PPPoE match found.'
+        ])->values()->all();
+    }
+
+    public function opticalPowerList(int $limit=50): array
+    {
+        if(!Schema::hasTable('olt_onu_customer_mappings')) return [];
+        return OltOnuCustomerMapping::with('olt')->latest('id')->limit($limit)->get()->map(fn($m)=>[
+            'id'=>$m->id,'olt'=>$m->olt?->name,'onu_id'=>$m->onu_id,'mac'=>$m->onu_mac,'serial'=>$m->onu_serial,
+            'pon'=>$m->pon_port,'status'=>$m->status,'rx'=>$m->rx_power,'tx'=>$m->tx_power,'last_seen'=>$m->last_seen_at,
         ])->values()->all();
     }
 
