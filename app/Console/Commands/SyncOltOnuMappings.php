@@ -51,13 +51,17 @@ class SyncOltOnuMappings extends Command
                     $normalizedMac = $this->normalizeMac($onuMac);
                     if ($normalizedMac !== '') {
                         $ppps = PPPSecrets::query()
-                            ->where(function ($q) use ($normalizedMac) {
-                                $q->whereRaw("LOWER(REPLACE(REPLACE(REPLACE(caller_id, ':', ''), '-', ''), '.', '')) = ?", [$normalizedMac])
-                                  ->orWhereRaw("LOWER(REPLACE(REPLACE(REPLACE(last_caller_id, ':', ''), '-', ''), '.', '')) = ?", [$normalizedMac]);
-                            })->limit(2)->get();
-                        if ($ppps->count() === 1) {
-                            $ppp = $ppps->first();
-                            $pppId = $ppp->id; $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id');
+                            ->whereNotNull('caller_id')
+                            ->orWhereNotNull('last_caller_id')
+                            ->get(['id', 'caller_id', 'last_caller_id']);
+                        $matches = $ppps->filter(function ($ppp) use ($normalizedMac) {
+                            return $this->normalizeMac($ppp->caller_id) === $normalizedMac
+                                || $this->normalizeMac($ppp->last_caller_id) === $normalizedMac;
+                        })->values();
+                        if ($matches->count() === 1) {
+                            $ppp = $matches->first();
+                            $pppId = $ppp->id;
+                            $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id');
                             $autoMatch = 'mac';
                         }
                     }
@@ -79,6 +83,13 @@ class SyncOltOnuMappings extends Command
                     $issues[] = "ONU {$onuId}: invalid last_seen ignored";
                     $lastSeen = null;
                 }
+                // A successful live poll is itself evidence that an online ONU was seen now.
+                // Preserve the previous timestamp when telemetry omits last_seen for an offline/unknown ONU.
+                if (($lastSeen === null || $lastSeen === '') && $status === 'online') {
+                    $lastSeen = now();
+                } elseif (($lastSeen === null || $lastSeen === '') && $existingMapping?->last_seen_at) {
+                    $lastSeen = $existingMapping->last_seen_at;
+                }
 
                 if ($this->option('dry-run')) {
                     $this->line("OLT {$olt->id}: ONU {$onuId} → customer=".($customerId ?? 'unmapped').", ppp=".($pppId ?? 'unmapped').", status={$status}");
@@ -89,8 +100,8 @@ class SyncOltOnuMappings extends Command
                 OltOnuCustomerMapping::updateOrCreate(
                     ['olt_device_id' => $olt->id, 'onu_id' => (string) $onuId],
                     [
-                        'customer_id' => $existingMapping ? $existingMapping->customer_id : $customerId,
-                        'ppp_user_id' => $existingMapping ? $existingMapping->ppp_user_id : $pppId,
+                        'customer_id' => $customerId ?? $existingMapping?->customer_id,
+                        'ppp_user_id' => $pppId ?? $existingMapping?->ppp_user_id,
                         'onu_serial' => $row['onu_serial'] ?? $row['serial'] ?? $row['onuSerial'] ?? null,
                         'onu_mac' => $onuMac,
                         'pon_port' => $row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? null,

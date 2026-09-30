@@ -27,8 +27,8 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         if ($host === '') return $this->fail($device, 'OLT management host/IP is not configured.');
         if ($community === '') return $this->fail($device, 'SNMP community is not configured for the adapter.');
 
-        $timeout = max(100000, (int) ($config['timeout_us'] ?? 1000000));
-        $retries = max(0, (int) ($config['retries'] ?? 1));
+        $timeout = min(max(100000, (int) ($config['timeout_us'] ?? 500000)), 750000);
+        $retries = min(max(0, (int) ($config['retries'] ?? 0)), 1);
 
         // Standard SNMP system OIDs provide a safe connectivity/identity probe.
         // Vendor-specific ONU OIDs remain configuration-driven and are never guessed.
