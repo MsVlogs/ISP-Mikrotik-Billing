@@ -89,8 +89,8 @@ class SyncOltOnuMappings extends Command
                 OltOnuCustomerMapping::updateOrCreate(
                     ['olt_device_id' => $olt->id, 'onu_id' => (string) $onuId],
                     [
-                        'customer_id' => $existingMapping?->customer_id ?? $customerId,
-                        'ppp_user_id' => $existingMapping?->ppp_user_id ?? $pppId,
+                        'customer_id' => $existingMapping ? $existingMapping->customer_id : $customerId,
+                        'ppp_user_id' => $existingMapping ? $existingMapping->ppp_user_id : $pppId,
                         'onu_serial' => $row['onu_serial'] ?? $row['serial'] ?? $row['onuSerial'] ?? null,
                         'onu_mac' => $onuMac,
                         'pon_port' => $row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? null,
@@ -100,7 +100,7 @@ class SyncOltOnuMappings extends Command
                         'tx_power' => $row['tx_power'] ?? $row['opticalTx'] ?? null,
                         'onu_ip' => $row['onu_ip'] ?? $row['ip'] ?? $row['onuIp'] ?? null,
                         'last_seen_at' => $lastSeen,
-                        'notes' => $autoMatch ? 'Auto-mapped by '.$autoMatch : ($existingMapping?->notes ?? $row['detail'] ?? null),
+                        'notes' => $existingMapping ? $existingMapping->notes : ($autoMatch ? 'Auto-mapped by '.$autoMatch : ($row['detail'] ?? null)),
                     ]
                 );
                 $count++;
