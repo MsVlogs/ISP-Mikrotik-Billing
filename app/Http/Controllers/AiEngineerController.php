@@ -12,7 +12,9 @@ class AiEngineerController extends Controller
         $customerId = trim((string) $request->query('customer', ''));
         $diagnosis = $customerId !== '' ? $engineer->diagnoseCustomer($customerId) : null;
         $overview = $engineer->overview();
-        return view('xlink.ai-engineer', compact('customerId', 'diagnosis', 'overview'));
+        $dailySummary = ['generated_at' => $overview['generated_at'] ?? now()->toIso8601String(), 'read_only' => true];
+        $unmappedOnus = $engineer->unmappedOnus(12);
+        return view('xlink.ai-engineer', compact('customerId', 'diagnosis', 'overview', 'dailySummary', 'unmappedOnus'));
     }
 
     public function diagnose(Request $request, AiEngineerDiagnosticService $engineer)

@@ -26,11 +26,15 @@ class AiEngineerDiagnosticService
         $oltMapped = Schema::hasTable('olt_onu_customer_mappings') ? OltOnuCustomerMapping::count() : 0;
         $tickets = Schema::hasTable('support_tickets') ? DB::table('support_tickets')->count() : 0;
 
+        $network = $this->networkSnapshot();
+        $incidents = $this->incidentSummary();
         return [
             'customers' => ['total'=>$customerCount,'active'=>$active,'pending'=>$pending,'disabled'=>$disabled],
             'routers' => ['total'=>$routerTotal,'connected'=>$routerConnected,'disconnected'=>max(0,$routerTotal-$routerConnected)],
-            'olt_onu' => ['mapped'=>$oltMapped],
+            'olt_onu' => ['mapped'=>$oltMapped,'total'=>$network['onu_total'],'online'=>$network['onu_online'],'unmapped'=>$network['unmapped_onu']],
             'support' => ['tickets'=>$tickets],
+            'network' => $network,
+            'incidents' => $incidents,
             'ai_provider' => (string) config('services.ai.provider', 'gemini'),
             'ai_configured' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
             'openai_configured' => (string) config('services.openai.api_key') !== '',
@@ -168,7 +172,13 @@ class AiEngineerDiagnosticService
         $provider=strtolower((string)config('services.ai.provider','gemini'));
         if(!in_array($provider,['gemini','openai'],true))$provider='gemini';
         $apiKey=(string)config("services.{$provider}.api_key");
-        $context=$diagnosis&&($diagnosis['ok']??false)?json_encode($diagnosis,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES):json_encode($this->overview());
+        $contextData=$diagnosis&&($diagnosis['ok']??false)?$diagnosis:$this->overview();
+        if(!$diagnosis){
+            $contextData['network_snapshot']=$this->networkSnapshot();
+            $contextData['incident_summary']=$this->incidentSummary();
+            $contextData['unmapped_onus']=$this->unmappedOnus(12);
+        }
+        $context=json_encode($contextData,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 
         // Local diagnostics remain available if the selected provider has no key.
         if ($apiKey==='') {
@@ -242,6 +252,66 @@ class AiEngineerDiagnosticService
         }
 
         return 'For '.($c['id']??'this customer').', current severity is '.($diagnosis['severity']??'unknown').'. '.($diagnosis['summary']??'No summary available.').' Evidence: '.implode(' ',$evidence). ' Recommended checks: '.implode(' ',$checks);
+    }
+
+    public function networkSnapshot(): array
+    {
+        $devices=NetworkInventoryDevice::whereNotNull('type')->get(['id','type','status','health_status','onu_total','onu_online']);
+        $olts=$devices->filter(fn($d)=>in_array(strtolower((string)$d->type),['olt','epon','gpon'],true));
+        $oltOnline=0; $oltOffline=0; $onuTotal=0; $onuOnline=0; $liveRead=0;
+        foreach($olts as $olt){
+            try {
+                $live=app(\App\Services\Olt\OltReadOnlyAdapterManager::class)->read($olt);
+                if(($live['ok']??false)===true){
+                    $liveRead++; $oltOnline++; $onus=$live['onus']??[];
+                    $onuTotal+=count($onus);
+                    $onuOnline+=count(array_filter($onus,fn($o)=>strtolower((string)($o['status']??''))==='online'));
+                    continue;
+                }
+            } catch (\Throwable $e) { \Log::debug('AI Engineer OLT live summary failed',['device_id'=>$olt->id,'error'=>$e->getMessage()]); }
+            $state=strtolower((string)($olt->health_status?:$olt->status));
+            if(in_array($state,['online','up','connected','healthy'],true)) $oltOnline++;
+            elseif(in_array($state,['offline','down','unreachable','critical'],true)) $oltOffline++;
+            $onuTotal+=(int)($olt->onu_total??0); $onuOnline+=(int)($olt->onu_online??0);
+        }
+        $mappingTotal=Schema::hasTable('olt_onu_customer_mappings')?OltOnuCustomerMapping::count():0;
+        $mapped=Schema::hasTable('olt_onu_customer_mappings')?OltOnuCustomerMapping::whereNotNull('customer_id')->count():0;
+        $routers=RouterList::get(['action']);
+        return ['device_total'=>$devices->count(),'olt_total'=>$olts->count(),'olt_online'=>$oltOnline,'olt_offline'=>$oltOffline,
+            'router_total'=>$routers->count(),'router_online'=>$routers->where('action','connected')->count(),
+            'onu_total'=>$onuTotal,'onu_online'=>$onuOnline,'onu_offline'=>max(0,$onuTotal-$onuOnline),
+            'mapping_total'=>$mappingTotal,'mapped_customers'=>$mapped,'unmapped_onu'=>max(0,$mappingTotal-$mapped),
+            'affected_customers'=>Schema::hasTable('olt_onu_customer_mappings')?OltOnuCustomerMapping::whereNotNull('customer_id')->whereIn(DB::raw('LOWER(status)'),['offline','down','los'])->distinct('customer_id')->count('customer_id'):0,
+            'live_olt_reads'=>$liveRead,'generated_at'=>now()->toIso8601String()];
+    }
+
+    public function incidentSummary(): array
+    {
+        $e=['total'=>0,'open'=>0,'critical'=>0,'warning'=>0,'latest'=>[]];
+        if(Schema::hasTable('network_events')){
+            $q=DB::table('network_events'); $open=(clone $q)->whereNotIn(DB::raw('LOWER(status)'),['resolved','closed']);
+            $e['total']=(clone $q)->count(); $e['open']=(clone $open)->count();
+            $e['critical']=(clone $open)->whereRaw("LOWER(severity)='critical'")->count();
+            $e['warning']=(clone $open)->whereRaw("LOWER(severity)='warning'")->count();
+            $e['latest']=(clone $open)->latest('id')->limit(8)->get(['id','device_id','severity','title','message','status','occurrences','last_seen_at'])->map(fn($x)=>(array)$x)->values()->all();
+        }
+        $n=$this->networkSnapshot(); $e['affected_customers']=$n['affected_customers'];
+        $e['status']=$e['critical']>0?'critical':($e['open']>0||$n['olt_offline']>0?'attention':'healthy'); return $e;
+    }
+
+    public function unmappedOnus(int $limit=20): array
+    {
+        if(!Schema::hasTable('olt_onu_customer_mappings')) return [];
+        return OltOnuCustomerMapping::with('olt')->whereNull('customer_id')->latest('id')->limit($limit)->get()->map(fn($m)=>[
+            'id'=>$m->id,'olt'=>$m->olt?->name,'onu_id'=>$m->onu_id,'mac'=>$m->onu_mac,'serial'=>$m->onu_serial,'pon'=>$m->pon_port,
+            'status'=>$m->status,'rx'=>$m->rx_power,'tx'=>$m->tx_power,'last_seen'=>$m->last_seen_at,'reason'=>$m->notes?:'No exact customer/PPPoE match found.'
+        ])->values()->all();
+    }
+
+    public function dailySummary(): array
+    {
+        $o=$this->overview(); return ['status'=>$o['incidents']['status'],'network'=>$o['network'],'incidents'=>$o['incidents'],
+            'customers'=>$o['customers'],'routers'=>$o['routers'],'olt_onu'=>$o['olt_onu'],'generated_at'=>now()->toIso8601String(),'read_only'=>true];
     }
 
     public function searchCustomers(string $q): array

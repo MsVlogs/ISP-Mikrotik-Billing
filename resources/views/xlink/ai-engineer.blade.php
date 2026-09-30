@@ -8,7 +8,48 @@
  @foreach([['label'=>'Customers','value'=>$overview['customers']['total'],'sub'=>$overview['customers']['active'].' active'],['label'=>'Pending / Disabled','value'=>$overview['customers']['pending']+$overview['customers']['disabled'],'sub'=>$overview['customers']['pending'].' pending · '.$overview['customers']['disabled'].' disabled'],['label'=>'Routers','value'=>$overview['routers']['total'],'sub'=>$overview['routers']['connected'].' connected'],['label'=>'OLT/ONU mappings','value'=>$overview['olt_onu']['mapped'],'sub'=>$overview['olt_onu']['mapped'] ? 'mapped customers' : 'no mapping data'],['label'=>'Support tickets','value'=>$overview['support']['tickets'],'sub'=>'recorded tickets']] as $card)
  <div class="col-md-6 col-xl"><div class="ai-card p-3 h-100"><div class="small ai-muted">{{ $card['label'] }}</div><div class="h3 mb-1 mt-1">{{ $card['value'] }}</div><div class="small ai-muted">{{ $card['sub'] }}</div></div></div>
  @endforeach
-</div>
+</div> <div class="row g-3 mb-4">
+  @php($n=$overview['network'] ?? [])
+  @php($inc=$overview['incidents'] ?? [])
+  @foreach([
+   ['label'=>'Network Devices','value'=>$n['device_total']??0,'sub'=>($n['olt_total']??0).' OLT'],
+   ['label'=>'OLT Health','value'=>($n['olt_online']??0),'sub'=>($n['olt_offline']??0).' offline'],
+   ['label'=>'ONU Online','value'=>($n['onu_online']??0),'sub'=>($n['onu_offline']??0).' offline'],
+   ['label'=>'Affected Customers','value'=>($n['affected_customers']??0),'sub'=>'mapped ONU offline/LOS'],
+   ['label'=>'Open Incidents','value'=>($inc['open']??0),'sub'=>($inc['critical']??0).' critical · '.($inc['warning']??0).' warning'],
+   ['label'=>'Unmapped ONU','value'=>($n['unmapped_onu']??0),'sub'=>'needs review'],
+  ] as $card)
+   <div class="col-6 col-xl-2"><div class="ai-card p-3 h-100"><div class="small ai-muted">{{ $card['label'] }}</div><div class="h3 mb-1 mt-1">{{ $card['value'] }}</div><div class="small ai-muted">{{ $card['sub'] }}</div></div></div>
+  @endforeach
+ </div>
+ <div class="row g-3 mb-4">
+  <div class="col-xl-7"><div class="ai-card p-4 h-100">
+   <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0"><i class="bi bi-activity me-1"></i> Automatic Network Summary</h2><span class="badge text-bg-{{ ($inc['status']??'healthy')==='critical'?'danger':(($inc['status']??'healthy')==='attention'?'warning':'success') }}">{{ strtoupper($inc['status']??'healthy') }}</span></div>
+   <div class="row g-2 small">
+    <div class="col-md-6"><div class="border rounded p-2">Routers: <strong>{{ $n['router_online']??0 }}/{{ $n['router_total']??0 }}</strong> connected</div></div>
+    <div class="col-md-6"><div class="border rounded p-2">OLT: <strong>{{ $n['olt_online']??0 }}/{{ $n['olt_total']??0 }}</strong> online</div></div>
+    <div class="col-md-6"><div class="border rounded p-2">ONU: <strong>{{ $n['onu_online']??0 }}/{{ $n['onu_total']??0 }}</strong> online</div></div>
+    <div class="col-md-6"><div class="border rounded p-2">Affected: <strong>{{ $n['affected_customers']??0 }}</strong> customer estimate</div></div>
+   </div>
+   <div class="mt-3 small ai-muted">Generated {{ $dailySummary['generated_at'] ?? now()->toIso8601String() }} · read-only</div>
+  </div></div>
+  <div class="col-xl-5"><div class="ai-card p-4 h-100">
+   <h2 class="h5 mb-3"><i class="bi bi-exclamation-triangle me-1"></i> Active Incidents</h2>
+   @forelse(($inc['latest']??[]) as $event)
+    <div class="border rounded p-2 mb-2 small"><div class="fw-semibold">{{ $event['title'] ?? 'Network event' }}</div><div class="ai-muted">{{ $event['severity'] ?? 'warning' }} · {{ $event['status'] ?? 'open' }} · {{ $event['occurrences'] ?? 1 }} occurrence(s)</div></div>
+   @empty <div class="ai-muted small">No open network events recorded.</div>
+   @endforelse
+  </div></div>
+ </div>
+ <div class="ai-card p-4 mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0"><i class="bi bi-diagram-3 me-1"></i> Needs Review · Unmapped ONU</h2><span class="badge text-bg-warning">{{ count($unmappedOnus) }}</span></div>
+  @if(count($unmappedOnus))
+   <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>OLT</th><th>ONU</th><th>MAC</th><th>PON</th><th>Status</th><th>RX/TX</th><th>Reason</th></tr></thead><tbody>
+   @foreach($unmappedOnus as $u)<tr><td>{{ $u['olt'] ?? '—' }}</td><td>{{ $u['onu_id'] ?? '—' }}</td><td>{{ $u['mac'] ?? '—' }}</td><td>{{ $u['pon'] ?? '—' }}</td><td>{{ $u['status'] ?? 'unknown' }}</td><td>{{ $u['rx'] ?? '—' }} / {{ $u['tx'] ?? '—' }}</td><td>{{ $u['reason'] ?? 'Manual review required' }}</td></tr>@endforeach
+   </tbody></table></div>
+  @else <div class="ai-muted small">No unmapped ONU currently in the review queue.</div>@endif
+ </div>
+
 <div class="ai-card p-3 mb-4"><div class="d-flex flex-wrap justify-content-between gap-2"><span><i class="bi bi-database-check me-1"></i> Local diagnostic data is available now.</span><span class="ai-readonly">Conversational AI: {{ ($overview['ai_configured'] ?? $overview['openai_configured']) ? strtoupper($overview['ai_provider'] ?? 'external') . ' configured' : 'local read-only mode' }} · read-only</span></div></div>
 <div class="ai-card p-4 mb-4"><div class="row g-3 align-items-end"><div class="col-lg-9"><label class="form-label fw-semibold">Customer</label><input id="aiCustomer" class="form-control form-control-lg" value="{{ $customerId }}" placeholder="Customer ID, name, mobile or PPPoE username" autocomplete="off"><div id="aiSuggestions" class="mt-2 d-flex flex-wrap gap-2"></div></div><div class="col-lg-3"><button id="aiDiagnose" class="btn btn-primary btn-lg w-100"><i class="bi bi-stars me-1"></i> Diagnose</button></div></div><div class="mt-3 d-flex flex-wrap gap-2"><button class="ai-chip js-question" data-q="Why is this customer offline?">Why is this customer offline?</button><button class="ai-chip js-question" data-q="What is wrong with this customer's service path?">Check service path</button><button class="ai-chip js-question" data-q="What billing issue should I check?">Check billing</button></div></div>
  <div class="ai-card p-4 mb-4"><div id="aiChatLog" class="ai-chat mb-3"><div class="ai-bubble"><strong>AI Engineer:</strong> Ask me about this customer, device, billing, or outage.</div></div><div class="input-group"><input id="aiQuestion" class="form-control" placeholder="Why is this customer offline?"><button id="aiAsk" class="btn btn-primary">Ask AI Engineer</button></div></div>
