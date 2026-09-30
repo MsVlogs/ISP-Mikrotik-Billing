@@ -57,7 +57,15 @@ class ScheduledTasksController extends Controller
     public function createMonthlyBill()
     {
         BillingInfo::query()->cursor()->each(function ($billing) {
-            $customer = CustomersInfo::where('customer_unique_id', $billing->customer_bill_unique_id)->first();
+            // Billing rows can remain after a customer is soft-deleted. Treat those
+            // records as intentionally retired instead of raising a false orphan alert.
+            $customer = CustomersInfo::withTrashed()
+                ->where('customer_unique_id', $billing->customer_bill_unique_id)
+                ->first();
+
+            if ($customer && $customer->trashed()) {
+                return;
+            }
 
             if (! $customer) {
                 NotificationLogs::create([
