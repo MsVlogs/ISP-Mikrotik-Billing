@@ -265,7 +265,8 @@ class EditCustomer extends Component
                         'continue_bill' => $customer->official->continue_bill ?? '',
                         'description' => $customer->official->description ?? '',
                         'note' => $customer->official->note ?? '',
-                        'connected_by' => $customer->official?->connected_by ? ($this->userLists->where('id', $customer->official->connected_by)->first()->name ?? '') : '',
+                        // The dropdown uses user IDs as option values; keep the stored bigint ID here.
+                        'connected_by' => $customer->official?->connected_by ? (string) $customer->official->connected_by : '',
                     ],
                     hasAccess(['Super Admin'], ['create-reseller']) ? ['reseller_id' => $customer->reseller_id && $customer->reseller ? ($customer->reseller->company ? $customer->reseller->company . ' (' . $customer->reseller->user->name . ')' : $customer->reseller->user->name) : ''] : [],
                     [
@@ -389,7 +390,11 @@ class EditCustomer extends Component
                     'distribution_location' => $o['distribution_location'] ?? null,
                     'description' => $o['description'] ?? null,
                     'note' => $o['note'] ?? null,
-                    'connected_by' => $o['connected_by'] ?? null,
+                    // connected_by is a bigint user ID. Accept both the current ID value and
+                    // an older/stale browser value containing the user's display name.
+                    'connected_by' => is_numeric($o['connected_by'] ?? null)
+                        ? (int) $o['connected_by']
+                        : ($this->userLists->firstWhere('name', $o['connected_by'] ?? '')?->id),
                     'security_deposit' => $o['security_deposit'] ?? 0,
                 ]);
             }
