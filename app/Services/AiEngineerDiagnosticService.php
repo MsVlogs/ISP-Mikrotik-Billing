@@ -27,7 +27,7 @@ class AiEngineerDiagnosticService
         $tickets = Schema::hasTable('support_tickets') ? DB::table('support_tickets')->count() : 0;
 
         $network = $this->networkSnapshot();
-        $incidents = $this->incidentSummary();
+        $incidents = $this->incidentSummary($network);
         return [
             'customers' => ['total'=>$customerCount,'active'=>$active,'pending'=>$pending,'disabled'=>$disabled],
             'routers' => ['total'=>$routerTotal,'connected'=>$routerConnected,'disconnected'=>max(0,$routerTotal-$routerConnected)],
@@ -174,8 +174,7 @@ class AiEngineerDiagnosticService
         $apiKey=(string)config("services.{$provider}.api_key");
         $contextData=$diagnosis&&($diagnosis['ok']??false)?$diagnosis:$this->overview();
         if(!$diagnosis){
-            $contextData['network_snapshot']=$this->networkSnapshot();
-            $contextData['incident_summary']=$this->incidentSummary();
+            // overview() already includes network and incident summaries; avoid repeating live OLT reads.
             $contextData['unmapped_onus']=$this->unmappedOnus(12);
             $contextData['optical_power']=$this->opticalPowerList(50);
         }
@@ -268,7 +267,15 @@ class AiEngineerDiagnosticService
 
     public function networkSnapshot(): array
     {
-        $devices=NetworkInventoryDevice::whereNotNull('type')->get(['id','type','status','health_status','onu_total','onu_online']);
+        $deviceTable = (new NetworkInventoryDevice())->getTable();
+        $deviceColumns = ['id'];
+        if (Schema::hasColumn($deviceTable, 'type')) $deviceColumns[] = 'type';
+        foreach (['status', 'health_status', 'onu_total', 'onu_online'] as $optionalColumn) {
+            if (Schema::hasColumn($deviceTable, $optionalColumn)) $deviceColumns[] = $optionalColumn;
+        }
+        $devices = in_array('type', $deviceColumns, true)
+            ? NetworkInventoryDevice::whereNotNull('type')->get($deviceColumns)
+            : collect();
         $olts=$devices->filter(fn($d)=>in_array(strtolower((string)$d->type),['olt','epon','gpon'],true));
         $oltOnline=0; $oltOffline=0; $onuTotal=0; $onuOnline=0; $liveRead=0;
         foreach($olts as $olt){
@@ -288,7 +295,7 @@ class AiEngineerDiagnosticService
         }
         $mappingTotal=Schema::hasTable('olt_onu_customer_mappings')?OltOnuCustomerMapping::count():0;
         $mapped=Schema::hasTable('olt_onu_customer_mappings')?OltOnuCustomerMapping::whereNotNull('customer_id')->count():0;
-        $routers=RouterList::get(['action']);
+        $routers = Schema::hasColumn((new RouterList())->getTable(), 'action') ? RouterList::get(['action']) : collect();
         return ['device_total'=>$devices->count(),'olt_total'=>$olts->count(),'olt_online'=>$oltOnline,'olt_offline'=>$oltOffline,
             'router_total'=>$routers->count(),'router_online'=>$routers->where('action','connected')->count(),
             'onu_total'=>$onuTotal,'onu_online'=>$onuOnline,'onu_offline'=>max(0,$onuTotal-$onuOnline),
@@ -297,7 +304,7 @@ class AiEngineerDiagnosticService
             'live_olt_reads'=>$liveRead,'generated_at'=>now()->toIso8601String()];
     }
 
-    public function incidentSummary(): array
+    public function incidentSummary(?array $network = null): array
     {
         $e=['total'=>0,'open'=>0,'critical'=>0,'warning'=>0,'latest'=>[]];
         if(Schema::hasTable('network_events')){
@@ -307,7 +314,7 @@ class AiEngineerDiagnosticService
             $e['warning']=(clone $open)->whereRaw("LOWER(severity)='warning'")->count();
             $e['latest']=(clone $open)->latest('id')->limit(8)->get(['id','device_id','severity','title','message','status','occurrences','last_seen_at'])->map(fn($x)=>(array)$x)->values()->all();
         }
-        $n=$this->networkSnapshot(); $e['affected_customers']=$n['affected_customers'];
+        $n = $network ?? $this->networkSnapshot(); $e['affected_customers']=$n['affected_customers'];
         $e['status']=$e['critical']>0?'critical':($e['open']>0||$n['olt_offline']>0?'attention':'healthy'); return $e;
     }
 
