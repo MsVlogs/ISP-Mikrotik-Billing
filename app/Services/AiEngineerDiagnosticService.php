@@ -267,11 +267,13 @@ class AiEngineerDiagnosticService
 
     public function networkSnapshot(): array
     {
-        $deviceColumns = ['id', 'type'];
+        $deviceTable = (new NetworkInventoryDevice())->getTable();
+        $deviceColumns = ['id'];
+        if (Schema::hasColumn($deviceTable, 'type')) $deviceColumns[] = 'type';
         foreach (['status', 'health_status', 'onu_total', 'onu_online'] as $optionalColumn) {
-            if (Schema::hasColumn('network_inventory_devices', $optionalColumn)) $deviceColumns[] = $optionalColumn;
+            if (Schema::hasColumn($deviceTable, $optionalColumn)) $deviceColumns[] = $optionalColumn;
         }
-        $devices = Schema::hasColumn('network_inventory_devices', 'type')
+        $devices = in_array('type', $deviceColumns, true)
             ? NetworkInventoryDevice::whereNotNull('type')->get($deviceColumns)
             : collect();
         $olts=$devices->filter(fn($d)=>in_array(strtolower((string)$d->type),['olt','epon','gpon'],true));
