@@ -64,7 +64,15 @@ class CustomerList extends Component
         $this->routers = RouterList::all();
         $resellers = Reseller::with('user')->get()->reject(fn ($reseller) => in_array(trim((string) ($reseller->company ?: $reseller->user?->name)), ['MS Online', 'Mr. Abu Hanif'], true));
 
-        return view('livewire.customer-list', compact('resellers'))->layout('layouts.app');
+        $customerStats = [
+            'total' => CustomersInfo::count(),
+            'active' => CustomersInfo::whereNotIn('status', ['pending', 'disable', 'free', 'inactive'])->count(),
+            'pending' => CustomersInfo::where('status', 'pending')->count(),
+            'disabled' => CustomersInfo::where('status', 'disable')->count(),
+            'free' => CustomersInfo::where('status', 'free')->count(),
+        ];
+
+        return view('livewire.customer-list', compact('resellers', 'customerStats'))->layout('layouts.app');
     }
 
     public function getData(Request $request)
@@ -264,38 +272,60 @@ class CustomerList extends Component
                 $disableBtn = '<button onclick="confirmDisableCustomer(\''.$id.'\')" class="btn btn-warning text-dark" title="Disable"><i class="bi bi-slash-circle"></i></button>';
                 $deleteBtn = '<button onclick="confirmDeleteCustomer(\''.$id.'\')" class="btn btn-danger" title="Delete"><i class="bi bi-trash"></i></button>';
 
-                $btns = '<div class="action-btns d-flex justify-content-center">';
-                $btns .= $viewBtn;
+                $isAdmin = auth()->user()?->hasRole('Super Admin');
+                $canEdit = $isAdmin || hasAccess(['Super Admin'], ['edit-customer']);
+                $canBill = hasAccess(['Super Admin'], ['update-bill']);
+                $canCollect = $isAdmin || hasAccess(['Super Admin'], ['payment-collection', 'update-bill']);
+                $canTicket = $isAdmin || hasAccess(['Super Admin'], ['manage-tickets']);
+                $actionUrl = fn ($action) => route('customer.actions', ['id' => $id, 'action' => $action]);
+                $menu = '<div class="dropdown customer-row-actions">'
+                    .'<button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-lightning-charge me-1"></i>Actions</button>'
+                    .'<ul class="dropdown-menu dropdown-menu-end shadow">'
+                    .'<li><a class="dropdown-item" href="'.e(route('customer.details', $row->customer_unique_id)).'"><i class="bi bi-person-vcard me-2 text-primary"></i>Customer overview</a></li>';
 
-                if (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['edit-customer'])) {
-                    $btns .= $editBtn;
+                if ($canEdit) {
+                    $menu .= '<li><button class="dropdown-item" type="button" onclick="Livewire.dispatch(\'open-edit-customer\', { id: \''.$id.'\' })"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit customer</button></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('owner')).'"><i class="bi bi-person-gear me-2"></i>Change owner / package</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('class')).'"><i class="bi bi-tags me-2"></i>Change customer class</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('password')).'"><i class="bi bi-key me-2"></i>Change PPPoE password</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('wifi-login')).'"><i class="bi bi-wifi me-2"></i>Wi-Fi router login</a></li>';
                 }
-
-                if (hasAccess(['Super Admin'], ['update-bill']) && ! in_array($row->status, ['pending', 'disable', 'inactive'], true)) {
-                    $btns .= $billBtn;
+                if ($canBill && ! in_array($row->status, ['pending', 'disable', 'inactive'], true)) {
+                    $menu .= '<li><button class="dropdown-item" type="button" onclick="Livewire.dispatch(\'open-bill-modal\', { id: \''.$id.'\' })"><i class="bi bi-journal-arrow-up me-2 text-info"></i>Update bill</button></li>';
                 }
-
+                if ($canCollect) {
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('ledger')).'"><i class="bi bi-journal-text me-2"></i>Billing ledger</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('cash-credit')).'"><i class="bi bi-cash-coin me-2"></i>Cash / credit / return</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('recharge')).'"><i class="bi bi-calendar-plus me-2"></i>Monthly recharge</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('billing-date')).'"><i class="bi bi-calendar-date me-2"></i>Change billing date</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('grace')).'"><i class="bi bi-hourglass me-2"></i>Extra grace</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('invoice')).'" target="_blank"><i class="bi bi-receipt me-2"></i>Invoice</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('pos-print')).'" target="_blank"><i class="bi bi-printer me-2"></i>POS print</a></li>';
+                }
+                if ($canTicket) {
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('ticket')).'"><i class="bi bi-ticket-perforated me-2"></i>Create support ticket</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('ticket-history')).'"><i class="bi bi-clock-history me-2"></i>Ticket history</a></li>';
+                }
+                if ($canEdit) {
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('sms')).'"><i class="bi bi-chat-dots me-2"></i>Send SMS</a></li>';
+                    $menu .= '<li><a class="dropdown-item" href="'.e($actionUrl('online-graph')).'"><i class="bi bi-graph-up me-2"></i>Online graph</a></li>';
+                }
+                $menu .= '<li><hr class="dropdown-divider"></li>';
                 if (in_array($row->status, ['pending', 'disable'], true)
-                    && (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer']))) {
-                    $btns .= $enableBtn;
+                    && ($isAdmin || hasAccess(['Super Admin'], ['enable-pending-customer', 'enable-customer']))) {
+                    $menu .= '<li><button class="dropdown-item text-success" type="button" onclick="confirmEnableCustomer(\''.$id.'\')"><i class="bi bi-power me-2"></i>Enable customer</button></li>';
                 }
-
                 if (! in_array($row->status, ['pending', 'disable', 'inactive'], true)
-                    && (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['disable-customer']))) {
-                    $btns .= $disableBtn;
+                    && ($isAdmin || hasAccess(['Super Admin'], ['disable-customer']))) {
+                    $menu .= '<li><button class="dropdown-item text-warning" type="button" onclick="confirmDisableCustomer(\''.$id.'\')"><i class="bi bi-slash-circle me-2"></i>Disable customer</button></li>';
                 }
-
-                if (auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['delete-customer'])) {
-                    $btns .= $deleteBtn;
+                if ($row->pppUser && ! empty($row->pppUser->router_name) && hasAccess(['Super Admin'], ['push-customers'])) {
+                    $menu .= '<li><button class="dropdown-item" type="button" onclick="confirmPushCustomer(\''.$id.'\')"><i class="bi bi-cloud-arrow-up me-2"></i>Push to MikroTik</button></li>';
                 }
-
-                if ($row->pppUser && ! empty($row->pppUser->router_name)
-                    && hasAccess(['Super Admin'], ['push-customers'])) {
-                    $pushBtn = '<button onclick="confirmPushCustomer(\''.$id.'\')" class="btn btn-warning text-white ms-1" title="Push to MikroTik"><i class="bi bi-cloud-arrow-up"></i></button>';
-                    $btns .= $pushBtn;
+                if ($isAdmin || hasAccess(['Super Admin'], ['delete-customer'])) {
+                    $menu .= '<li><button class="dropdown-item text-danger" type="button" onclick="confirmDeleteCustomer(\''.$id.'\')"><i class="bi bi-trash me-2"></i>Delete customer</button></li>';
                 }
-
-                return $btns.'</div>';
+                return $menu.'</ul></div>';
             })
             ->rawColumns(['customer_identity', 'customers_address', 'billing_breakdown', 'connection_details', 'billing_summary', 'action', 'disable_details'])
             ->make(true);

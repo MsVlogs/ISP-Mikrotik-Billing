@@ -5,6 +5,28 @@
             <pre class="mb-0 mt-1 text-wrap">{{ session('onu_sync_message') }}</pre>
         </div>
     @endif
+    <section class="customer-page-header mx-sm-0 mx-md-3 mt-3 mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <div class="customer-eyebrow"><i class="bi bi-people-fill me-1"></i>{{ __('CUSTOMER MANAGEMENT') }}</div>
+                <h1 class="customer-page-title">{{ __('Customer List') }}</h1>
+                <p class="customer-page-subtitle mb-0">{{ __('Manage customer profiles, connectivity, billing and service actions from one place.') }}</p>
+            </div>
+            <div class="customer-header-actions d-flex flex-wrap gap-2">
+                @if(auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['create-customer']))
+                    <a href="{{ route('customer-add') }}" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>{{ __('Add Customer') }}</a>
+                @endif
+            </div>
+        </div>
+        <div class="customer-stat-grid">
+            <div class="customer-stat-card"><span class="customer-stat-icon stat-blue"><i class="bi bi-people"></i></span><div><span class="customer-stat-label">{{ __('Total Customers') }}</span><strong>{{ number_format($customerStats['total'] ?? 0) }}</strong></div></div>
+            <div class="customer-stat-card"><span class="customer-stat-icon stat-green"><i class="bi bi-person-check"></i></span><div><span class="customer-stat-label">{{ __('Active') }}</span><strong>{{ number_format($customerStats['active'] ?? 0) }}</strong></div></div>
+            <div class="customer-stat-card"><span class="customer-stat-icon stat-amber"><i class="bi bi-hourglass-split"></i></span><div><span class="customer-stat-label">{{ __('Pending') }}</span><strong>{{ number_format($customerStats['pending'] ?? 0) }}</strong></div></div>
+            <div class="customer-stat-card"><span class="customer-stat-icon stat-red"><i class="bi bi-person-x"></i></span><div><span class="customer-stat-label">{{ __('Disabled') }}</span><strong>{{ number_format($customerStats['disabled'] ?? 0) }}</strong></div></div>
+            <div class="customer-stat-card"><span class="customer-stat-icon stat-violet"><i class="bi bi-gift"></i></span><div><span class="customer-stat-label">{{ __('Free Accounts') }}</span><strong>{{ number_format($customerStats['free'] ?? 0) }}</strong></div></div>
+        </div>
+    </section>
+
     <div class="card border-0 shadow-sm mx-sm-0 mx-md-3 my-3 customer-filter-card">
         <div class="card-body p-3">
             <div class="row align-items-center">
@@ -255,6 +277,21 @@
 
 @push('styles')
     <style>
+        .customer-page-header { color: #172033; }
+        .customer-eyebrow { color: #4f46e5; font-size: .72rem; font-weight: 800; letter-spacing: .12em; margin-bottom: .35rem; }
+        .customer-page-title { font-size: clamp(1.45rem, 2.3vw, 2rem); font-weight: 800; letter-spacing: -.035em; margin: 0; color: #172033; }
+        .customer-page-subtitle { color: #738096; font-size: .92rem; margin-top: .35rem; }
+        .customer-header-actions .btn { border-radius: 10px; font-weight: 650; padding: .62rem .9rem; }
+        .customer-stat-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .8rem; }
+        .customer-stat-card { min-width: 0; display: flex; align-items: center; gap: .8rem; background: #fff; border: 1px solid #e8edf5; border-radius: 14px; padding: .9rem 1rem; box-shadow: 0 5px 18px rgba(24, 39, 75, .035); }
+        .customer-stat-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 12px; font-size: 1.15rem; }
+        .stat-blue { background: #e9efff; color: #3559d8; } .stat-green { background: #e3f8ee; color: #138451; } .stat-amber { background: #fff3d8; color: #a96500; } .stat-red { background: #ffe8e8; color: #c03939; } .stat-violet { background: #f1eaff; color: #7542bd; }
+        .customer-stat-label { display: block; color: #778399; font-size: .76rem; font-weight: 650; white-space: nowrap; }
+        .customer-stat-card strong { display: block; color: #172033; font-size: 1.35rem; line-height: 1.3; font-weight: 800; }
+        .customer-row-actions .dropdown-toggle { border-radius: 9px; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+        .customer-row-actions .dropdown-menu { min-width: 235px; max-height: 70vh; overflow-y: auto; padding: .45rem; border: 1px solid #e7ebf3; border-radius: 12px; z-index: 1085; }
+        .customer-row-actions .dropdown-item { border-radius: 7px; padding: .48rem .65rem; font-size: .82rem; }
+        .customer-row-actions .dropdown-item:hover { background: #f2f5ff; }
         .customer-filter-card,
         .customer-table-card {
             border-radius: 14px !important;
@@ -356,7 +393,18 @@
             box-shadow: 0 6px 16px rgba(0,0,0,0.06);
             background-color: #f8f9ff !important;
         }
+        @media (max-width: 1199.98px) {
+            .customer-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
         @media (max-width: 767.98px) {
+            .customer-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+            .customer-stat-card { padding: .7rem; gap: .55rem; border-radius: 11px; }
+            .customer-stat-icon { width: 35px; height: 35px; flex-basis: 35px; border-radius: 10px; font-size: 1rem; }
+            .customer-stat-label { font-size: .68rem; white-space: normal; }
+            .customer-stat-card strong { font-size: 1.12rem; }
+            .customer-page-subtitle { font-size: .82rem; }
+            .customer-header-actions { width: 100%; }
+            .customer-header-actions .btn { flex: 1 1 auto; }
             .customer-filter-toolbar {
                 flex-wrap: nowrap !important;
                 overflow-x: auto;
