@@ -42,8 +42,7 @@
                     </div>
                 @endif
                 <div class="{{ $routers->count() > 1 ? 'col-md-10' : 'col-md-12' }}">
-                    <label class="small text-muted fw-bold ps-1">{{ __('FILTERS') }}</label>
-                    <div class="d-flex flex-nowrap align-items-center gap-1 customer-filter-toolbar">
+                    <label class="small text-muted fw-bold ps-1 d-inline me-1">{{ __('FILTERS') }}</label><div class="d-flex flex-nowrap align-items-center gap-0 customer-filter-toolbar d-inline-flex">
                         <div class="filter-group d-flex gap-1 overflow-auto pb-1">
                             <input type="radio" class="btn-check" name="collection" id="all_list" autocomplete="off">
                             <label class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-none fw-600" for="all_list">
