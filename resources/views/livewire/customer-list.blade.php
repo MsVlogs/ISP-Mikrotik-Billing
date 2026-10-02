@@ -99,11 +99,6 @@
                                     <i class="bi bi-arrow-repeat me-1"></i><span>Sync ONU</span>
                                 </button>
                             </form>
-                            @if(auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['create-customer']))
-                                <a href="{{ route('customer-add') }}" class="btn btn-primary btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;">
-                                    <i class="bi bi-person-plus-fill me-1"></i> {{ __('Add Customer') }}
-                                </a>
-                            @endif
                             @if(hasAccess(['Super Admin'], ['push-customers']))
                                 <button type="button" onclick="confirmPushAllCustomers()" class="btn btn-outline-warning btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Push all customers to MikroTik">
                                     <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ __('Push All') }}
