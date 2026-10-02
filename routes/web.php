@@ -140,6 +140,10 @@ Route::middleware([
         ]);
         Route::get('customers/data', [CustomerList::class, 'getData'])->name('customers.data');
         Route::get('customer/{id}', [\App\Http\Controllers\CustomerDetailsController::class, 'show'])->name('customer.details');
+        Route::get('customer/{id}/actions/{action}', [\App\Http\Controllers\CustomerActionsController::class, 'show'])->name('customer.actions');
+        Route::post('customer/{id}/actions/{action}', [\App\Http\Controllers\CustomerActionsController::class, 'handle'])->name('customer.actions.handle');
+        Route::get('customer/{id}/invoice', [\App\Http\Controllers\CustomerActionsController::class, 'invoicePage'])->name('customer.actions.invoice');
+        Route::get('customer/{id}/pos-print', [\App\Http\Controllers\CustomerActionsController::class, 'printPage'])->name('customer.actions.print');
         Route::get('customers/{id}/edit', [CustomerList::class, 'edit'])->name('customers.edit');
         Route::get('customers/{id}', [CustomerList::class, 'show'])->name('customers.show');
         Route::get('customers', CustomerList::class)->name('customers.index');

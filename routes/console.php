@@ -63,3 +63,4 @@ Artisan::command('inspire', function () {
 Schedule::command('app:check-network-inventory')->everyMinute()->withoutOverlapping();
 Schedule::command('app:reconcile-mikrotik-pending-actions')->everyMinute()->withoutOverlapping();
 Schedule::command('olt:sync-onu-mappings')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('app:capture-customer-connection-snapshots')->everyFiveMinutes()->withoutOverlapping();
