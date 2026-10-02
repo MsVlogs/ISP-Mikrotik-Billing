@@ -47,7 +47,7 @@ class NetworkEvents extends Component
             'whatsapp_to' => 'nullable|string|max:100',
             'telegram_bot_token' => 'nullable|string|max:500',
             'telegram_chat_id' => 'nullable|string|max:100',
-            'min_severity' => 'required|in:info,warning,critical',
+            'min_severity' => 'required|in:info,warning,critical,device_down',
         ]);
 
         MainSiteData::setValue('network_alert_channels', [

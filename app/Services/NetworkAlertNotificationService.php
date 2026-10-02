@@ -18,7 +18,7 @@ class NetworkAlertNotificationService
         }
 
         $minSeverity = $settings['min_severity'] ?? 'warning';
-        if (! $this->severityAllowed($event->severity, $minSeverity)) {
+        if (! $this->severityAllowed($event, $minSeverity)) {
             return $results;
         }
 
@@ -45,10 +45,13 @@ class NetworkAlertNotificationService
             : ['whatsapp' => $this->sendWhatsApp($settings, $message)];
     }
 
-    private function severityAllowed(string $severity, string $minimum): bool
+    private function severityAllowed(NetworkEvent $event, string $minimum): bool
     {
+        if ($minimum === 'device_down') {
+            return strtolower((string) $event->event_type) === 'device_down';
+        }
         $levels = ['info' => 1, 'warning' => 2, 'critical' => 3];
-        return ($levels[$severity] ?? 2) >= ($levels[$minimum] ?? 2);
+        return ($levels[$event->severity] ?? 2) >= ($levels[$minimum] ?? 2);
     }
 
     private function formatMessage(NetworkEvent $event): string
