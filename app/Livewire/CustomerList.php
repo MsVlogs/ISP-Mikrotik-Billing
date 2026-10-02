@@ -264,7 +264,7 @@ class CustomerList extends Component
                        '<div class="text-muted" style="font-size: 0.7rem">Ext: '.($row->billing?->auto_disable_month ?? 0).' Mon</div>';
             })
             ->addColumn('cid', function ($row) {
-                $url = route('customers.show', ['id' => encrypt($row->customer_unique_id)]);
+                $url = route('customer.details', ['id' => encrypt($row->customer_unique_id)]);
                 return '<a href="'.e($url).'" class="fw-bold text-primary text-decoration-none" title="Open Customer Details">'
                     .e($row->customer_unique_id)
                     .'</a>';
