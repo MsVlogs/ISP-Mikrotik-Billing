@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\MikrotikController;
 use App\Models\CustomersInfo;
 use App\Models\OltOnuCustomerMapping;
 use Illuminate\Support\Facades\Schema;
@@ -34,7 +35,28 @@ class CustomerDetailsController extends Controller
             })->latest()->limit(8)->get()
             : collect();
 
-        return view('customers.show', compact('customer', 'mapping', 'activities'));
+        // PPPoE remote IP may be assigned dynamically from a MikroTik pool.
+        // Prefer the stored secret value; when it is empty, read the live
+        // /ppp active session for this username and use its current address.
+        $remoteIp = $customer->pppUser?->ppp_remote_ip ?: null;
+        if (! $remoteIp
+            && strtolower((string) $customer->pppUser?->service) === 'pppoe'
+            && $customer->pppUser?->router_name
+            && $customer->pppUser?->username) {
+            try {
+                $sessions = app(MikrotikController::class)->getActivePppSessions($customer->pppUser->router_name);
+                foreach ($sessions as $session) {
+                    if (($session['name'] ?? '') === $customer->pppUser->username) {
+                        $remoteIp = $session['address'] ?? $session['remote-address'] ?? null;
+                        break;
+                    }
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return view('customers.show', compact('customer', 'mapping', 'activities', 'remoteIp'));
     }
 
     private function resolveCustomerId(string $id): string

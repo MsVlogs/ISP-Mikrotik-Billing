@@ -245,7 +245,13 @@ class MikrotikSync extends Component
                         'profile' => $profileToStore,
                         'caller_id' => $user['caller-id'] ?? '',
                         'comment' => $user['comment'] ?? '',
-                        'ppp_remote_ip' => $user['ppp_remote_ip'] ?? '',
+                        'ppp_remote_ip' => $user['ppp_remote_ip']
+    ?? $user['remote-address']
+    ?? $user['remote_address']
+    ?? $user['remote-ip']
+    ?? $user['remote_ip']
+    ?? $user['address']
+    ?? '',
                         'bandwidth' => trim(($user['limit-bytes-in'] ?? '').'/'.($user['limit-bytes-out'] ?? ''), '/'),
                         'last_logged_out' => $lastLoggedOut,
                         'last_caller_id' => $user['last-caller-id'] ?? '',

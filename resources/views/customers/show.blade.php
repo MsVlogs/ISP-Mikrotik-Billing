@@ -18,7 +18,7 @@
                 <h1 class="h3 fw-bold mb-1">{{ $customer->customer_name }}</h1>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge bg-light text-dark">{{ $status }}</span>
-                    @if($ppp?->ppp_remote_ip)<span class="badge bg-dark">IP {{ $ppp->ppp_remote_ip }}</span>@endif
+                    @if($remoteIp)<span class="badge bg-dark">IP {{ $remoteIp }}</span>@endif
                     @if($ppp?->username)<span class="badge bg-dark">PPPoE {{ $ppp->username }}</span>@endif
                 </div>
             </div>
@@ -57,7 +57,7 @@
                 <div><span>Password</span><strong>••••••••</strong></div>
                 <div><span>PPP Status</span><strong>{{ $ppp?->status ? ucfirst($ppp->status) : '—' }}</strong></div>
                 <div><span>Router</span><strong>{{ $ppp?->router_name ?: '—' }}</strong></div>
-                <div><span>Remote IP</span><strong>{{ $ppp?->ppp_remote_ip ?: '—' }}</strong></div>
+                <div><span>Remote IP</span><strong>{{ $remoteIp ?: '—' }}</strong></div>
                 <div><span>Bandwidth</span><strong>{{ $ppp?->bandwidth ?: '—' }}</strong></div>
                 <div><span>Package</span><strong>{{ $customer->package?->package ?: '—' }}</strong></div>
                 <div><span>Profile</span><strong>{{ $ppp?->profile ?: '—' }}</strong></div>
@@ -106,7 +106,7 @@
                     <div><span>PPPoE User ID</span><strong>{{ $ppp?->username ?: '—' }}</strong></div>
                     <div><span>Router / MikroTik</span><strong>{{ $ppp?->router_name ?: '—' }}</strong></div>
                     <div><span>Service Profile</span><strong>{{ $ppp?->profile ?: '—' }}</strong></div>
-                    <div><span>IP Address</span><strong>{{ $ppp?->ppp_remote_ip ?: '—' }}</strong></div>
+                    <div><span>IP Address</span><strong>{{ $remoteIp ?: '—' }}</strong></div>
                     <div><span>Bandwidth</span><strong>{{ $ppp?->bandwidth ?: '—' }}</strong></div>
                     <div><span>Package</span><strong>{{ $customer->package?->package ?: '—' }}</strong></div>
                     <div><span>Monthly Bill</span><strong>{{ number_format((float)($billing?->monthly_rent ?? 0),2) }} ৳</strong></div>
