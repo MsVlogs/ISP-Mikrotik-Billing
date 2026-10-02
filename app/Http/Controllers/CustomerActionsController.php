@@ -65,6 +65,12 @@ class CustomerActionsController extends Controller
 
         if ($action==='owner') {
             $data=$request->validate(['reseller_id'=>['nullable','integer','exists:resellers,id'],'package_id'=>['nullable','integer','exists:package_lists,id'],'pop_area'=>['nullable','string','max:190'],'reason'=>['nullable','string','max:500']]);
+            if (!empty($data['package_id']) && $customer->pppUser) {
+                $targetPackage=PackageList::findOrFail($data['package_id']);
+                if ($targetPackage->router_name && (string)$targetPackage->router_name !== (string)$customer->pppUser->router_name) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['package_id'=>'This package belongs to a different MikroTik router. To avoid disrupting the customer, select a package on the current router; cross-router migration must be completed as a separate verified operation.']);
+                }
+            }
             DB::transaction(function() use($customer,$data,$uid,$request) {
                 $customer->reseller_id=$data['reseller_id'] ?? null;
                 if (!empty($data['package_id'])) $customer->package_id=$data['package_id'];
