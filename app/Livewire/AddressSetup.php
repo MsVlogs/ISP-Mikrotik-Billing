@@ -52,6 +52,14 @@ class AddressSetup extends Component
 
         $this->label = $label;
 
+        // If the standard field already exists, load it for option management
+        // instead of creating a duplicate record.
+        $existing = AddressField::where('label', $label)->first();
+        $this->addressFieldId = $existing?->id;
+        $this->required = (bool) ($existing?->required ?? false);
+        $this->print_preview = (bool) ($existing?->print_preview ?? false);
+        $this->complain_preview = (bool) ($existing?->complain_preview ?? false);
+
         // Keep standard address fields consistent with their intended UI input.
         $dropdownFields = [
             'Zone', 'District', 'Thana / Upazila', 'Other Thana / Upazila',
@@ -71,7 +79,6 @@ class AddressSetup extends Component
         } elseif ($label === 'Network Location') {
             $this->dropdown_list = [];
         } else {
-            $existing = AddressField::where('label', $label)->first();
             $this->dropdown_list = $existing?->input_type === 'dropdown'
                 ? (json_decode($existing->dropdown_list ?: '[]', true) ?: [])
                 : [];
