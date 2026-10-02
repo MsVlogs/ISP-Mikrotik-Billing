@@ -421,8 +421,9 @@ class EditCustomer extends Component
         });
 
         flash()->addSuccess('Customer updated successfully.');
-        $this->loadCustomerData($this->customerId);
-        $this->dispatch('customer-action-done');
+
+        // After a successful save, return directly to the Customer List.
+        $this->redirectRoute('customers.index', navigate: true);
     }
 
     public function resetPPPUser()
