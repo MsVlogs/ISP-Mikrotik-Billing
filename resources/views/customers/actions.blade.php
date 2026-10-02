@@ -41,15 +41,82 @@
                 @elseif($action==='ticket-history')
                     <div class="table-responsive"><table class="table table-striped"><thead><tr><th>Ticket</th><th>Subject</th><th>Type</th><th>Priority</th><th>Status</th><th>Created</th></tr></thead><tbody>@forelse($tickets as $t)<tr><td>{{ $t->ticket_no }}</td><td>{{ $t->subject }}</td><td>{{ $t->ticket_type }}</td><td>{{ $t->priority }}</td><td>{{ $t->status }}</td><td>{{ $t->created_at?->format('d M Y H:i') }}</td></tr>@empty<tr><td colspan="6" class="text-center text-muted">No tickets for this customer.</td></tr>@endforelse</tbody></table></div>
                 @elseif($action==='online-graph')
-                    @php($uptime=(string)($customer->pppUser?->uptime ?? '0')) @php($downtime=(string)($customer->pppUser?->downtime ?? '0'))
-                    <div class="alert alert-info">Online/offline state changes are sampled every five minutes from connected MikroTik routers. Only state transitions are stored to limit database growth; a router read failure is not treated as offline.</div>
-                    <div class="row g-3"><div class="col-md-6"><div class="border rounded p-3"><div class="text-muted">Last stored uptime counter</div><div class="fs-4 fw-bold text-success">{{ $uptime ?: '0' }}</div></div></div><div class="col-md-6"><div class="border rounded p-3"><div class="text-muted">Last stored downtime counter</div><div class="fs-4 fw-bold text-danger">{{ $downtime ?: '0' }}</div></div></div></div>
-                    @if($snapshots->count()>0)
-                        @php($plotWidth=800)
-                        @php($plotPoints=$snapshots->values()->map(fn($s,$i)=>($snapshots->count()<=1?400:round($i*($plotWidth/($snapshots->count()-1)),2)).','.($s->state==='online'?24:112))->implode(' '))
-                        <div class="mt-4"><strong>Connection state history</strong><div class="small text-muted mb-2">Each point marks a recorded state transition.</div><svg viewBox="0 0 800 140" role="img" aria-label="Customer online offline history" style="width:100%;height:auto;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px"><line x1="0" y1="24" x2="800" y2="24" stroke="#d1d5db" stroke-dasharray="4 4"/><line x1="0" y1="112" x2="800" y2="112" stroke="#d1d5db" stroke-dasharray="4 4"/><text x="8" y="16" font-size="11" fill="#15803d">Online</text><text x="8" y="132" font-size="11" fill="#b91c1c">Offline</text><polyline points="{{ $plotPoints }}" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>@foreach($snapshots->values() as $i=>$s)<circle cx="{{ $snapshots->count()<=1?400:round($i*(800/($snapshots->count()-1)),2) }}" cy="{{ $s->state==='online'?24:112 }}" r="4" fill="{{ $s->state==='online'?'#16a34a':'#dc2626' }}"><title>{{ $s->sampled_at }} · {{ ucfirst($s->state) }}</title></circle>@endforeach</svg></div>
-                        <div class="table-responsive mt-3"><table class="table table-sm"><thead><tr><th>Sampled At</th><th>State</th><th>Router</th><th>IP</th><th>Uptime</th></tr></thead><tbody>@foreach($snapshots->reverse() as $s)<tr><td>{{ $s->sampled_at }}</td><td><span class="badge {{ $s->state==='online'?'bg-success':'bg-danger' }}">{{ ucfirst($s->state) }}</span></td><td>{{ $s->router_name ?: '—' }}</td><td>{{ $s->ip_address ?: '—' }}</td><td>{{ $s->uptime ?: '—' }}</td></tr>@endforeach</tbody></table></div>
-                    @else <div class="text-center text-muted py-4">No connection history captured yet. The first samples will appear after the scheduled poll detects a connected router.</div> @endif
+                    <div id="customer-live-traffic" data-url="{{ route('customer.live-traffic', ['id' => encrypt($customer->customer_unique_id)]) }}">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3"><div class="border rounded p-3 h-100"><div class="small text-muted">Status</div><div id="traffic-status" class="fs-5 fw-bold text-secondary">Checking…</div></div></div>
+                            <div class="col-md-3"><div class="border rounded p-3 h-100"><div class="small text-muted">Download</div><div id="traffic-rx" class="fs-5 fw-bold text-success">0 Mbps</div></div></div>
+                            <div class="col-md-3"><div class="border rounded p-3 h-100"><div class="small text-muted">Upload</div><div id="traffic-tx" class="fs-5 fw-bold text-primary">0 Mbps</div></div></div>
+                            <div class="col-md-3"><div class="border rounded p-3 h-100"><div class="small text-muted">Session Usage</div><div id="traffic-total" class="fs-6 fw-bold">0 MB ↓ / 0 MB ↑</div></div></div>
+                        </div>
+                        <div class="border rounded p-2 bg-body-tertiary">
+                            <div class="d-flex justify-content-between align-items-center px-2 py-1">
+                                <strong><i class="bi bi-activity me-1"></i>Real-time Internet Usage</strong>
+                                <span id="traffic-updated" class="small text-muted">Waiting for MikroTik…</span>
+                            </div>
+                            <svg id="customer-traffic-chart" viewBox="0 0 1000 360" preserveAspectRatio="none" role="img" aria-label="Customer real-time internet usage graph" style="width:100%;height:360px;display:block;">
+                                <rect x="0" y="0" width="1000" height="360" fill="transparent"></rect>
+                                <g id="traffic-grid"></g>
+                                <polyline id="traffic-rx-line" fill="none" stroke="#198754" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points=""></polyline>
+                                <polyline id="traffic-tx-line" fill="none" stroke="#0d6efd" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points=""></polyline>
+                            </svg>
+                            <div class="d-flex justify-content-center gap-4 small mt-1"><span class="text-success">● Download</span><span class="text-primary">● Upload</span></div>
+                        </div>
+                        <div id="traffic-message" class="alert alert-info mt-3 mb-0">Live traffic is read directly from the customer's PPPoE interface on MikroTik.</div>
+                    </div>
+                    <script>
+                        (() => {
+                            const root = document.getElementById('customer-live-traffic');
+                            if (!root || root.dataset.initialized === '1') return;
+                            root.dataset.initialized = '1';
+                            const url = root.dataset.url;
+                            const rx = [], tx = [], maxPoints = 60;
+                            const el = id => document.getElementById(id);
+                            const fmt = bits => bits >= 1000000 ? (bits / 1000000).toFixed(2) + ' Mbps' : bits >= 1000 ? (bits / 1000).toFixed(2) + ' Kbps' : Math.round(bits) + ' bps';
+                            function draw() {
+                                const all = rx.concat(tx);
+                                const max = Math.max(1, ...all) * 1.15;
+                                const line = values => values.map((v,i) => {
+                                    const x = values.length <= 1 ? 500 : 20 + (i * 960 / (values.length - 1));
+                                    const y = 330 - ((v / max) * 290);
+                                    return `${x.toFixed(1)},${y.toFixed(1)}`;
+                                }).join(' ');
+                                el('traffic-rx-line').setAttribute('points', line(rx));
+                                el('traffic-tx-line').setAttribute('points', line(tx));
+                            }
+                            function update(d) {
+                                const t = d.traffic || {};
+                                const rxBits = Number(t['rx-bits-per-second'] || 0);
+                                const txBits = Number(t['tx-bits-per-second'] || 0);
+                                rx.push(rxBits); tx.push(txBits);
+                                if (rx.length > maxPoints) rx.shift();
+                                if (tx.length > maxPoints) tx.shift();
+                                el('traffic-rx').textContent = fmt(rxBits);
+                                el('traffic-tx').textContent = fmt(txBits);
+                                el('traffic-total').textContent = `${Number(t['rx-mb'] || 0).toFixed(2)} MB ↓ / ${Number(t['tx-mb'] || 0).toFixed(2)} MB ↑`;
+                                el('traffic-status').textContent = d.online ? 'Online' : 'Offline';
+                                el('traffic-status').className = 'fs-5 fw-bold ' + (d.online ? 'text-success' : 'text-danger');
+                                el('traffic-updated').textContent = new Date().toLocaleTimeString();
+                                el('traffic-message').className = d.online ? 'alert alert-success mt-3 mb-0' : 'alert alert-warning mt-3 mb-0';
+                                el('traffic-message').textContent = d.online ? `Live PPPoE traffic: ${d.username} · ${t.interface || ''}` : 'Customer is not currently connected, or the PPPoE interface is unavailable.';
+                                draw();
+                            }
+                            async function poll() {
+                                try {
+                                    const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                                    const d = await res.json();
+                                    if (!res.ok || !d.ok) throw new Error(d.message || 'Live traffic unavailable');
+                                    update(d);
+                                } catch (e) {
+                                    el('traffic-status').textContent = 'Unavailable';
+                                    el('traffic-status').className = 'fs-5 fw-bold text-warning';
+                                    el('traffic-message').className = 'alert alert-warning mt-3 mb-0';
+                                    el('traffic-message').textContent = e.message || 'Unable to read MikroTik traffic.';
+                                }
+                            }
+                            poll();
+                            const timer = setInterval(() => { if (document.body.contains(root)) poll(); else clearInterval(timer); }, 2000);
+                        })();
+                    </script>
                 @else
                     <div class="alert alert-info">Use the links below for this customer.</div><a class="btn btn-primary" href="{{ route('customer.actions.invoice',['id'=>encrypt($customer->customer_unique_id)]) }}">Open Invoice</a><a class="btn btn-outline-primary" href="{{ route('customer.actions.print',['id'=>encrypt($customer->customer_unique_id)]) }}" target="_blank">POS Print</a>
                 @endif

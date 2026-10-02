@@ -56,6 +56,33 @@ class CustomerActionsController extends Controller
         return view('customers.actions',compact('customer','action','resellers','packages','tickets','templates','smsTemplates','snapshots','collections','wifi','wifiPassword'));
     }
 
+    public function liveTraffic(string $id)
+    {
+        $this->authorizeAction();
+        $customer = $this->customer($id);
+        $ppp = $customer->pppUser;
+
+        if (! $ppp?->router_name || ! $ppp?->username) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No PPPoE router or username is linked to this customer.',
+            ], 422);
+        }
+
+        $traffic = app(\App\Http\Controllers\MikrotikController::class)
+            ->getLiveCustomerTraffic((string) $ppp->router_name, (string) $ppp->username);
+
+        return response()->json([
+            'ok' => true,
+            'customer' => $customer->customer_unique_id,
+            'username' => $ppp->username,
+            'router' => $ppp->router_name,
+            'online' => ! empty($traffic['interface']),
+            'timestamp' => now()->toIso8601String(),
+            'traffic' => $traffic,
+        ]);
+    }
+
     public function handle(Request $request, string $id, string $action)
     {
         $this->authorizeAction();

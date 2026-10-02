@@ -1874,6 +1874,64 @@ class MikrotikController extends Controller
         return $empty;
     }
 
+    /**
+     * Read live traffic and session byte counters for a PPPoE customer interface.
+     * Counters come from the dynamic PPPoE interface and therefore represent the
+     * current session; rates come from RouterOS monitor-traffic.
+     */
+    public function getLiveCustomerTraffic(string $routerName, string $username): array
+    {
+        $empty = [
+            'interface' => null,
+            'rx-bits-per-second' => 0,
+            'tx-bits-per-second' => 0,
+            'rx-bytes' => 0,
+            'tx-bytes' => 0,
+            'rx-mb' => 0,
+            'tx-mb' => 0,
+        ];
+
+        if ($routerName === '' || $username === '') {
+            return $empty;
+        }
+
+        try {
+            $interfaces = $this->getInterfaces($routerName);
+            $needle = strtolower($username);
+            $interface = collect($interfaces)->first(function ($row) use ($needle) {
+                $name = strtolower((string) ($row['name'] ?? ''));
+                return $name === '<pppoe-'.$needle.'>' || $name === 'pppoe-'.$needle;
+            });
+
+            if (! $interface) {
+                return $empty;
+            }
+
+            $interfaceName = (string) ($interface['name'] ?? '');
+            $rate = $this->getLiveTraffic($routerName, $interfaceName);
+            $rxBytes = max(0, (int) ($interface['rx-byte'] ?? 0));
+            $txBytes = max(0, (int) ($interface['tx-byte'] ?? 0));
+
+            return [
+                'interface' => $interfaceName,
+                'rx-bits-per-second' => (int) ($rate['rx-bits-per-second'] ?? 0),
+                'tx-bits-per-second' => (int) ($rate['tx-bits-per-second'] ?? 0),
+                'rx-bytes' => $rxBytes,
+                'tx-bytes' => $txBytes,
+                'rx-mb' => round($rxBytes / 1048576, 2),
+                'tx-mb' => round($txBytes / 1048576, 2),
+            ];
+        } catch (\Throwable $e) {
+            \Log::warning('Live customer traffic read failed', [
+                'router' => $routerName,
+                'username' => $username,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $empty;
+        }
+    }
+
     protected function normalizeTrafficData(array $data): array
     {
         $units = ['gbps' => 1_000_000_000, 'mbps' => 1_000_000, 'kbps' => 1_000, 'bps' => 1];
