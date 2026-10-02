@@ -263,6 +263,71 @@ class CustomerList extends Component
                        '<div class="text-primary fw-bold" style="font-size: 0.75rem"><i class="bi bi-calendar-x me-1"></i>'.$disableDate.'</div>'.
                        '<div class="text-muted" style="font-size: 0.7rem">Ext: '.($row->billing?->auto_disable_month ?? 0).' Mon</div>';
             })
+            ->addColumn('cid', function ($row) {
+                return '<span class="fw-bold text-primary">'.e($row->customer_unique_id).'</span>';
+            })
+            ->addColumn('customer_name_display', function ($row) {
+                return '<div class="fw-semibold text-dark">'.e($row->customer_name ?? 'N/A').'</div>';
+            })
+            ->addColumn('connection', function ($row) {
+                $username = $row->pppUser?->username;
+                $ip = $row->pppUser?->ppp_remote_ip ?: $row->pppUser?->ip_address;
+                if ($username) {
+                    return '<div><span class="badge bg-secondary-subtle text-secondary">PPPoE</span> <span class="fw-semibold">'.e($username).'</span></div>';
+                }
+                if ($ip) {
+                    return '<div><span class="badge bg-info-subtle text-info-emphasis">STATIC</span> <span class="fw-semibold">'.e($ip).'</span></div>';
+                }
+                return '<span class="text-muted">N/A</span>';
+            })
+            ->addColumn('mobile_display', function ($row) {
+                return ! empty($row->mobile)
+                    ? '<span class="text-nowrap">'.e($row->mobile).'</span>'
+                    : '<span class="text-muted">—</span>';
+            })
+            ->addColumn('package_display', function ($row) {
+                $name = $row->package?->package ?: $row->package_name;
+                $price = $row->billing?->monthly_rent ?? $row->package?->price;
+                return '<div class="fw-semibold">'.e($name ?: 'N/A').'</div>'
+                    .($price !== null ? '<small class="text-muted">'.number_format((float) $price, 2).' ৳</small>' : '');
+            })
+            ->addColumn('billing_date_display', function ($row) {
+                if (! $row->billing?->auto_disable_date) {
+                    return '<span class="text-muted">—</span>';
+                }
+                $date = Carbon::parse($row->billing->auto_disable_date);
+                return '<span class="text-nowrap">Day of '.$date->format('j').'</span>';
+            })
+            ->addColumn('balance_display', function ($row) {
+                $balance = (float) ($row->billing?->due_amount ?? 0);
+                $class = $balance > 0 ? 'text-danger' : 'text-success';
+                return '<span class="fw-bold '.$class.'">'.number_format($balance, 2).' ৳</span>';
+            })
+            ->addColumn('expiry_display', function ($row) {
+                if (! $row->billing?->auto_disable_date) {
+                    return '<span class="text-muted">—</span>';
+                }
+                $date = Carbon::parse($row->billing->auto_disable_date);
+                $class = $date->isPast() && ! in_array($row->status, ['disable', 'inactive'], true) ? 'text-danger' : 'text-dark';
+                return '<span class="fw-semibold text-nowrap '.$class.'">'.$date->format('d M Y').'</span>';
+            })
+            ->addColumn('address_display', function ($row) {
+                $parts = [];
+                foreach ($row->customerAddress as $address) {
+                    if (($address->label_name ?? '') === 'Network Location') continue;
+                    $value = array_filter([$address->input_type_text, $address->input_type_dropdown, $address->input_type_textarea]);
+                    if ($value) $parts[] = implode(', ', $value);
+                }
+                $address = implode(', ', $parts);
+                return $address !== '' ? '<span title="'.e($address).'">'.e($address).'</span>' : '<span class="text-muted">—</span>';
+            })
+            ->addColumn('pop_area', function ($row) {
+                $pop = $row->official?->distribution_location;
+                return $pop ? '<span class="badge bg-light text-dark border">'.e($pop).'</span>' : '<span class="text-muted">—</span>';
+            })
+            ->addColumn('monthly_bill_display', function ($row) {
+                return '<span class="fw-bold text-primary">'.number_format((float) ($row->billing?->monthly_rent ?? 0), 2).' ৳</span>';
+            })
             ->addColumn('action', function ($row) {
                 $id = encrypt($row->customer_unique_id);
                 $viewBtn = '<a href="'.e(route('customer.details', $row->customer_unique_id)).'" class="view btn btn-outline-secondary" title="View Customer"><i class="bi bi-person-vcard"></i></a>';
@@ -327,7 +392,7 @@ class CustomerList extends Component
                 }
                 return $menu.'</ul></div>';
             })
-            ->rawColumns(['customer_identity', 'customers_address', 'billing_breakdown', 'connection_details', 'billing_summary', 'action', 'disable_details'])
+            ->rawColumns(['customer_identity', 'customers_address', 'billing_breakdown', 'connection_details', 'billing_summary', 'action', 'disable_details', 'cid', 'customer_name_display', 'connection', 'mobile_display', 'package_display', 'billing_date_display', 'balance_display', 'expiry_display', 'address_display', 'pop_area', 'monthly_bill_display'])
             ->make(true);
     }
 
