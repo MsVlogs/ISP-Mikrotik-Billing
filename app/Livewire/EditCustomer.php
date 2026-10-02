@@ -196,6 +196,13 @@ class EditCustomer extends Component
                 return [$field->label => $matchedValue];
             })->toArray();
 
+            // Distribution Location Point is now part of Customer Address.
+            // Backfill the edit form from the legacy OfficialInfo value when older
+            // customers do not yet have an address record for this field.
+            if (empty($customerAddresses['Distribution Location Point'] ?? '') && ! empty($customer->official?->distribution_location)) {
+                $customerAddresses['Distribution Location Point'] = $customer->official->distribution_location;
+            }
+
             $this->ppp_user_id = $customer->ppp_user_id;
             // Initialize fields for the customer and related data
             $this->fields = [
@@ -259,7 +266,7 @@ class EditCustomer extends Component
                         'billing_type' => $customer->official->billing_type ?? '',
                         'connection_type' => $customer->official->connection_type ?? '',
                         'connectivity_type' => $customer->official->connectivity_type ?? '',
-                        'distribution_location' => $customer->official->distribution_location ?? '',
+                        // Distribution Location Point is now canonical in Customer Address.
                         // 'bill_create' => $customer->official->bill_create ?? '',
                         'bill_sms' => $customer->official->bill_sms ?? '',
                         'continue_bill' => $customer->official->continue_bill ?? '',
@@ -387,7 +394,10 @@ class EditCustomer extends Component
                     'connection_type' => $o['connection_type'] ?? null,
                     'connectivity_type' => $o['connectivity_type'] ?? null,
                     'client_type' => $o['client_type'] ?? null,
-                    'distribution_location' => $o['distribution_location'] ?? null,
+                    // Keep the legacy OfficialInfo value synchronized with the canonical address field.
+                    'distribution_location' => $this->fields['customerAddress']['Distribution Location Point']
+                        ?? $customer->official->distribution_location
+                        ?? null,
                     'description' => $o['description'] ?? null,
                     'note' => $o['note'] ?? null,
                     // connected_by is a bigint user ID. Accept both the current ID value and

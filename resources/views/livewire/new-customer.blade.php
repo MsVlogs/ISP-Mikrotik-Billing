@@ -433,13 +433,6 @@
                             :options="['home' => __('Home'),'commercial' => __('Commercial'),'Corporate' => __('Corporate'), 'business' => __('Business')]"
                         />
                         <x-mikrotik.form-group
-                            label="{{ __('Distribution Location Point') }}"
-                            type="dropdownKey"
-                            name="distribution_location"
-                            placeholder="{{ __('Select Any One') }}"
-                            :options="['DC' => 'DC', 'NOC' => 'NOC', 'POP'=>'POP']"
-                        />
-                        <x-mikrotik.form-group
                             label="{{ __('Description') }}"
                             type="text"
                             name="description"

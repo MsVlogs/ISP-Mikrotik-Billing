@@ -715,7 +715,7 @@ class NewCustomer extends Component
             $customerOfficial->connection_type = $this->connection_type;
             $customerOfficial->connectivity_type = $this->connectivity_type;
             $customerOfficial->client_type = $this->client_type;
-            $customerOfficial->distribution_location = $this->distribution_location;
+            $customerOfficial->distribution_location = $this->address['Distribution Location Point'] ?? null;
             $customerOfficial->description = $this->description;
             $customerOfficial->note = $this->note;
             $customerOfficial->security_deposit = $this->normalizeValue($this->security_deposit);
