@@ -98,6 +98,24 @@
                 <div><span>Profession</span><strong>{{ $customer->profession ?: '—' }}</strong></div>
                 <div><span>Created</span><strong>{{ $customer->created_at?->format('d M Y H:i') ?: '—' }}</strong></div>
             </div></div></div>
+            <div class="col-12"><div class="info-card"><div class="card-title"><i class="bi bi-box-seam me-2"></i>Customer Inventory</div>
+                <div class="inventory-grid">
+                    <div><span>Inventory Type</span><strong>Internet Service</strong></div>
+                    <div><span>Service Status</span><strong>{{ ucfirst($status) }}</strong></div>
+                    <div><span>Connection</span><strong>{{ $ppp?->service ? strtoupper($ppp->service) : ($ppp?->username ? 'PPPoE' : '—') }}</strong></div>
+                    <div><span>PPPoE User ID</span><strong>{{ $ppp?->username ?: '—' }}</strong></div>
+                    <div><span>Router / MikroTik</span><strong>{{ $ppp?->router_name ?: '—' }}</strong></div>
+                    <div><span>Service Profile</span><strong>{{ $ppp?->profile ?: '—' }}</strong></div>
+                    <div><span>IP Address</span><strong>{{ $ppp?->ppp_remote_ip ?: '—' }}</strong></div>
+                    <div><span>Bandwidth</span><strong>{{ $ppp?->bandwidth ?: '—' }}</strong></div>
+                    <div><span>Package</span><strong>{{ $customer->package?->package ?: '—' }}</strong></div>
+                    <div><span>Monthly Bill</span><strong>{{ number_format((float)($billing?->monthly_rent ?? 0),2) }} ৳</strong></div>
+                    <div><span>ONU Serial</span><strong>{{ $mapping?->onu_serial ?: '—' }}</strong></div>
+                    <div><span>ONU MAC</span><strong>{{ $mapping?->onu_mac ?: '—' }}</strong></div>
+                    <div><span>OLT / PON</span><strong>{{ $mapping ? (($mapping->olt?->name ?: $mapping->olt?->hostname ?: 'OLT').' / '.($mapping->pon_port ?: '—')) : '—' }}</strong></div>
+                    <div><span>ONU Status</span><strong>{{ $mapping?->status ? ucfirst($mapping->status) : 'Not Mapped' }}</strong></div>
+                </div>
+            </div></div>
             <div class="col-xl-5"><div class="info-card h-100"><div class="card-title"><i class="bi bi-clock-history me-2"></i>Activity Log</div>
                 @forelse($activities as $activity)
                     <div class="activity-item"><div class="activity-dot"></div><div><strong>{{ $activity->description }}</strong>
@@ -116,9 +134,13 @@
         .action-btn:hover{background:#f4f8fb}.info-card{padding:16px}.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #edf0f3}
         .info-grid>div{padding:11px 8px;border-bottom:1px solid #edf0f3;min-width:0}.info-grid>div:nth-child(odd){border-right:1px solid #edf0f3}
         .info-grid>div.full{grid-column:1/-1;border-right:0}.info-grid span{display:block;color:#778195;font-size:.76rem;margin-bottom:3px}.info-grid strong{display:block;color:#273449;font-size:.9rem;word-break:break-word}
+        .inventory-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #edf0f3}
+        .inventory-grid>div{padding:12px 10px;border-bottom:1px solid #edf0f3;border-right:1px solid #edf0f3;min-width:0}
+        .inventory-grid span{display:block;color:#778195;font-size:.76rem;margin-bottom:3px}.inventory-grid strong{display:block;color:#273449;font-size:.9rem;word-break:break-word}
         .empty-state{text-align:center;color:#7b8494;padding:28px 10px}.empty-state i{font-size:2rem;display:block;margin-bottom:8px}
         .activity-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #edf0f3}.activity-item:last-child{border-bottom:0}.activity-dot{width:9px;height:9px;border-radius:50%;background:#198754;margin-top:6px;flex:0 0 auto}
-        @media(max-width:767px){.customer-hero{display:block}.customer-hero .text-end{text-align:left!important;margin-top:12px}.info-grid{grid-template-columns:1fr}.info-grid>div:nth-child(odd){border-right:0}}
+        @media(max-width:991px){.inventory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:767px){.inventory-grid{grid-template-columns:1fr}.customer-hero{display:block}.customer-hero .text-end{text-align:left!important;margin-top:12px}.info-grid{grid-template-columns:1fr}.info-grid>div:nth-child(odd){border-right:0}}
         @media print{.actions-card,.btn,.navbar,.sidebar{display:none!important}.customer-hero{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style>
     @endpush
