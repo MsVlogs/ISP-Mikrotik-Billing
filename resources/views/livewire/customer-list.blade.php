@@ -119,7 +119,7 @@
             <table class="customer-table table table-hover custom-data-table border-0 w-100" style="width:100%">
                 <thead class="bg-light">
                     <tr>
-                        <th class="text-center" style="width:36px;">{{ __('Select') }}</th>
+                        <th class="text-center" style="width:36px;"><input type="checkbox" id="select-all-customers" class="form-check-input" title="{{ __('Select All') }}" aria-label="{{ __('Select All') }}"></th>
                         <th>{{ __('CID') }}</th>
                         <th>{{ __('Customer') }}</th>
                         <th>{{ __('Connection') }}</th>
@@ -623,7 +623,7 @@
                     }
                 },
                 columns: [
-                    { data: 'DT_RowIndex', name: 'DT_RowIndex', title: '{{ __('Select') }}', searchable: false, orderable: false, className: 'text-center', render: function(data, type, row) { return '<input type="checkbox" class="customer-select form-check-input" value="'+(row.customer_unique_id || '')+'">'; } },
+                    { data: 'DT_RowIndex', name: 'DT_RowIndex', title: '', searchable: false, orderable: false, className: 'text-center', render: function(data, type, row) { return '<input type="checkbox" class="customer-select form-check-input" value="'+(row.customer_unique_id || '')+'">'; } },
                     { data: 'cid', name: 'customer_unique_id', title: '{{ __('CID') }}', className: 'text-start' },
                     { data: 'customer_name_display', name: 'customer_name', title: '{{ __('Customer') }}', className: 'text-start' },
                     { data: 'connection', name: 'ppp_user.username', title: '{{ __('Connection') }}', className: 'text-start' },
@@ -650,7 +650,21 @@
                 }
             }
 
-            table.on('draw', function () { updateCustomerCount(); });
+            table.on('draw', function () {
+                updateCustomerCount();
+                $('#select-all-customers').prop('checked', false);
+            });
+
+            // Select/unselect all customers visible on the current page.
+            $(document).off('change.customerSelectAll', '#select-all-customers').on('change.customerSelectAll', '#select-all-customers', function () {
+                $('.customer-select').prop('checked', this.checked);
+            });
+
+            $(document).off('change.customerSelect', '.customer-select').on('change.customerSelect', '.customer-select', function () {
+                const total = $('.customer-select').length;
+                const selected = $('.customer-select:checked').length;
+                $('#select-all-customers').prop('checked', total > 0 && total === selected);
+            });
             
             // Logic to reset table search when a filter is clicked
             function resetTableState() {
