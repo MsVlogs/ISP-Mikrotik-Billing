@@ -72,7 +72,7 @@
         <x-error name='{{ $name }}' />
     @elseif ($type == 'dropdown')
         <select class="form-control @error($name) is-invalid @enderror" name="{{ $name }}" wire:model="{{$name}}" id="{{$name}}" @if (isset($wChange) && $wChange != '') wire:change="{{ $wChange }}" @endif {{ ($multiple ?? false) ? 'multiple' : '' }} style="{{ $inputStyle ?? '' }}">
-            @if ($placeholder != '')
+            @if (($placeholder ?? '') != '')
                 <option value="">{{ __($placeholder ?? $label) }}</option>
             @endif
             @foreach ($options ?? [] as $option)
@@ -82,7 +82,7 @@
         <x-error name='{{ $name }}' />
     @elseif ($type == 'dropdownKey')
         <select class="form-control @error($name) is-invalid @enderror" name="{{ $name }}" wire:model="{{$name}}" id="{{$name}}" @if (isset($wChange) && $wChange != '') wire:change="{{ $wChange }}" @endif {{ ($multiple ?? false) ? 'multiple' : '' }} style="{{ $inputStyle ?? '' }}">
-            @if ($placeholder != '')
+            @if (($placeholder ?? '') != '')
                 <option value="">{{ __($placeholder ?? $label) }}</option>
             @endif
             @foreach ($options ?? [] as $key => $option)
