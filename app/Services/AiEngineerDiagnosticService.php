@@ -28,6 +28,7 @@ class AiEngineerDiagnosticService
 
         $network = $this->networkSnapshot();
         $incidents = $this->incidentSummary($network);
+        $insights = $this->networkInsights($network);
         return [
             'customers' => ['total'=>$customerCount,'active'=>$active,'pending'=>$pending,'disabled'=>$disabled],
             'routers' => ['total'=>$routerTotal,'connected'=>$routerConnected,'disconnected'=>max(0,$routerTotal-$routerConnected)],
@@ -35,6 +36,7 @@ class AiEngineerDiagnosticService
             'support' => ['tickets'=>$tickets],
             'network' => $network,
             'incidents' => $incidents,
+            'insights' => $insights,
             'ai_provider' => (string) config('services.ai.provider', 'gemini'),
             'ai_configured' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
             'openai_configured' => (string) config('services.openai.api_key') !== '',
@@ -211,8 +213,16 @@ class AiEngineerDiagnosticService
         $input=[['role'=>'developer','content'=>$systemPrompt],['role'=>'user','content'=>'Diagnostic context: '.$context]];
         foreach($safeHistory as $m)$input[]=$m;
         $input[]=['role'=>'user','content'=>mb_substr($question,0,4000)];
-        $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->post('https://api.openai.com/v1/responses',['model'=>config('services.openai.model'),'store'=>false,'input'=>$input]);
-        if(!$response->successful()){\Log::error('AI Engineer OpenAI request failed',['status'=>$response->status()]);return ['ok'=>false,'configured'=>true,'provider'=>'openai','message'=>'OpenAI request failed. Local diagnostics remain available.'];}
+        try {
+            $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->post('https://api.openai.com/v1/responses',['model'=>config('services.openai.model'),'store'=>false,'input'=>$input]);
+        } catch (\Throwable $e) {
+            \Log::error('AI Engineer OpenAI request exception',['error'=>$e->getMessage()]);
+            return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+        }
+        if(!$response->successful()){
+            \Log::error('AI Engineer OpenAI request failed',['status'=>$response->status(),'body'=>mb_substr($response->body(),0,2000)]);
+            return ['ok'=>false,'configured'=>true,'provider'=>'openai','message'=>'OpenAI request failed (HTTP '.$response->status().'). Check Laravel log for the provider error.'];
+        }
         $body=$response->json(); $text=$body['output_text']??'';
         if($text==='')foreach(($body['output']??[]) as $item)foreach(($item['content']??[]) as $content)if(($content['type']??'')==='output_text')$text.=$content['text']??'';
         return ['ok'=>true,'configured'=>true,'provider'=>'openai','message'=>trim($text),'read_only'=>true];
@@ -302,6 +312,41 @@ class AiEngineerDiagnosticService
             'mapping_total'=>$mappingTotal,'mapped_customers'=>$mapped,'unmapped_onu'=>max(0,$mappingTotal-$mapped),
             'affected_customers'=>Schema::hasTable('olt_onu_customer_mappings')?OltOnuCustomerMapping::whereNotNull('customer_id')->whereIn(DB::raw('LOWER(status)'),['offline','down','los'])->distinct('customer_id')->count('customer_id'):0,
             'live_olt_reads'=>$liveRead,'generated_at'=>now()->toIso8601String()];
+    }
+
+    public function networkInsights(array $network): array
+    {
+        $issues = [];
+        $warnings = [];
+        $optical = $this->opticalPowerList(100);
+        foreach ($optical as $row) {
+            $rx = is_numeric($row['rx'] ?? null) ? (float)$row['rx'] : null;
+            $status = strtolower((string)($row['status'] ?? ''));
+            if ($status === 'los' || $status === 'offline' || ($rx !== null && $rx <= -27)) {
+                $issues[] = ['type'=>'optical','severity'=>'critical','olt'=>$row['olt'],'pon'=>$row['pon'],'onu_id'=>$row['onu_id'],'rx'=>$rx,'status'=>$row['status']];
+            } elseif ($rx !== null && $rx <= -24) {
+                $warnings[] = ['type'=>'optical','severity'=>'warning','olt'=>$row['olt'],'pon'=>$row['pon'],'onu_id'=>$row['onu_id'],'rx'=>$rx,'status'=>$row['status']];
+            }
+        }
+        $routerStale = 0;
+        if (Schema::hasColumn((new RouterList())->getTable(), 'last_checked_at')) {
+            $routerStale = RouterList::where('action','connected')->where(function($q){$q->whereNull('last_checked_at')->orWhere('last_checked_at','<',now()->subMinutes(15));})->count();
+        }
+        $health = 100;
+        $health -= min(35, (int)$network['olt_offline'] * 15);
+        $health -= min(25, (int)$network['router_total'] > 0 ? (int)round(((int)$network['router_total']-(int)$network['router_online']) / max(1,(int)$network['router_total']) * 25) : 0);
+        $health -= min(20, count($issues) * 3);
+        $health -= min(10, (int)$routerStale);
+        $health = max(0, min(100, $health));
+        return [
+            'health_score'=>$health,
+            'health_band'=>$health >= 90 ? 'healthy' : ($health >= 70 ? 'attention' : 'degraded'),
+            'optical_critical'=>count($issues),
+            'optical_warning'=>count($warnings),
+            'router_stale'=>$routerStale,
+            'top_findings'=>array_slice(array_merge($issues,$warnings),0,12),
+            'read_only'=>true,
+        ];
     }
 
     public function incidentSummary(?array $network = null): array
