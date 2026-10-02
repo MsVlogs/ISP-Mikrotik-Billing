@@ -28,7 +28,7 @@ html[data-theme="dark"] .login-visual{background:linear-gradient(160deg,#0b2a22,
 <button class="login-theme" id="loginThemeToggle" type="button" aria-label="Toggle dark mode">◐</button>
 <main class="login-shell">
 <section class="login-visual">
-<h1 class="login-slogan">Let’s Make ISP Automation Simple &amp; Paperless.</h1>
+<h1 class="login-slogan">Powering Smarter ISP Management with X-Link.</h1>
 <div class="login-media">
 <img src="{{ asset('images/front_logo_300_500.png') }}" alt="X-Link Limited">
 </div>
@@ -40,7 +40,7 @@ html[data-theme="dark"] .login-visual{background:linear-gradient(160deg,#0b2a22,
 </div>
 <div><strong>{{ siteUrlSettings('site_name') ?? 'X-Link Limited' }}</strong><small>Admin Panel</small></div>
 </div>
-<div class="login-head"><h1>ADMIN LOGIN</h1></div>
+<div class="login-head"><h1>Welcome Back</h1><p style="color:var(--login-muted);margin:-14px 0 24px;font-size:.95rem">Sign in to your X-Link ISP Management Panel</p></div>
 @if(session('status'))<div class="login-alert" style="background:#ecfdf5;color:#047857">{{ session('status') }}</div>@endif
 <x-validation-errors class="login-alert" />
 <form class="login-form" method="POST" action="{{ route('login') }}">
