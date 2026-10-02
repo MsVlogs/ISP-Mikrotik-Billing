@@ -835,6 +835,7 @@ class CustomerList extends Component
         $this->editingCustomerId = is_array($id) ? $id['id'] ?? $id : $id;
     }
 
+    #[On('close-edit-customer')]
     public function closeEditCustomerModal()
     {
         $this->editingCustomerId = null;

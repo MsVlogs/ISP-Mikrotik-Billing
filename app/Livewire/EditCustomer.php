@@ -226,7 +226,7 @@ class EditCustomer extends Component
                 'customerAddress' => $customerAddresses, // This will be an array of addresses
 
                 'pppUser' => array_merge([
-                    'connection_date' => Carbon::parse($customer->connection_date)->format('d M Y') ?? '',
+                    'connection_date' => $customer->connection_date ? Carbon::parse($customer->connection_date)->format('Y-m-d') : '',
                     'package_name' => $customer->package?->package ?? '',
                     'ppp_user_id' => $this->ppp_user_id ?? '',
                 ], $this->ppp_user_id !== null ? [
@@ -239,10 +239,13 @@ class EditCustomer extends Component
                     'comment' => $customer->pppUser->comment ?? '',
                     'ppp_remote_ip' => $customer->pppUser->ppp_remote_ip ?? '',
                     'bandwidth' => $customer->pppUser->bandwidth ?? '',
+                    'interface' => \Illuminate\Support\Facades\Schema::hasColumn('p_p_p_secrets', 'interface') ? ($customer->pppUser->interface ?? '') : '',
+                    'subnet_prefix' => \Illuminate\Support\Facades\Schema::hasColumn('p_p_p_secrets', 'subnet_prefix') ? ($customer->pppUser->subnet_prefix ?? '') : '',
+                    'gateway' => \Illuminate\Support\Facades\Schema::hasColumn('p_p_p_secrets', 'gateway') ? ($customer->pppUser->gateway ?? '') : '',
                 ] : [],
                     [
-                        'auto_disable_date' => $customer->billing?->auto_disable_date ? Carbon::parse($customer->billing->auto_disable_date)->format('d M Y') : '',
-                        'auto_disable_month' => $customer->billing?->auto_disable_month ? $customer->billing->auto_disable_month.' Month' : '',
+                        'auto_disable_date' => $customer->billing?->auto_disable_date ? Carbon::parse($customer->billing->auto_disable_date)->format('Y-m-d') : '',
+                        'auto_disable_month' => $customer->billing?->auto_disable_month ?? 0,
                         'auto_disable' => $customer->billing->auto_disable ?? '',
                     ]
                 ),
@@ -275,9 +278,142 @@ class EditCustomer extends Component
             $this->service = $customer->pppUser->service ?? '';
             $this->auto_disable = $customer->billing->auto_disable ?? true;
             $this->auto_disable_date = $customer->billing->auto_disable_date ?? null;
+
+            $location = $customer->customerAddress->firstWhere('label_name', 'Network Location');
+            $this->fields['customer']['latitude'] = $location?->latitude ?? '';
+            $this->fields['customer']['longitude'] = $location?->longitude ?? '';
         } else {
             flash()->error('Customer not found.');
         }
+    }
+
+
+    public function saveEditForm(): void
+    {
+        if (! hasAccess(['Super Admin'], ['edit-customer']) && ! auth()->user()->hasRole('Reseller')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $uid = decrypt($this->customerId);
+        $customer = CustomersInfo::where('customer_unique_id', $uid)->with(['pppUser', 'billing', 'official'])->firstOrFail();
+
+        $this->validate([
+            'fields.customer.customer_name' => 'required|min:3|max:255',
+            'fields.customer.email' => 'nullable|email',
+            'fields.customer.mobile' => 'nullable|string',
+            'fields.customer.alternative_mobile' => 'nullable|string',
+            'fields.customer.identification_no' => 'nullable|string|max:255',
+            'fields.customer.latitude' => 'nullable|numeric|between:-90,90',
+            'fields.customer.longitude' => 'nullable|numeric|between:-180,180',
+            'fields.pppUser.username' => 'nullable|string|max:25',
+            'fields.pppUser.password' => 'nullable|string|max:255',
+            'fields.pppUser.ppp_remote_ip' => 'nullable|ip',
+            'fields.pppUser.caller_id' => 'nullable|mac_address',
+            'fields.billing.monthly_rent' => 'required|numeric',
+        ]);
+
+        DB::transaction(function () use ($customer, $uid) {
+            $c = $this->fields['customer'];
+            $customer->update([
+                'customer_name' => $c['customer_name'] ?? '',
+                'email' => $c['email'] ?? null,
+                'mobile' => filled($c['mobile'] ?? null) ? (str_starts_with((string)$c['mobile'], '88') ? $c['mobile'] : '88'.$c['mobile']) : null,
+                'alternative_mobile' => filled($c['alternative_mobile'] ?? null) ? (str_starts_with((string)$c['alternative_mobile'], '88') ? $c['alternative_mobile'] : '88'.$c['alternative_mobile']) : null,
+                'identification_no' => $c['identification_no'] ?? null,
+                'profession' => $c['profession'] ?? null,
+                'connection_date' => $this->fields['pppUser']['connection_date'] ?? $customer->connection_date,
+            ]);
+
+            $ppp = $customer->pppUser;
+            if ($ppp) {
+                $p = $this->fields['pppUser'];
+                $ppp->router_name = $p['router_name'] ?? $ppp->router_name;
+                $ppp->service = $p['service'] ?? $ppp->service;
+                $ppp->profile = $p['profile'] ?? $ppp->profile;
+                $ppp->username = $p['username'] ?? $ppp->username;
+                if (filled($p['password'] ?? null)) $ppp->password = $p['password'];
+                $ppp->ppp_remote_ip = $p['ppp_remote_ip'] ?? null;
+                $ppp->ip_address = $p['ip_address'] ?? null;
+                $ppp->caller_id = $p['caller_id'] ?? null;
+                $ppp->bandwidth = $p['bandwidth'] ?? null;
+                $ppp->comment = $p['comment'] ?? null;
+                $ppp->profile = $p['profile'] ?? $ppp->profile;
+                foreach (['interface', 'subnet_prefix', 'gateway'] as $optionalColumn) {
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('p_p_p_secrets', $optionalColumn)) {
+                        $ppp->{$optionalColumn} = $p[$optionalColumn] ?? null;
+                    }
+                }
+                $ppp->save();
+                $customer->ppp_user_id = $ppp->id;
+                $customer->save();
+            }
+
+            $packageName = $this->fields['pppUser']['package_name'] ?? null;
+            if ($packageName) {
+                $package = PackageList::where('package', $packageName)
+                    ->when($customer->pppUser?->router_name, fn ($q, $router) => $q->where('router_name', $router))
+                    ->first();
+                if ($package) {
+                    $customer->package_id = $package->id;
+                    $customer->save();
+                }
+            }
+
+            $b = $this->fields['billing'];
+            $billing = $customer->billing ?: new BillingInfo(['customer_bill_unique_id' => $uid]);
+            $billing->monthly_rent = $b['monthly_rent'] ?? 0;
+            $billing->additional_charge = $b['additional_charge'] ?? 0;
+            $billing->discount = $b['discount'] ?? 0;
+            $billing->advance = $b['advance'] ?? 0;
+            $billing->previous_due = $b['previous_due'] ?? 0;
+            $billing->vat = $b['vat'] ?? 0;
+            $billing->billing_type = $b['billing_type'] ?? 'prepaid';
+            $billing->total_amount = $b['total_amount'] ?? 0;
+            $billing->due_amount = $b['due_amount'] ?? 0;
+            $billing->auto_disable = $this->fields['pppUser']['auto_disable'] ?? $billing->auto_disable;
+            $billing->auto_disable_date = !empty($this->fields['pppUser']['auto_disable_date']) ? Carbon::parse($this->fields['pppUser']['auto_disable_date'])->format('Y-m-d') : null;
+            $billing->auto_disable_month = (int) filter_var($this->fields['pppUser']['auto_disable_month'] ?? 0, FILTER_SANITIZE_NUMBER_INT);
+            $billing->save();
+
+            $o = $this->fields['official'];
+            if ($customer->official) {
+                $customer->official->update([
+                    'billing_type' => $o['billing_type'] ?? $billing->billing_type,
+                    'connection_type' => $o['connection_type'] ?? null,
+                    'connectivity_type' => $o['connectivity_type'] ?? null,
+                    'client_type' => $o['client_type'] ?? null,
+                    'distribution_location' => $o['distribution_location'] ?? null,
+                    'description' => $o['description'] ?? null,
+                    'note' => $o['note'] ?? null,
+                    'connected_by' => $o['connected_by'] ?? null,
+                    'security_deposit' => $o['security_deposit'] ?? 0,
+                ]);
+            }
+
+            foreach ($this->fields['customerAddress'] ?? [] as $label => $value) {
+                $field = AddressField::where('label', $label)->first();
+                if (!$field) continue;
+                $column = 'input_type_'.$field->input_type;
+                $address = CustomersAddress::firstOrNew([
+                    'customer_address_unique_id' => $uid,
+                    'label_name' => $label,
+                ]);
+                $address->$column = $value;
+                $address->save();
+            }
+
+            $location = CustomersAddress::firstOrNew([
+                'customer_address_unique_id' => $uid,
+                'label_name' => 'Network Location',
+            ]);
+            $location->latitude = $this->fields['customer']['latitude'] ?? null;
+            $location->longitude = $this->fields['customer']['longitude'] ?? null;
+            $location->save();
+        });
+
+        flash()->addSuccess('Customer updated successfully.');
+        $this->loadCustomerData($this->customerId);
+        $this->dispatch('customer-action-done');
     }
 
     public function resetPPPUser()
