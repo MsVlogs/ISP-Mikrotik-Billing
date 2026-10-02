@@ -29,6 +29,55 @@ class AddressSetup extends Component
 
     public $addressFieldId; // Track the ID of the AddressField being edited
 
+    public array $standardAddressLabels = [
+        'Present Address',
+        'Floor / Flat',
+        'Road',
+        'House',
+        'Area',
+        'Zone',
+        'District',
+        'Thana / Upazila',
+        'Other Thana / Upazila',
+        'POP',
+        'Distribution Location Point',
+        'Network Location',
+    ];
+
+    public function selectStandardAddressLabel($label): void
+    {
+        if (! in_array($label, $this->standardAddressLabels, true)) {
+            return;
+        }
+
+        $this->label = $label;
+
+        // Keep standard address fields consistent with their intended UI input.
+        $dropdownFields = [
+            'Zone', 'District', 'Thana / Upazila', 'Other Thana / Upazila',
+            'POP', 'Distribution Location Point', 'Network Location',
+        ];
+
+        if (in_array($label, $dropdownFields, true)) {
+            $this->input_type = 'dropdown';
+        } elseif ($label === 'Present Address') {
+            $this->input_type = 'textarea';
+        } else {
+            $this->input_type = 'text';
+        }
+
+        if ($label === 'Distribution Location Point') {
+            $this->dropdown_list = ['DC', 'NOC', 'POP'];
+        } elseif ($label === 'Network Location') {
+            $this->dropdown_list = [];
+        } else {
+            $existing = AddressField::where('label', $label)->first();
+            $this->dropdown_list = $existing?->input_type === 'dropdown'
+                ? (json_decode($existing->dropdown_list ?: '[]', true) ?: [])
+                : [];
+        }
+    }
+
     public function mount()
     {
         if (! hasAccess(['Super Admin'], ['address-setup'])) {
