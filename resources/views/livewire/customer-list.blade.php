@@ -623,7 +623,7 @@
                     }
                 },
                 columns: [
-                    { data: 'DT_RowIndex', name: 'DT_RowIndex', title: '', searchable: false, orderable: false, className: 'text-center', render: function(data, type, row) { return '<input type="checkbox" class="customer-select form-check-input" value="'+(row.customer_unique_id || '')+'">'; } },
+                    { data: 'DT_RowIndex', name: 'DT_RowIndex', title: '<input type="checkbox" id="select-all-customers" class="form-check-input" title="{{ __('Select All') }}" aria-label="{{ __('Select All') }}">', searchable: false, orderable: false, className: 'text-center', render: function(data, type, row) { return '<input type="checkbox" class="customer-select form-check-input" value="'+(row.customer_unique_id || '')+'">'; } },
                     { data: 'cid', name: 'customer_unique_id', title: '{{ __('CID') }}', className: 'text-start' },
                     { data: 'customer_name_display', name: 'customer_name', title: '{{ __('Customer') }}', className: 'text-start' },
                     { data: 'connection', name: 'ppp_user.username', title: '{{ __('Connection') }}', className: 'text-start' },
