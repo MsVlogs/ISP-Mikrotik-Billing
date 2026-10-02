@@ -43,7 +43,7 @@
                 @endif
                 <div class="{{ $routers->count() > 1 ? 'col-md-10' : 'col-md-12' }}">
                     <label class="small text-muted fw-bold ps-1">{{ __('FILTERS') }}</label>
-                    <div class="d-flex flex-wrap gap-1 customer-filter-toolbar">
+                    <div class="d-flex flex-nowrap align-items-center gap-1 customer-filter-toolbar">
                         <div class="filter-group d-flex gap-1 overflow-auto pb-1">
                             <input type="radio" class="btn-check" name="collection" id="all_list" autocomplete="off">
                             <label class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-none fw-600" for="all_list">
@@ -92,18 +92,13 @@
                                 </label>
                             @endforeach
                         </div>
-                        <div class="ms-auto border-start ps-1 d-flex flex-nowrap gap-1 customer-filter-actions">
+                        <div class="d-flex flex-nowrap gap-1 customer-filter-actions">
                             <form method="POST" action="{{ route('network-inventory.olt.sync') }}" class="d-inline" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button span').textContent='Syncing…';">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Synchronize ONU inventory and customer mappings">
                                     <i class="bi bi-arrow-repeat me-1"></i><span>Sync ONU</span>
                                 </button>
                             </form>
-                            @if(hasAccess(['Super Admin'], ['push-customers']))
-                                <button type="button" onclick="confirmPushAllCustomers()" class="btn btn-outline-warning btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Push all customers to MikroTik">
-                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> {{ __('Push All') }}
-                                </button>
-                            @endif
                             <button type="button" id="reset_table" class="btn btn-light btn-outline-dark btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Reset all filters and search">
                                 <i class="bi bi-arrow-clockwise"></i> {{ __('Reset') }}
                             </button>
@@ -379,14 +374,15 @@
                 overflow-x: auto;
                 overflow-y: hidden;
                 padding-bottom: .25rem;
+                width: 100%;
             }
             .customer-filter-toolbar > .filter-group {
-                flex: 0 0 42%;
-                width: 42%;
-                min-width: 42%;
+                flex: 0 0 auto !important;
+                width: max-content !important;
+                min-width: max-content !important;
+                flex-wrap: nowrap !important;
             }
-            .customer-filter-toolbar > .customer-filter-actions,
-            .customer-filter-card .ms-auto.customer-filter-actions {
+            .customer-filter-toolbar > .customer-filter-actions {
                 flex: 0 0 auto !important;
                 flex-wrap: nowrap !important;
                 width: max-content !important;
