@@ -168,6 +168,95 @@ class AiEngineerDiagnosticService
         return $due>0?'due':'clear';
     }
 
+    /**
+     * Correlate affected customers/ONUs by shared upstream path.
+     * Read-only: this only reports evidence-based groups and never changes mappings.
+     */
+    public function upstreamCorrelation(int $limit = 100): array
+    {
+        $rows = [];
+        if (!Schema::hasTable('olt_onu_customer_mappings')) {
+            return ['groups'=>[], 'affected_customers'=>0, 'read_only'=>true];
+        }
+
+        $mappings = OltOnuCustomerMapping::query()->latest('id')->limit($limit)->get();
+        foreach ($mappings as $m) {
+            $status = strtolower((string) ($m->status ?? 'unknown'));
+            $affected = in_array($status, ['offline','down','los','critical'], true);
+            if (!$affected) continue;
+            $key = implode('|', [
+                (string) ($m->olt_device_id ?? 'unknown'),
+                strtolower(trim((string) ($m->pon_port ?? 'unknown'))),
+            ]);
+            $rows[$key] ??= [
+                'olt_device_id' => $m->olt_device_id,
+                'pon' => $m->pon_port,
+                'affected_customers' => 0,
+                'affected_onus' => 0,
+                'statuses' => [],
+                'customer_ids' => [],
+                'evidence' => [],
+            ];
+            $rows[$key]['affected_onus']++;
+            $rows[$key]['statuses'][] = strtoupper($status);
+            if ($m->customer_id) {
+                $rows[$key]['affected_customers']++;
+                $rows[$key]['customer_ids'][] = (string) $m->customer_id;
+            }
+        }
+
+        $groups = array_values(array_map(function ($g) {
+            $g['statuses'] = array_values(array_unique($g['statuses']));
+            $g['customer_ids'] = array_values(array_unique($g['customer_ids']));
+            $g['confidence'] = $g['affected_onus'] >= 3 ? 'high' : ($g['affected_onus'] >= 2 ? 'medium' : 'low');
+            $g['evidence'][] = $g['affected_onus'].' affected ONU(s) share the same OLT/PON path.';
+            $g['read_only'] = true;
+            return $g;
+        }, $rows));
+
+        usort($groups, fn($a,$b) => $b['affected_onus'] <=> $a['affected_onus']);
+        return [
+            'groups' => array_slice($groups, 0, 25),
+            'affected_customers' => count(array_unique(array_merge(...array_map(fn($g)=>$g['customer_ids'], $groups ?: [[]])))),
+            'read_only' => true,
+        ];
+    }
+
+    /**
+     * Read-only customer/ONU candidate matching using normalized identifiers.
+     */
+    public function matchingCandidates(int $limit = 100): array
+    {
+        if (!Schema::hasTable('olt_onu_customer_mappings')) return ['matches'=>[], 'read_only'=>true];
+        $customers = CustomersInfo::with('pppUser')->limit($limit)->get();
+        $maps = OltOnuCustomerMapping::query()->whereNull('customer_id')->latest('id')->limit($limit)->get();
+        $matches = [];
+        foreach ($maps as $map) {
+            $best = null;
+            $mapMac = $this->normalizeIdentifier($map->onu_mac);
+            $mapIp = $this->normalizeIdentifier($map->onu_ip);
+            $mapSerial = $this->normalizeIdentifier($map->onu_serial);
+            foreach ($customers as $customer) {
+                $score = 0; $reasons = [];
+                $ppp = $customer->pppUser;
+                foreach ([['mac',$mapMac,$customer->mac_address ?? null,60],['ip',$mapIp,$customer->static_ip ?? null,25],['serial',$mapSerial,$customer->onu_serial ?? null,30]] as $item) {
+                    [$field,$a,$b,$weight] = $item;
+                    if ($a !== '' && $this->normalizeIdentifier($b) !== '' && $a === $this->normalizeIdentifier($b)) { $score += $weight; $reasons[] = strtoupper($field).' exact match'; }
+                }
+                if ($ppp && $mapIp !== '' && $this->normalizeIdentifier($ppp->ppp_remote_ip ?? null) === $mapIp) { $score += 20; $reasons[] = 'PPPoE remote IP match'; }
+                if ($score > 0 && (!$best || $score > $best['score'])) $best = ['customer_id'=>$customer->customer_unique_id,'customer_name'=>$customer->customer_name,'score'=>min(100,$score),'reasons'=>$reasons];
+            }
+            if ($best) $matches[] = ['mapping_id'=>$map->id,'olt_device_id'=>$map->olt_device_id,'pon'=>$map->pon_port,'onu_id'=>$map->onu_id,'onu_mac'=>$map->onu_mac,'candidate'=>$best,'read_only'=>true];
+        }
+        usort($matches, fn($a,$b)=>$b['candidate']['score'] <=> $a['candidate']['score']);
+        return ['matches'=>array_slice($matches,0,50),'read_only'=>true];
+    }
+
+    private function normalizeIdentifier($value): string
+    {
+        return strtolower(preg_replace('/[^a-z0-9:.@_-]/i', '', trim((string) $value)));
+    }
+
     public function chat(string $question, ?string $customerId=null, array $history=[]): array
     {
         $diagnosis=$customerId?$this->diagnoseCustomer($customerId):null;
