@@ -110,8 +110,7 @@
                     <div><span>Bandwidth</span><strong>{{ $ppp?->bandwidth ?: '—' }}</strong></div>
                     <div><span>Package</span><strong>{{ $customer->package?->package ?: '—' }}</strong></div>
                     <div><span>Monthly Bill</span><strong>{{ number_format((float)($billing?->monthly_rent ?? 0),2) }} ৳</strong></div>
-                    <div><span>ONU Serial</span><strong>{{ $mapping?->onu_serial ?: '—' }}</strong></div>
-                    <div><span>ONU MAC</span><strong>{{ $mapping?->onu_mac ?: '—' }}</strong></div>
+<div><span>ONU MAC</span><strong>{{ $mapping?->onu_mac ?: '—' }}</strong></div>
                     <div><span>OLT / PON</span><strong>{{ $mapping ? (($mapping->olt?->name ?: $mapping->olt?->hostname ?: 'OLT').' / '.($mapping->pon_port ?: '—')) : '—' }}</strong></div>
                     <div><span>ONU Status</span><strong>{{ $mapping?->status ? ucfirst($mapping->status) : 'Not Mapped' }}</strong></div>
                 </div>
