@@ -25,7 +25,7 @@
                                     name="label"
                                     placeholder="{{ __('Select Address Field') }}"
                                     :options="collect($standardAddressLabels)->mapWithKeys(fn($item) => [$item => __($item)])->toArray()"
-                                    wire:change="selectStandardAddressLabel($event.target.value)"
+                                    wChange="selectStandardAddressLabel($event.target.value)"
                                 />
                                 <div class="form-text">{{ __('Select a standard Customer Address field from the dropdown.') }}</div>
                             </div>
