@@ -91,7 +91,7 @@
                                 </label>
                             @endforeach
                         </div>
-                        <div class="d-flex flex-nowrap gap-1 customer-filter-actions">
+                        <div class="d-flex flex-nowrap gap-1">
                             <form method="POST" action="{{ route('network-inventory.olt.sync') }}" class="d-inline" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button span').textContent='Syncing…';">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3 py-0 shadow-none fw-600" style="height: 2rem;" title="Synchronize ONU inventory and customer mappings">
@@ -287,12 +287,12 @@
             min-width: 0;
         }
         .customer-filter-toolbar {
-            width: 100%;
-            gap: .3rem !important;
+            width: auto;
+            gap: 0 !important;
         }
         .customer-filter-toolbar > .filter-group {
-            flex: 1 1 0% !important;
-            width: 0;
+            flex: 0 1 auto !important;
+            width: auto;
             min-width: 0;
             overflow-x: auto !important;
             overflow-y: hidden;
