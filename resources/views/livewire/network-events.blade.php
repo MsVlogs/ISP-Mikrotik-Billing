@@ -10,6 +10,17 @@
  <a href="{{ route('device-manager') }}" class="btn btn-outline-secondary"><i class="bi bi-router me-1"></i> Device Manager</a>
 </div>
 @if($message)<div class="alert alert-success py-2">{{ $message }}</div>@endif
+<div class="ne-card mb-3">
+ <div class="p-3 border-bottom"><div class="d-flex justify-content-between align-items-center"><div><strong><i class="bi bi-send me-1"></i> Direct Alert Channels</strong><div class="ne-muted">Send new open network events directly to WhatsApp and/or Telegram.</div></div><span class="badge bg-light text-dark border">{{ ucfirst($min_severity) }}+ alerts</span></div></div>
+ <form wire:submit.prevent="saveNotificationSettings" class="p-3">
+  <div class="row g-3">
+   <div class="col-xl-6"><div class="border rounded-3 p-3 h-100"><div class="d-flex justify-content-between align-items-center mb-2"><strong><i class="bi bi-whatsapp text-success me-1"></i> WhatsApp</strong><input type="checkbox" class="form-check-input" wire:model="whatsapp_enabled"></div><div class="row g-2"><div class="col-12"><label class="form-label small">API URL</label><input wire:model="whatsapp_url" class="form-control form-control-sm" placeholder="https://gateway.example/api/send"></div><div class="col-md-7"><label class="form-label small">API Token</label><input type="password" wire:model="whatsapp_token" class="form-control form-control-sm" autocomplete="new-password"></div><div class="col-md-5"><label class="form-label small">Recipient</label><input wire:model="whatsapp_to" class="form-control form-control-sm" placeholder="8801XXXXXXXXX"></div></div><div class="mt-2 text-end"><button type="button" wire:click="testNotification('whatsapp')" class="btn btn-sm btn-outline-success">Test WhatsApp</button></div></div></div>
+   <div class="col-xl-6"><div class="border rounded-3 p-3 h-100"><div class="d-flex justify-content-between align-items-center mb-2"><strong><i class="bi bi-telegram text-primary me-1"></i> Telegram</strong><input type="checkbox" class="form-check-input" wire:model="telegram_enabled"></div><div class="row g-2"><div class="col-md-7"><label class="form-label small">Bot Token</label><input type="password" wire:model="telegram_bot_token" class="form-control form-control-sm" autocomplete="new-password"></div><div class="col-md-5"><label class="form-label small">Chat ID</label><input wire:model="telegram_chat_id" class="form-control form-control-sm" placeholder="-100XXXXXXXXXX"></div></div><div class="mt-2 text-end"><button type="button" wire:click="testNotification('telegram')" class="btn btn-sm btn-outline-primary">Test Telegram</button></div></div></div>
+   <div class="col-md-8"><label class="form-label small">Minimum Alert Severity</label><select wire:model="min_severity" class="form-select form-select-sm"><option value="info">Info and above</option><option value="warning">Warning and above</option><option value="critical">Critical only</option></select></div>
+   <div class="col-md-4 d-flex align-items-end justify-content-end"><button class="btn btn-primary btn-sm px-4"><i class="bi bi-save me-1"></i>Save Alert Settings</button></div>
+  </div>
+ </form>
+</div>
 <div class="row g-3 mb-3">
  <div class="col-6 col-xl-3"><div class="ne-card ne-kpi"><span class="ne-muted">Open alerts</span><div class="n text-danger">{{ $open }}</div></div></div>
  <div class="col-6 col-xl-3"><div class="ne-card ne-kpi"><span class="ne-muted">Critical</span><div class="n text-danger">{{ $critical }}</div></div></div>

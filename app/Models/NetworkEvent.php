@@ -4,9 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Jobs\SendNetworkEventAlertJob;
 
 class NetworkEvent extends Model
 {
+    protected static function booted(): void
+    {
+        static::created(function (NetworkEvent $event) {
+            if ($event->status === 'open') {
+                SendNetworkEventAlertJob::dispatch($event->id);
+            }
+        });
+    }
+
     protected $fillable = [
         'device_id','source_type','event_type','severity','title','message','status',
         'acknowledged_by','acknowledged_at','resolved_by','resolved_at','fingerprint','occurrences','first_seen_at',
