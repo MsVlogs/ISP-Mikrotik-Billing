@@ -334,7 +334,10 @@ class EditCustomer extends Component
                 $ppp->username = $p['username'] ?? $ppp->username;
                 if (filled($p['password'] ?? null)) $ppp->password = $p['password'];
                 $ppp->ppp_remote_ip = $p['ppp_remote_ip'] ?? null;
-                $ppp->ip_address = $p['ip_address'] ?? null;
+                // Some installations do not have a separate ip_address column.
+                if (\Illuminate\Support\Facades\Schema::hasColumn('p_p_p_secrets', 'ip_address')) {
+                    $ppp->ip_address = $p['ip_address'] ?? null;
+                }
                 $ppp->caller_id = $p['caller_id'] ?? null;
                 $ppp->bandwidth = $p['bandwidth'] ?? null;
                 $ppp->comment = $p['comment'] ?? null;
