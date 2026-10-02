@@ -107,6 +107,10 @@ Route::domain($baseDomain)->group(function () {
     });
 });
 
+Route::middleware(EnsureBillingPort::class)->group(function () {
+    Route::get('/', fn () => redirect()->route('login'));
+});
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -126,8 +130,6 @@ Route::middleware([
             }
             abort(404, 'Backup file not found.');
         })->name('system.db-backup.download');
-
-        Route::redirect('/', '/dashboard');
 
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/ai-engineer', [\App\Http\Controllers\AiEngineerController::class, 'index'])->name('ai-engineer');
