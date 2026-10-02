@@ -582,7 +582,15 @@
                     'colvis'
                 ],
                 ajax: {
-                    url: "{{ route('customers.data') }}", 
+                    url: "{{ route('customers.data') }}",
+                    dataSrc: function(json) {
+                        if (json && Array.isArray(json.data)) return json.data;
+                        console.error('Customer List data response is invalid', json);
+                        return [];
+                    },
+                    error: function(xhr) {
+                        console.error('Customer List AJAX failed', xhr.status, xhr.responseText);
+                    },
                     data: function(d) {
                         var checkedRadio = $('input[name="collection"]:checked');
                         var checkedId = checkedRadio.attr('id');
@@ -628,16 +636,8 @@
                     { data: 'pop_area', name: 'official.distribution_location', title: '{{ __('POP / Area') }}', className: 'text-start' },
                     { data: 'monthly_bill_display', name: 'billing.monthly_rent', title: '{{ __('Monthly Bill') }}', className: 'text-end' },
                     { data: 'action', name: 'action', title: '{{ __('Actions') }}', orderable: false, searchable: false, className: 'text-center' }
-                ],
-
-            function updateCustomerCount() {
-                    var count = table.page.info().recordsTotal;
-                    $('.btn-check + label span').text('');
-                    var checkedId = $('input[name="collection"]:checked').attr('id');
-                    if (checkedId) {
-                        $('#' + checkedId + ' + label span').text('('+count+')');
-                    }
-                }
+                ]
+            });
 
             function updateCustomerCount() {
                 var count = table.page.info().recordsTotal;
