@@ -42,6 +42,29 @@
   </div></div>
  </div>
  <div class="ai-card p-4 mb-4">
+  @php($trend=$dailySummary['trend'] ?? [])
+  <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0"><i class="bi bi-graph-up me-1"></i> গত ২৪ ঘণ্টার নেটওয়ার্ক প্রবণতা</h2><span class="badge text-bg-primary">{{ $trend['total_events'] ?? 0 }} ঘটনা</span></div>
+  <div class="row g-2 mb-3">
+   <div class="col-4"><div class="border rounded p-2 text-center"><div class="small ai-muted">গুরুতর</div><strong>{{ $trend['critical'] ?? 0 }}</strong></div></div>
+   <div class="col-4"><div class="border rounded p-2 text-center"><div class="small ai-muted">সতর্কতা</div><strong>{{ $trend['warning'] ?? 0 }}</strong></div></div>
+   <div class="col-4"><div class="border rounded p-2 text-center"><div class="small ai-muted">মোট ঘটনা</div><strong>{{ $trend['total_events'] ?? 0 }}</strong></div></div>
+  </div>
+  <div class="d-flex align-items-end gap-1" style="height:90px">
+   @foreach(($trend['hours'] ?? []) as $h)
+    @php($bar=max(3,min(80,($h['events'] ?? 0)*8)))
+    <div class="flex-fill text-center" title="{{ $h['hour'] }} · {{ $h['events'] }} ঘটনা"><div class="bg-primary rounded-top" style="height:{{ $bar }}px"></div></div>
+   @endforeach
+  </div>
+  <div class="d-flex justify-content-between small ai-muted mt-1"><span>২৪ ঘণ্টা আগে</span><span>বর্তমান</span></div>
+  @if(count($trend['top_titles'] ?? []))
+   <div class="mt-3"><div class="small fw-semibold mb-2">বারবার হওয়া ঘটনা</div>
+    @foreach($trend['top_titles'] as $item)<span class="badge text-bg-light border me-1 mb-1">{{ $item['title'] }} · {{ $item['count'] }}</span>@endforeach
+   </div>
+  @endif
+  <div class="ai-readonly mt-2">এটি গত ২৪ ঘণ্টার তথ্যভিত্তিক প্রবণতা; কোনো নেটওয়ার্ক পরিবর্তন করা হয়নি।</div>
+ </div>
+
+ <div class="ai-card p-4 mb-4">
   <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0"><i class="bi bi-diagram-3 me-1"></i> পর্যালোচনা প্রয়োজন · ম্যাপ না হওয়া ONU</h2><span class="badge text-bg-warning">{{ count($unmappedOnus) }}</span></div>
   @if(count($unmappedOnus))
    <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>OLT</th><th>ONU</th><th>MAC</th><th>PON</th><th>Status</th><th>RX/TX</th><th>Reason</th></tr></thead><tbody>
