@@ -309,8 +309,8 @@ class NetworkTopology extends Component
             if ($splitter->type !== 'splitter') continue;
             $outCapacity = (int) ($splitter->output_ports ?: $splitter->splitter_ratio ?: 0);
             $inCapacity = (int) ($splitter->input_ports ?: 1);
-            $usedOut = $links->filter(fn ($l) => $l->source_key === 'custom:'.$splitter->id && filled($l->source_port))->pluck('source_port')->unique()->values()->all();
-            $usedIn = $links->filter(fn ($l) => $l->target_key === 'custom:'.$splitter->id && filled($l->target_port))->pluck('target_port')->unique()->values()->all();
+            $usedOut = $links->filter(fn ($l) => $l->source_key === 'custom:'.$splitter->id && filled($l->source_port))->pluck('source_port')->map(fn($p) => 'OUT-'.preg_replace('/^OUT-|^P/i', '', (string)$p))->unique()->values()->all();
+            $usedIn = $links->filter(fn ($l) => $l->target_key === 'custom:'.$splitter->id && filled($l->target_port))->pluck('target_port')->map(fn($p) => 'IN-'.preg_replace('/^IN-|^P/i', '', (string)$p))->unique()->values()->all();
             $portStats[$splitter->id] = ['in_capacity'=>$inCapacity,'out_capacity'=>$outCapacity,'in_used'=>count($usedIn),'out_used'=>count($usedOut),'in_free'=>max(0,$inCapacity-count($usedIn)),'out_free'=>max(0,$outCapacity-count($usedOut)),'in_ports'=>$usedIn,'out_ports'=>$usedOut];
         }
         $statusSummary = collect($nodes)->countBy('status')->all();
