@@ -575,9 +575,15 @@ Route::middleware([
             ->name('network-inventory.access-points');
 
         Route::get('/stock-inventory', function () {
-            $products = \App\Models\StockInventoryProduct::orderBy('name')->paginate(20)->withQueryString();
-            return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,
-                'stats'=>[['Packages',\App\Models\PackageList::count()],['Products',\App\Models\StockInventoryProduct::count()],['Low Stock',\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count()],['Movements',\App\Models\StockInventoryMovement::count()]]]);
+            $q=\App\Models\StockInventoryProduct::query();
+            $products=$q->orderByRaw('CASE WHEN quantity <= reorder_level THEN 0 ELSE 1 END')->orderBy('name')->paginate(20)->withQueryString();
+            $totalQty=(int)\App\Models\StockInventoryProduct::sum('quantity');
+            $stockValue=(float)\App\Models\StockInventoryProduct::selectRaw('COALESCE(SUM(quantity * unit_cost),0) total')->value('total');
+            $lowStock=(int)\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count();
+            $outOfStock=(int)\App\Models\StockInventoryProduct::where('quantity',0)->count();
+            $recentMovements=\App\Models\StockInventoryMovement::with('product')->latest()->limit(8)->get();
+            return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,'recentMovements'=>$recentMovements,
+                'stats'=>[['Products',\App\Models\StockInventoryProduct::count()],['Total Qty',$totalQty],['Stock Value',number_format($stockValue,2).' '.siteUrlSettings('site_currency')],['Low Stock',$lowStock],['Out of Stock',$outOfStock]]]);
         })->name('xlink.stock-inventory');
         Route::get('/stock-inventory/products', function () { $products=\App\Models\StockInventoryProduct::orderBy('name')->paginate(25)->withQueryString(); return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[]]); })->name('stock-inventory.products');
         Route::post('/stock-inventory/products', function(\Illuminate\Http\Request $r){$d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku','name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','quantity'=>'required|integer|min:0','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryProduct::create($d); return back()->with('inventory_message','Product added.');})->name('stock-inventory.products.store');
