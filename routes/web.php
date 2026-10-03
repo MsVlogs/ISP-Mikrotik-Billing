@@ -655,6 +655,17 @@ Route::middleware([
             } else { \App\Models\StockInventoryDamageRecord::create($d); }
             return back()->with('inventory_message',$d['record_type']==='lost' && $d['status']==='open' ? 'Lost record added and stock ledger updated.' : 'Lost/damaged record added. Stock quantity was not changed.');
         })->name('stock-inventory.damaged.store');
+        Route::get('/stock-inventory/reports', function (\Illuminate\Http\Request $r) {
+            $from=$r->input('from', now()->startOfMonth()->toDateString()); $to=$r->input('to', now()->toDateString());
+            $mov=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
+            $movementSummary=$mov->groupBy('movement_type')->map(fn($rows)=>['count'=>$rows->count(),'qty'=>$rows->sum('quantity')]);
+            $productUsage=$mov->groupBy('product_id')->map(fn($rows)=>$rows->sum('quantity'))->sortDesc()->take(10);
+            $products=\App\Models\StockInventoryProduct::whereIn('id',$productUsage->keys())->get()->keyBy('id');
+            $assetSummary=\App\Models\StockInventoryAsset::selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total','status');
+            $warrantySummary=\App\Models\StockInventoryWarranty::selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total','status');
+            $damageSummary=\App\Models\StockInventoryDamageRecord::selectRaw('record_type, status, SUM(quantity) qty')->groupBy('record_type','status')->get();
+            return view('xlink.stock-inventory',['tab'=>'reports','title'=>'Inventory Reports','from'=>$from,'to'=>$to,'movementSummary'=>$movementSummary,'productUsage'=>$productUsage,'usageProducts'=>$products,'assetSummary'=>$assetSummary,'warrantySummary'=>$warrantySummary,'damageSummary'=>$damageSummary,'stats'=>[]]);
+        })->name('stock-inventory.reports');
         Route::get('/stock-inventory/settings', function(){
             $expired=\App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->where('warranty_end','<',now()->toDateString())->update(['status'=>'expired']);
             return view('xlink.stock-inventory',['tab'=>'settings','title'=>'Settings','products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[],'expiredWarrantyUpdated'=>$expired]);
