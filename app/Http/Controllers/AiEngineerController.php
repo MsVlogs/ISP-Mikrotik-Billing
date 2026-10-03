@@ -14,7 +14,9 @@ class AiEngineerController extends Controller
         $overview = $engineer->overview();
         $dailySummary = ['generated_at' => $overview['generated_at'] ?? now()->toIso8601String(), 'read_only' => true];
         $unmappedOnus = $engineer->unmappedOnus(12);
-        return view('xlink.ai-engineer', compact('customerId', 'diagnosis', 'overview', 'dailySummary', 'unmappedOnus'));
+        $upstreamCorrelation = $engineer->upstreamCorrelation(100);
+        $matchingCandidates = $engineer->matchingCandidates(100);
+        return view('xlink.ai-engineer', compact('customerId', 'diagnosis', 'overview', 'dailySummary', 'unmappedOnus', 'upstreamCorrelation', 'matchingCandidates'));
     }
 
     public function diagnose(Request $request, AiEngineerDiagnosticService $engineer)
