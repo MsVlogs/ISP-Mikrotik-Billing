@@ -6,6 +6,7 @@ use App\Models\CustomersInfo;
 use App\Models\OltOnuCustomerMapping;
 use App\Models\NetworkInventoryDevice;
 use App\Models\RouterList;
+use App\Models\NetworkEvent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\MikrotikController;
@@ -41,8 +42,8 @@ class AiEngineerDiagnosticService
             'matching_candidates' => $this->matchingCandidates(100),
             'network_trend' => $this->networkTrend(),
             'ai_provider' => (string) config('services.ai.provider', 'gemini'),
-            'ai_কনফিগার করা' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
-            'openai_কনফিগার করা' => (string) config('services.openai.api_key') !== '',
+            'ai_configured' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
+            'openai_configured' => (string) config('services.openai.api_key') !== '',
             'read_only' => true,
             'generated_at' => now()->toIso8601String(),
         ];
@@ -504,7 +505,7 @@ class AiEngineerDiagnosticService
     {
         $empty=['hours'=>[],'total_events'=>0,'critical'=>0,'warning'=>0,'top_titles'=>[],'read_only'=>true];
         if (!Schema::hasTable('network_events')) return $empty;
-        $table=(new AppModelsNetworkEvent())->getTable();
+        $table=(new NetworkEvent())->getTable();
         if (!Schema::hasColumn($table,'created_at')) return $empty;
         $hasSeverity=Schema::hasColumn($table,'severity');
         $hasTitle=Schema::hasColumn($table,'title');
