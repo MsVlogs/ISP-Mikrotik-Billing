@@ -39,6 +39,7 @@ class AiEngineerDiagnosticService
             'insights' => $insights,
             'upstream_correlation' => $this->upstreamCorrelation(100),
             'matching_candidates' => $this->matchingCandidates(100),
+            'network_trend' => $this->networkTrend(),
             'ai_provider' => (string) config('services.ai.provider', 'gemini'),
             'ai_configured' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
             'openai_configured' => (string) config('services.openai.api_key') !== '',
@@ -499,10 +500,30 @@ class AiEngineerDiagnosticService
         ])->values()->all();
     }
 
+    public function networkTrend(): array
+    {
+        $empty=['hours'=>[],'total_events'=>0,'critical'=>0,'warning'=>0,'top_titles'=>[],'read_only'=>true];
+        if (!Schema::hasTable('network_events')) return $empty;
+        $table=(new AppModelsNetworkEvent())->getTable();
+        if (!Schema::hasColumn($table,'created_at')) return $empty;
+        $hasSeverity=Schema::hasColumn($table,'severity');
+        $hasTitle=Schema::hasColumn($table,'title');
+        $since=now()->subHours(24);
+        $q=DB::table($table)->where('created_at','>=',$since);
+        $hours=[];
+        for($i=23;$i>=0;$i--){
+            $start=now()->subHours($i+1);
+            $end=now()->subHours($i);
+            $hours[]=['hour'=>$end->format('H:00'),'events'=>(clone $q)->where('created_at','>=',$start)->where('created_at','<',$end)->count()];
+        }
+        $top=[];
+        if($hasTitle) $top=(clone $q)->select('title',DB::raw('COUNT(*) as total'))->groupBy('title')->orderByDesc('total')->limit(5)->get()->map(fn($x)=>['title'=>$x->title,'count'=>(int)$x->total])->values()->all();
+        return ['hours'=>$hours,'total_events'=>(clone $q)->count(),'critical'=>$hasSeverity?(clone $q)->whereRaw("LOWER(severity)='critical'")->count():0,'warning'=>$hasSeverity?(clone $q)->whereRaw("LOWER(severity)='warning'")->count():0,'top_titles'=>$top,'read_only'=>true,'generated_at'=>now()->toIso8601String()];
+    }
+
     public function dailySummary(): array
     {
-        $o=$this->overview(); return ['status'=>$o['incidents']['status'],'network'=>$o['network'],'incidents'=>$o['incidents'],
-            'customers'=>$o['customers'],'routers'=>$o['routers'],'olt_onu'=>$o['olt_onu'],'generated_at'=>now()->toIso8601String(),'read_only'=>true];
+        $o=$this->overview(); return ['status'=>$o['incidents']['status'],'network'=>$o['network'],'incidents'=>$o['incidents'],'customers'=>$o['customers'],'routers'=>$o['routers'],'olt_onu'=>$o['olt_onu'],'trend'=>$o['network_trend']??$this->networkTrend(),'generated_at'=>now()->toIso8601String(),'read_only'=>true];
     }
 
     public function searchCustomers(string $q): array
