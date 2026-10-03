@@ -334,6 +334,26 @@ class NetworkTopology extends Component
             }
         }
 
+        // Propagate downstream alarms upstream through physical fiber/PON/splitter paths.
+        $severity = ['critical' => 3, 'warning' => 2, 'online' => 0, 'unknown' => 1];
+        $alarm = collect($nodes)->mapWithKeys(fn($n) => [$n['id'] => ($n['status'] === 'offline' ? 'critical' : ($n['status'] === 'unknown' ? 'unknown' : 'online'))])->all();
+        for ($round = 0; $round < 20; $round++) {
+            $changed = false;
+            foreach ($graphEdges as $edge) {
+                if (!in_array($edge['connection_type'], ['fiber_core','splitter'], true)) continue;
+                $child = $alarm[$edge['to']] ?? 'unknown';
+                if ($child === 'critical') {
+                    $next = ($alarm[$edge['from']] ?? 'online') === 'critical' ? 'critical' : 'warning';
+                    if (($severity[$next] ?? 0) > ($severity[$alarm[$edge['from']] ?? 'online'] ?? 0)) { $alarm[$edge['from']] = $next; $changed = true; }
+                }
+            }
+            if (!$changed) break;
+        }
+        $nodes = array_map(function ($node) use ($alarm) {
+            $node['alarm'] = $alarm[$node['id']] ?? 'online';
+            return $node;
+        }, $nodes);
+
         $mappingHealth = null;
         if ($this->mode === 'live') {
             $mappingQuery = OltOnuCustomerMapping::query();
