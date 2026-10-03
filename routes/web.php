@@ -581,14 +581,19 @@ Route::middleware([
             $stockValue=(float)\App\Models\StockInventoryProduct::selectRaw('COALESCE(SUM(quantity * unit_cost),0) total')->value('total');
             $lowStock=(int)\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count();
             $outOfStock=(int)\App\Models\StockInventoryProduct::where('quantity',0)->count();
+            $warrantyExpiring=(int)\App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->whereBetween('warranty_end',[now()->toDateString(),now()->addDays(30)->toDateString()])->count();
+            $openDamage=(int)\App\Models\StockInventoryDamageRecord::where('status','open')->count();
             $recentMovements=\App\Models\StockInventoryMovement::with('product')->latest()->limit(8)->get();
             return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,'recentMovements'=>$recentMovements,
+                'warrantyExpiring'=>$warrantyExpiring,'openDamage'=>$openDamage,
                 'stats'=>[['Products',\App\Models\StockInventoryProduct::count()],['Total Qty',$totalQty],['Stock Value',number_format($stockValue,2).' '.siteUrlSettings('site_currency')],['Low Stock',$lowStock],['Out of Stock',$outOfStock]]]);
         })->name('xlink.stock-inventory');
         Route::get('/stock-inventory/products', function (\Illuminate\Http\Request $r) {
             $q=\App\Models\StockInventoryProduct::query();
             if($r->filled('q')){ $term=trim($r->input('q')); $q->where(function($x) use($term){$x->where('sku','like','%'.$term.'%')->orWhere('name','like','%'.$term.'%')->orWhere('category','like','%'.$term.'%');}); }
             if($r->filled('status')) $q->where('status',$r->input('status'));
+            if($r->input('stock_alert')==='low') $q->whereColumn('quantity','<=','reorder_level')->where('quantity','>','0');
+            if($r->input('stock_alert')==='out') $q->where('quantity',0);
             $products=$q->orderBy('name')->paginate(25)->withQueryString();
             return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[],'filters'=>['q'=>$r->input('q'),'status'=>$r->input('status')]]);
         })->name('stock-inventory.products');
@@ -621,6 +626,7 @@ Route::middleware([
             $q=\App\Models\StockInventoryWarranty::with('product');
             if($r->filled('q')){ $term=trim($r->input('q')); $q->where(function($x) use($term){$x->where('asset_serial','like','%'.$term.'%')->orWhere('asset_mac','like','%'.$term.'%')->orWhere('vendor','like','%'.$term.'%')->orWhere('reference','like','%'.$term.'%');}); }
             if($r->filled('status')) $q->where('status',$r->input('status'));
+            if($r->input('expiring')==='1') $q->where('status','active')->whereNotNull('warranty_end')->whereBetween('warranty_end',[now()->toDateString(),now()->addDays(30)->toDateString()]);
             $warranties=$q->orderByRaw('CASE WHEN warranty_end IS NULL THEN 1 ELSE 0 END')->orderBy('warranty_end')->paginate(25)->withQueryString();
             return view('xlink.stock-inventory',['tab'=>'warranty','title'=>'Warranty','warranties'=>$warranties,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]);
         })->name('stock-inventory.warranty');
