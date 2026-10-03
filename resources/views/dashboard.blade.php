@@ -18,13 +18,6 @@ $newMonth=\App\Models\CustomersInfo::whereYear('created_at',now()->year)->whereM
 $yesterday=(float)\App\Models\CollectionSummary::whereDate('collection_date',now()->subDay()->toDateString())->sum('collection_amount');
 $expiring=\App\Models\BillingInfo::join('customers_infos','billing_infos.customer_bill_unique_id','=','customers_infos.customer_unique_id')->whereNull('customers_infos.deleted_at')->where('customers_infos.status','active')->whereNotNull('billing_infos.auto_disable_date')->whereBetween('billing_infos.auto_disable_date',[now()->toDateString(),now()->addDays(7)->toDateString()])->count();
 @endphp
-<a href="{{ route('broadband-online-customers') }}" class="online-monitor-entry d-flex align-items-center justify-content-between gap-3 text-decoration-none mb-3 p-3 p-md-4" style="border-radius:18px;background:linear-gradient(115deg,#064e3b,#059669);color:#fff;box-shadow:0 12px 28px rgba(5,150,105,.18);">
-    <div class="d-flex align-items-center gap-3">
-        <span class="d-grid place-items-center" style="width:52px;height:52px;flex:0 0 52px;border-radius:15px;background:rgba(255,255,255,.16);font-size:1.65rem"><i class="bi bi-broadcast-pin"></i></span>
-        <span><strong class="d-block" style="font-size:1.15rem;line-height:1.35">Online Customer Monitoring</strong><small style="color:rgba(255,255,255,.82)">View currently connected PPPoE customers and monitor live connection status</small></span>
-    </div>
-    <span class="btn btn-light fw-semibold flex-shrink-0">Open Monitoring <i class="bi bi-arrow-up-right ms-1"></i></span>
-</a>
 <div class="dashboard-shell preset-isp-color-cards size-compact show-subtext" style="--db-cols:4;--db-chart-height:362px">
 <div class="dashboard-controlbar"><div><span class="dashboard-kicker">{{ __('X-Link Limited Billing') }}</span><h2>{{ __('Dashboard') }}</h2><p>{{ __('Live operational and billing overview') }}</p></div></div>
 <div class="dashboard-card-deck" aria-label="Dashboard cards">
