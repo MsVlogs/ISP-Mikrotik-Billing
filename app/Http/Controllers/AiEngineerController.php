@@ -12,7 +12,7 @@ class AiEngineerController extends Controller
         $customerId = trim((string) $request->query('customer', ''));
         $diagnosis = $customerId !== '' ? $engineer->diagnoseCustomer($customerId) : null;
         $overview = $engineer->overview();
-        $dailySummary = ['generated_at' => $overview['generated_at'] ?? now()->toIso8601String(), 'read_only' => true];
+        $dailySummary = $engineer->dailySummary();
         $unmappedOnus = $engineer->unmappedOnus(12);
         $upstreamCorrelation = $engineer->upstreamCorrelation(100);
         $matchingCandidates = $engineer->matchingCandidates(100);
