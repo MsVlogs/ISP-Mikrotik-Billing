@@ -41,8 +41,8 @@ class AiEngineerDiagnosticService
             'matching_candidates' => $this->matchingCandidates(100),
             'network_trend' => $this->networkTrend(),
             'ai_provider' => (string) config('services.ai.provider', 'gemini'),
-            'ai_configured' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
-            'openai_configured' => (string) config('services.openai.api_key') !== '',
+            'ai_কনফিগার করা' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
+            'openai_কনফিগার করা' => (string) config('services.openai.api_key') !== '',
             'read_only' => true,
             'generated_at' => now()->toIso8601String(),
         ];
@@ -78,8 +78,8 @@ class AiEngineerDiagnosticService
                 'last_disconnect_reason'=>$ppp->last_disconnect_reason,
                 'live_session'=>$livePpp,
             ] : ['state'=>'missing'],
-            'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'unknown','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at,'check_age_seconds'=>$routerAge,'check_freshness'=>$routerAge === null ? 'unknown' : ($routerAge <= 900 ? 'fresh' : 'stale')] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
-            'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'olt_name'=>$olt?->name,'olt_ip'=>$olt?->ip_address,'olt_state'=>$olt?->health_status ?: $olt?->status ?: 'unknown','olt_latency_ms'=>$olt?->last_latency_ms,'olt_last_checked_at'=>$olt?->last_checked_at,'health_check'=>$oltHealth ? ['status'=>$oltHealth->status,'latency_ms'=>$oltHealth->latency_ms,'checked_at'=>$oltHealth->checked_at] : null,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'unknown','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at,'last_seen_age_seconds'=>$mapping->last_seen_at ? max(0, now()->diffInSeconds($mapping->last_seen_at, false) * -1) : null] : ['state'=>'not_mapped'],
+            'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'অজানা','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at,'check_age_seconds'=>$routerAge,'check_সাম্প্রতিকness'=>$routerAge === null ? 'অজানা' : ($routerAge <= 900 ? 'সাম্প্রতিক' : 'পুরোনো')] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
+            'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'olt_name'=>$olt?->name,'olt_ip'=>$olt?->ip_address,'olt_state'=>$olt?->health_status ?: $olt?->status ?: 'অজানা','olt_latency_ms'=>$olt?->last_latency_ms,'olt_last_checked_at'=>$olt?->last_checked_at,'health_check'=>$oltHealth ? ['status'=>$oltHealth->status,'latency_ms'=>$oltHealth->latency_ms,'checked_at'=>$oltHealth->checked_at] : null,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'অজানা','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at,'last_seen_age_seconds'=>$mapping->last_seen_at ? max(0, now()->diffInSeconds($mapping->last_seen_at, false) * -1) : null] : ['state'=>'not_mapped'],
             'billing' => $billing ? ['state'=>$this->billingState($billing),'due'=>$this->billingDue($billing)] : ['state'=>'not_found'],
         ];
         $findings=[]; $causes=[]; $checks=[]; $severity='info';
@@ -104,30 +104,30 @@ class AiEngineerDiagnosticService
                 $findings[]='এই ব্যবহারকারীর কোনো সক্রিয় MikroTik PPPoE সেশন পাওয়া যায়নি।';
                 if (strtolower((string)$ppp->status) === 'active') {
                     $severity=$severity==='critical'?'critical':'warning';
-                    $causes[]='PPP secret is active in billing data, but no live PPPoE session was found on the assigned router.';
+                    $causes[]='PPP secret is active in billing data, but no লাইভ PPPoE session was found on the assigned router.';
                     $checks[]='রাউটার লগ, PPPoE অনুমোদন ত্রুটি এবং গ্রাহকের CPE-তে পৌঁছানো যাচ্ছে কি না পরীক্ষা করুন।';
                 }
             }
         }
         if ($router) {
             $rs=strtolower((string)($router->action??''));
-            $findings[]='Assigned router: '.$router->router_name.' ('.$router->ip_address.') · state '.($router->action?:'unknown');
+            $findings[]='Assigned router: '.$router->router_name.' ('.$router->ip_address.') · state '.($router->action?:'অজানা');
             if ($router->last_latency_ms !== null) $findings[]='Last recorded router latency: '.$router->last_latency_ms.' ms.';
-            if ($router->last_checked_at) $findings[]='Router health last checked: '.$router->last_checked_at.' ('.(($routerAge ?? 0) > 900 ? 'stale, over 15 minutes old' : 'within 15 minutes').').';
-            else $findings[]='Router health has no recorded last-check timestamp.';
+            if ($router->last_checked_at) $findings[]='Router health last checked: '.$router->last_checked_at.' ('.(($routerAge ?? 0) > 900 ? 'পুরোনো, over 15 minutes old' : 'within 15 minutes').').';
+            else $findings[]='Router health has no recorded last-চেক timestamp.';
             if (in_array($rs,['offline','down','disabled'],true)) { $severity='critical'; $causes[]='Assigned MikroTik/router is marked '.$rs.'.'; $checks[]='রাউটারে পৌঁছানো এবং মনিটরিং অবস্থা পরীক্ষা করুন।'; }
         } elseif ($ppp?->router_name) { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Assigned router "'.$ppp->router_name.'" was not found in router inventory.'; $checks[]='Router List-এর সংযোগ পরীক্ষা করুন।'; }
 
         if ($mapping) {
-            $findings[]='ONU mapping: PON '.($mapping->pon_port?:'unknown').', ONU '.($mapping->onu_id?:'unknown').', status '.($mapping->status?:'unknown').'.';
+            $findings[]='ONU mapping: PON '.($mapping->pon_port?:'অজানা').', ONU '.($mapping->onu_id?:'অজানা').', status '.($mapping->status?:'অজানা').'.';
             if ($mapping->rx_power !== null) $findings[]='ONU RX power: '.$mapping->rx_power.' dBm (interpret against this OLT/ONU vendor thresholds).';
             if ($mapping->tx_power !== null) $findings[]='ONU TX power: '.$mapping->tx_power.' dBm.';
             if ($mapping->last_seen_at) $findings[]='ONU last seen: '.$mapping->last_seen_at.'.';
             else $findings[]='ONU mapping has no last-seen timestamp.';
             if ($olt) {
-                $findings[]='OLT '.$olt->name.' ('.$olt->ip_address.') health state: '.($olt->health_status ?: $olt->status ?: 'unknown').'.';
+                $findings[]='OLT '.$olt->name.' ('.$olt->ip_address.') health state: '.($olt->health_status ?: $olt->status ?: 'অজানা').'.';
                 if ($oltHealth) $findings[]='Latest OLT health check: '.$oltHealth->status.($oltHealth->latency_ms !== null ? ' · '.$oltHealth->latency_ms.' ms' : '').' at '.$oltHealth->checked_at.'.';
-                $os = strtolower((string)($olt->health_status ?: $olt->status ?: 'unknown'));
+                $os = strtolower((string)($olt->health_status ?: $olt->status ?: 'অজানা'));
                 if (in_array($os, ['offline','down','critical','unreachable'], true)) {
                     $severity = $os === 'critical' ? 'critical' : ($severity === 'critical' ? 'critical' : 'warning');
                     $causes[] = 'Linked OLT inventory is marked '.$os.'.';
@@ -178,13 +178,13 @@ class AiEngineerDiagnosticService
     private function stateForCustomer(?string $status): string
     {
         $s=strtolower((string)$status);
-        return in_array($s,['active','free'],true)?'active':(in_array($s,['disable','disabled','inactive'],true)?'disabled':($s==='pending'?'pending':'unknown'));
+        return in_array($s,['active','free'],true)?'active':(in_array($s,['disable','disabled','inactive'],true)?'disabled':($s==='pending'?'pending':'অজানা'));
     }
 
     private function stateForPpp(?string $status): string
     {
         $s=strtolower((string)$status);
-        return $s==='active'?'active':($s===''?'unknown':'inactive');
+        return $s==='active'?'active':($s===''?'অজানা':'inactive');
     }
 
     private function billingDue($billing): float
@@ -211,12 +211,12 @@ class AiEngineerDiagnosticService
 
         $mappings = OltOnuCustomerMapping::query()->latest('id')->limit($limit)->get();
         foreach ($mappings as $m) {
-            $status = strtolower((string) ($m->status ?? 'unknown'));
+            $status = strtolower((string) ($m->status ?? 'অজানা'));
             $affected = in_array($status, ['offline','down','los','critical'], true);
             if (!$affected) continue;
             $key = implode('|', [
-                (string) ($m->olt_device_id ?? 'unknown'),
-                strtolower(trim((string) ($m->pon_port ?? 'unknown'))),
+                (string) ($m->olt_device_id ?? 'অজানা'),
+                strtolower(trim((string) ($m->pon_port ?? 'অজানা'))),
             ]);
             $rows[$key] ??= [
                 'olt_device_id' => $m->olt_device_id,
@@ -295,7 +295,7 @@ class AiEngineerDiagnosticService
         $apiKey=(string)config("services.{$provider}.api_key");
         $contextData=$diagnosis&&($diagnosis['ok']??false)?$diagnosis:$this->overview();
         if(!$diagnosis){
-            // overview() already includes network and incident summaries; avoid repeating live OLT reads.
+            // overview() already includes network and incident summaries; avoid repeating লাইভ OLT reads.
             $contextData['unmapped_onus']=$this->unmappedOnus(12);
             $contextData['optical_power']=$this->opticalPowerList(50);
         }
@@ -303,7 +303,7 @@ class AiEngineerDiagnosticService
 
         // Local diagnostics remain available if the selected provider has no key.
         if ($apiKey==='') {
-            return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true];
+            return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true];
         }
         $safeHistory=array_slice(array_map(fn($m)=>['role'=>in_array($m['role']??'', ['user','assistant'],true)?$m['role']:'user','content'=>mb_substr((string)($m['content']??''),0,4000)],$history),-8);
         $systemPrompt='আপনি একজন ISP AI Engineer। শুধুমাত্র পড়ার/বিশ্লেষণের কাজ করবেন। কোনো কিছু পরিবর্তন, প্রভিশন, রিবুট, সক্রিয়, নিষ্ক্রিয়, মুছে ফেলা বা কনফিগার করা হয়েছে বলে কখনো দাবি করবেন না। শুধু সরবরাহ করা তথ্য ব্যবহার করুন। প্রমাণ ও সম্ভাব্য কারণ আলাদা করে বলুন। লাইভ স্ট্যাটাস বানিয়ে বলবেন না। ব্যবহারকারী যে ভাষায় প্রশ্ন করবেন, সেই ভাষাতেই উত্তর দিন; বাংলা প্রশ্ন হলে সম্পূর্ণ উত্তর বাংলায় দিন।';
@@ -317,16 +317,16 @@ class AiEngineerDiagnosticService
                 $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->retry(2,500,fn($exception,$request)=>true,false)->post($baseUrl.'/chat/completions',$payload);
             } catch (\Throwable $e) {
                 \Log::error('AI Engineer Gemini request exception',['error'=>$e->getMessage()]);
-                return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+                return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
             }
             if(!$response->successful()){
                 \Log::error('AI Engineer Gemini request failed',['status'=>$response->status(),'body'=>mb_substr($response->body(),0,1000)]);
-                return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+                return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
             }
             $body=$response->json();
             $text=$body['choices'][0]['message']['content']??'';
             if(is_array($text))$text=implode("\n",array_map(fn($part)=>(string)($part['text']??''),$text));
-            return ['ok'=>true,'configured'=>true,'provider'=>'gemini','message'=>trim((string)$text),'read_only'=>true];
+            return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'gemini','message'=>trim((string)$text),'read_only'=>true];
         }
 
         $input=[['role'=>'developer','content'=>$systemPrompt],['role'=>'user','content'=>'Diagnostic context: '.$context]];
@@ -336,15 +336,15 @@ class AiEngineerDiagnosticService
             $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->post('https://api.openai.com/v1/responses',['model'=>config('services.openai.model'),'store'=>false,'input'=>$input]);
         } catch (\Throwable $e) {
             \Log::error('AI Engineer OpenAI request exception',['error'=>$e->getMessage()]);
-            return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+            return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
         }
         if(!$response->successful()){
             \Log::error('AI Engineer OpenAI request failed',['status'=>$response->status(),'body'=>mb_substr($response->body(),0,2000)]);
-            return ['ok'=>false,'configured'=>true,'provider'=>'openai','message'=>'OpenAI request failed (HTTP '.$response->status().'). Check Laravel log for the provider error.'];
+            return ['ok'=>false,'কনফিগার করা'=>true,'provider'=>'openai','message'=>'OpenAI অনুরোধ ব্যর্থ (HTTP '.$response->status().'). প্রোভাইডার ত্রুটির জন্য Laravel লগ দেখুন।'];
         }
         $body=$response->json(); $text=$body['output_text']??'';
         if($text==='')foreach(($body['output']??[]) as $item)foreach(($item['content']??[]) as $content)if(($content['type']??'')==='output_text')$text.=$content['text']??'';
-        return ['ok'=>true,'configured'=>true,'provider'=>'openai','message'=>trim($text),'read_only'=>true];
+        return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'openai','message'=>trim($text),'read_only'=>true];
     }
 
     private function localChatResponse(string $question, ?array $diagnosis): string
@@ -354,12 +354,12 @@ class AiEngineerDiagnosticService
             if (str_contains($q,'optical') || str_contains($q,'power') || str_contains($q,'rx') || str_contains($q,'tx') || str_contains($q,'অপ্টিকাল') || str_contains($q,'পাওয়ার')) {
                 $rows=$this->opticalPowerList(50);
                 if (!$rows) return 'No ONU optical-power readings are available in the current mapping data.';
-                $parts=array_map(fn($r)=>($r['olt']?:'OLT').' | ONU '.($r['onu_id']??'—').' | MAC '.($r['mac']??'—').' | PON '.($r['pon']??'—').' | RX '.($r['rx']??'—').' dBm | TX '.($r['tx']??'—').' dBm | '.($r['status']??'unknown'),$rows);
+                $parts=array_map(fn($r)=>($r['olt']?:'OLT').' | ONU '.($r['onu_id']??'—').' | MAC '.($r['mac']??'—').' | PON '.($r['pon']??'—').' | RX '.($r['rx']??'—').' dBm | TX '.($r['tx']??'—').' dBm | '.($r['status']??'অজানা'),$rows);
                 return 'বর্তমান ONU optical power তালিকা:\n'.implode("\n",$parts);
             }
-            if (str_contains($q,'billing') || str_contains($q,'bill') || str_contains($q,'due')) return 'For billing, check the customer\'s outstanding amount, auto-disable setting, account status, and any open support ticket. Select a customer to get customer-specific evidence.';
-            if (str_contains($q,'device') || str_contains($q,'router') || str_contains($q,'mikrotik')) return 'For a device issue, check the assigned router inventory state, last-seen/session information, and any linked ONU mapping. Select a customer for a service-path diagnosis.';
-            return 'Local read-only diagnostics are active. Select a customer and ask about service path, billing, PPPoE, router, ONU, or outage symptoms.';
+            if (str_contains($q,'billing') || str_contains($q,'bill') || str_contains($q,'due')) return 'For billing, চেক the customer\'s outstanding amount, auto-disable setting, account status, and any open support ticket. Select a customer to get customer-specific evidence.';
+            if (str_contains($q,'device') || str_contains($q,'router') || str_contains($q,'mikrotik')) return 'For a device issue, চেক the assigned router inventory state, last-seen/session information, and any linked ONU mapping. Select a customer for a service-path diagnosis.';
+            return 'স্থানীয় শুধু-পাঠযোগ্য ডায়াগনস্টিক সক্রিয়। গ্রাহক নির্বাচন করে সেবা পথ, বিলিং, PPPoE, রাউটার, ONU বা বিভ্রাট সম্পর্কে প্রশ্ন করুন।';
         }
 
         $c=$diagnosis['customer']??[];
@@ -376,7 +376,7 @@ class AiEngineerDiagnosticService
             $items=array_values(array_filter($evidence,fn($x)=>str_contains(mb_strtolower($x),'billing')||str_contains(mb_strtolower($x),'due')||str_contains(mb_strtolower($x),'ticket')));
             $answer=$items ? implode(' ',$items) : 'No outstanding billing amount is recorded in the available customer data.';
             if ($diagnosis['severity']==='critical' || $diagnosis['severity']==='warning') $answer.=' Also review: '.implode(' ',$checks);
-            return 'Billing check for '.($c['id']??'customer').': '.$answer;
+            return 'Billing চেক for '.($c['id']??'customer').': '.$answer;
         }
 
         if ($pppQuestion) $focus=array_values(array_filter($causes,fn($x)=>str_contains(mb_strtolower($x),'ppp')));
@@ -388,10 +388,10 @@ class AiEngineerDiagnosticService
             $answer=$focus ?: $causes;
             $text=implode(' ',$answer);
             if ($text==='') $text='No specific fault is recorded in the available data.';
-            return 'Service-path analysis for '.($c['id']??'customer').': '.$text.' Recommended checks: '.implode(' ',$checks);
+            return 'সেবা-পথ বিশ্লেষণ: '.($c['id']??'customer').': '.$text.' প্রস্তাবিত যাচাই: '.implode(' ',$checks);
         }
 
-        return 'For '.($c['id']??'this customer').', current severity is '.($diagnosis['severity']??'unknown').'. '.($diagnosis['summary']??'No summary available.').' Evidence: '.implode(' ',$evidence). ' Recommended checks: '.implode(' ',$checks);
+        return 'For '.($c['id']??'this customer').', বর্তমান গুরুত্বের স্তর '.($diagnosis['severity']??'অজানা').'. '.($diagnosis['summary']??'কোনো সারসংক্ষেপ পাওয়া যায়নি।').' প্রমাণ: '.implode(' ',$evidence). ' প্রস্তাবিত যাচাই: '.implode(' ',$checks);
     }
 
     public function networkSnapshot(): array
@@ -416,7 +416,7 @@ class AiEngineerDiagnosticService
                     $onuOnline+=count(array_filter($onus,fn($o)=>strtolower((string)($o['status']??''))==='online'));
                     continue;
                 }
-            } catch (\Throwable $e) { \Log::debug('AI Engineer OLT live summary failed',['device_id'=>$olt->id,'error'=>$e->getMessage()]); }
+            } catch (\Throwable $e) { \Log::debug('AI Engineer OLT লাইভ summary failed',['device_id'=>$olt->id,'error'=>$e->getMessage()]); }
             $state=strtolower((string)($olt->health_status?:$olt->status));
             if(in_array($state,['online','up','connected','healthy'],true)) $oltOnline++;
             elseif(in_array($state,['offline','down','unreachable','critical'],true)) $oltOffline++;
@@ -462,7 +462,7 @@ class AiEngineerDiagnosticService
             'health_band'=>$health >= 90 ? 'healthy' : ($health >= 70 ? 'attention' : 'degraded'),
             'optical_critical'=>count($issues),
             'optical_warning'=>count($warnings),
-            'router_stale'=>$routerStale,
+            'router_পুরোনো'=>$routerStale,
             'top_findings'=>array_slice(array_merge($issues,$warnings),0,12),
             'read_only'=>true,
         ];
@@ -575,7 +575,7 @@ class AiEngineerDiagnosticService
             }
             return ['state'=>'offline','checked_at'=>now()->toIso8601String()];
         } catch (\Throwable $e) {
-            \Log::debug('AI Engineer live PPP read failed', ['router'=>$router->router_name,'error'=>$e->getMessage()]);
+            \Log::debug('AI Engineer লাইভ PPP read failed', ['router'=>$router->router_name,'error'=>$e->getMessage()]);
             return ['state'=>'not_checked','reason'=>'router_read_failed'];
         }
     }
