@@ -17,6 +17,14 @@ class NetworkTopology extends Component
     public string $target_key = '';
     public string $connection_type = 'fiber_core';
     public string $label = '';
+    public string $capacity_mbps = '';
+    public string $traffic_mbps = '';
+    public string $latency_ms = '';
+    public string $packet_loss = '';
+    public string $fiber_core = '';
+    public string $fiber_type = 'singlemode';
+    public string $splitter_ratio = '';
+    public string $port_reference = '';
     public string $message = '';
     public string $newNodeType = 'splitter';
     public string $newNodeName = '';
@@ -41,14 +49,21 @@ class NetworkTopology extends Component
             'target_key' => ['required', 'string', Rule::in(array_keys($nodeOptions)), 'different:source_key'],
             'connection_type' => ['required', Rule::in(['uplink', 'ethernet', 'fiber_core', 'splitter', 'logical_service'])],
             'label' => ['nullable', 'string', 'max:120'],
+            'capacity_mbps' => ['nullable', 'integer', 'min:1'],
+            'traffic_mbps' => ['nullable', 'integer', 'min:0'],
+            'latency_ms' => ['nullable', 'numeric', 'min:0'],
+            'packet_loss' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'fiber_core' => ['nullable', 'integer', 'min:1'],
+            'fiber_type' => ['nullable', Rule::in(['singlemode', 'multimode', 'drop', 'unknown'])],
         ]);
 
         NetworkTopologyLink::updateOrCreate(
             ['source_key' => $data['source_key'], 'target_key' => $data['target_key'], 'connection_type' => $data['connection_type']],
-            ['label' => $data['label'] ?: null, 'status' => 'unknown', 'is_published' => false, 'created_by' => auth()->id()]
+            ['label' => $data['label'] ?: null, 'capacity_mbps' => $data['capacity_mbps'] ?: null, 'traffic_mbps' => $data['traffic_mbps'] ?: null, 'latency_ms' => $data['latency_ms'] ?: null, 'packet_loss' => $data['packet_loss'] ?: null, 'fiber_core' => $data['fiber_core'] ?: null, 'fiber_type' => $data['fiber_type'] ?: null, 'status' => 'unknown', 'is_published' => false, 'created_by' => auth()->id()]
         );
 
-        $this->reset(['source_key', 'target_key', 'label']);
+        $this->reset(['source_key', 'target_key', 'label', 'capacity_mbps', 'traffic_mbps', 'latency_ms', 'packet_loss', 'fiber_core']);
+        $this->fiber_type = 'singlemode';
         $this->connection_type = 'fiber_core';
         $this->message = 'Topology connection saved as a draft. Publish it to show it in Live Topology.';
     }
@@ -57,18 +72,24 @@ class NetworkTopology extends Component
     {
         if ($this->mode !== 'designer') abort(403);
         $data = $this->validate([
-            'newNodeType' => ['required', Rule::in(['splitter', 'odf', 'rack', 'pop', 'fiber_segment'])],
+            'newNodeType' => ['required', Rule::in(['splitter', 'olt_pon', 'odf', 'rack', 'pop', 'fiber_segment'])],
             'newNodeName' => ['required', 'string', 'max:120'],
             'newNodeLocation' => ['nullable', 'string', 'max:160'],
             'newNodeNotes' => ['nullable', 'string', 'max:1000'],
+            'splitter_ratio' => ['nullable', 'integer', 'min:2', 'max:64'],
+            'port_reference' => ['nullable', 'string', 'max:80'],
         ]);
         NetworkTopologyNode::create([
             'type' => $data['newNodeType'], 'name' => trim($data['newNodeName']),
-            'location' => $data['newNodeLocation'] ?: null, 'notes' => $data['newNodeNotes'] ?: null,
+            'location' => $data['newNodeLocation'] ?: null, 'port_reference' => $this->port_reference ?: null,
+            'splitter_ratio' => $data['newNodeType'] === 'splitter' && $this->splitter_ratio !== '' ? (int) $this->splitter_ratio : null,
+            'notes' => $data['newNodeNotes'] ?: null,
             'is_published' => false, 'created_by' => auth()->id(),
         ]);
         $this->reset(['newNodeName', 'newNodeLocation', 'newNodeNotes']);
         $this->newNodeType = 'splitter';
+        $this->splitter_ratio = '';
+        $this->port_reference = '';
         $this->message = 'Topology node saved as a draft. Publish it before publishing its connections.';
     }
 
@@ -205,6 +226,17 @@ class NetworkTopology extends Component
             foreach ($mappings as $mapping) {
                 if (! $mapping->olt || ! $mapping->onu_id) continue;
                 $onuKey = 'onu:'.$mapping->id;
+                $ponRef = trim((string) ($mapping->pon_port ?: 'PON'));
+                $ponKey = 'pon:'.$mapping->olt_device_id.':'.preg_replace('/[^A-Za-z0-9_.:-]/', '_', $ponRef);
+                if (! $existing->has($ponKey)) {
+                    $nodes[] = [
+                        'id' => $ponKey, 'label' => 'PON '.$ponRef, 'group' => 'olt_pon', 'status' => 'online',
+                        'title' => 'OLT PON Port '.$ponRef, 'url' => route('network-inventory.olt.customers', $mapping->olt_device_id),
+                    ];
+                    $existing->put($ponKey, true);
+                    $oltKey = 'device:'.$mapping->olt_device_id;
+                    if ($existing->has($oltKey)) $graphEdges[] = ['id'=>'auto:olt-pon:'.$ponKey,'from'=>$oltKey,'to'=>$ponKey,'label'=>$ponRef,'connection_type'=>'fiber_core','arrows'=>'to'];
+                }
                 $customerName = $mapping->customer?->customer_name ?: $mapping->customer?->customer_unique_id ?: 'Unmapped ONU';
                 $mappingStatus = strtolower(trim((string) $mapping->status));
                 $status = in_array($mappingStatus, ['online', 'up', 'active', 'connected', 'ready'], true)
@@ -222,7 +254,7 @@ class NetworkTopology extends Component
                 ];
                 $oltKey = 'device:'.$mapping->olt_device_id;
                 if ($existing->has($oltKey)) {
-                    $graphEdges[] = ['id'=>'auto:olt-onu:'.$mapping->id,'from'=>$oltKey,'to'=>$onuKey,'label'=>$mapping->pon_port ?: 'PON','connection_type'=>'fiber_core','arrows'=>'to'];
+                    $graphEdges[] = ['id'=>'auto:pon-onu:'.$mapping->id,'from'=>$ponKey,'to'=>$onuKey,'label'=>$mapping->pon_port ?: 'ONU','connection_type'=>'splitter','arrows'=>'to'];
                 }
                 if ($mapping->customer_id && $mapping->customer) {
                     $customerKey = 'customer:'.$mapping->customer_id;

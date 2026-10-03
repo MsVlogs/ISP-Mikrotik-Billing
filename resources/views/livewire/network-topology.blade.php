@@ -26,15 +26,17 @@
    <div><label class="form-label">Source device</label><select wire:model="source_key" class="form-select" required><option value="">Choose source...</option>@foreach($nodeOptions as $key=>$label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>@error('source_key')<small class="text-danger">{{ $message }}</small>@enderror</div>
    <div><label class="form-label">Target device</label><select wire:model="target_key" class="form-select" required><option value="">Choose target...</option>@foreach($nodeOptions as $key=>$label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select>@error('target_key')<small class="text-danger">{{ $message }}</small>@enderror</div>
    <div><label class="form-label">Connection type</label><select wire:model="connection_type" class="form-select"><option value="uplink">Uplink</option><option value="ethernet">Ethernet</option><option value="fiber_core">Fiber core</option><option value="splitter">Splitter</option><option value="logical_service">Logical service</option></select></div>
-   <div><label class="form-label">Label (optional)</label><input wire:model="label" class="form-control" placeholder="e.g. Core uplink / Fiber 01">@error('label')<small class="text-danger">{{ $message }}</small>@enderror</div>
+   <div><label class="form-label">Label (optional)</label><input wire:model="label" class="form-control" placeholder="e.g. Core uplink / Fiber 01">
+   <div class="row g-2 mt-1"><div class="col-6"><input wire:model="capacity_mbps" type="number" min="1" class="form-control" placeholder="Capacity Mbps"></div><div class="col-6"><input wire:model="traffic_mbps" type="number" min="0" class="form-control" placeholder="Traffic Mbps"></div><div class="col-6"><input wire:model="latency_ms" type="number" step="0.01" min="0" class="form-control" placeholder="Latency ms"></div><div class="col-6"><input wire:model="packet_loss" type="number" step="0.01" min="0" max="100" class="form-control" placeholder="Loss %"></div><div class="col-6"><input wire:model="fiber_core" type="number" min="1" class="form-control" placeholder="Fiber core #"></div><div class="col-6"><select wire:model="fiber_type" class="form-select"><option value="singlemode">Single-mode</option><option value="multimode">Multi-mode</option><option value="drop">Drop fiber</option><option value="unknown">Unknown</option></select></div></div>@error('label')<small class="text-danger">{{ $message }}</small>@enderror</div>
    <button class="btn btn-primary" type="submit"><i class="bi bi-plus-lg me-1"></i>Save draft connection</button>
   </form>
  </div></div>
  <div class="col-xl-4"><div class="nt-card p-3"><h5 class="mb-1">Add Network Node</h5><p class="nt-muted">Add logical infrastructure such as a splitter, ODF, rack, POP or fiber segment.</p>
   <form wire:submit.prevent="saveNode" class="d-grid gap-3">
-   <div><label class="form-label">Node type</label><select wire:model="newNodeType" class="form-select"><option value="splitter">Splitter</option><option value="odf">ODF</option><option value="rack">Rack</option><option value="pop">POP</option><option value="fiber_segment">Fiber segment</option></select></div>
+   <div><label class="form-label">Node type</label><select wire:model="newNodeType" class="form-select"><option value="splitter">Fiber Splitter</option><option value="olt_pon">OLT PON Port</option><option value="odf">ODF</option><option value="rack">Rack</option><option value="pop">POP</option><option value="fiber_segment">Fiber segment</option></select></div>
    <div><label class="form-label">Name / reference *</label><input wire:model="newNodeName" class="form-control" required placeholder="e.g. SPL-POP1-01">@error('newNodeName')<small class="text-danger">{{ $message }}</small>@enderror</div>
    <div><label class="form-label">POP / Location</label><input wire:model="newNodeLocation" class="form-control" placeholder="e.g. Mirpur POP"></div>
+   <div class="row g-2"><div class="col-6"><input wire:model="port_reference" class="form-control" placeholder="PON / port ref"></div><div class="col-6"><input wire:model="splitter_ratio" type="number" min="2" max="64" class="form-control" placeholder="Splitter 1:8 etc."></div></div>
    <div><label class="form-label">Notes</label><textarea wire:model="newNodeNotes" class="form-control" rows="2"></textarea></div>
    <button class="btn btn-outline-primary" type="submit"><i class="bi bi-plus-lg me-1"></i>Save node as draft</button>
   </form>
@@ -58,17 +60,17 @@ window.initXlinkTopology = function () {
  const rawNodes = @json($nodes);
  const rawEdges = @json($graphEdges);
  const nodes = new vis.DataSet(rawNodes.map(n => ({
-  ...n, color: n.status === 'online' ? '#22c55e' : (n.status === 'offline' ? '#ef4444' : '#94a3b8'),
+  ...n, color: n.status === 'online' ? '#22c55e' : (n.status === 'offline' ? '#ef4444' : (n.group === 'splitter' ? '#f59e0b' : '#94a3b8')),
   shape: n.group === 'router' ? 'box' : (n.group === 'olt' ? 'database' : (n.group === 'onu' ? 'diamond' : (n.group === 'customer' ? 'ellipse' : (n.group === 'splitter' ? 'triangle' : (n.group === 'odf' ? 'hexagon' : (n.group === 'pop' ? 'star' : (n.group === 'fiber_segment' ? 'text' : 'box'))))))),
   font: {color:'#172033', size:13}, borderWidth:1, margin:12
  })));
- const edgeRows = rawEdges.map(e => ({...e, color:{color:e.connection_type==='fiber_core'?'#16a34a':(e.connection_type==='uplink'?'#2563eb':'#94a3b8')}, font:{size:10,align:'middle'}, smooth:{type:'dynamic'}}));
+ const edgeRows = rawEdges.map(e => ({...e, color:{color:e.connection_type==='fiber_core' || e.connection_type==='splitter'?'#16a34a':(e.connection_type==='uplink'?'#2563eb':'#94a3b8')}, font:{size:10,align:'middle'}, smooth:{type:'dynamic'}}));
  const edges = new vis.DataSet(edgeRows);
  const network = new vis.Network(el, {nodes, edges}, {
   autoResize:true, interaction:{hover:true,navigationButtons:true,keyboard:{enabled:true}},
   physics:{enabled:true, stabilization:{iterations:180}, barnesHut:{gravitationalConstant:-4500,springLength:150,springConstant:0.035}},
   edges:{arrows:{to:{enabled:true,scaleFactor:0.65}},width:2},
-  groups:{router:{shape:'box'},olt:{shape:'database'},onu:{shape:'diamond'},customer:{shape:'ellipse'},splitter:{shape:'triangle'},odf:{shape:'hexagon'},rack:{shape:'box'},pop:{shape:'star'},fiber_segment:{shape:'text'}}
+  groups:{router:{shape:'box'},olt:{shape:'database'},onu:{shape:'diamond'},customer:{shape:'ellipse'},splitter:{shape:'triangle'},olt_pon:{shape:'dot'},odf:{shape:'hexagon'},rack:{shape:'box'},pop:{shape:'star'},fiber_segment:{shape:'text'}}
  });
  el._network = network;
  const filterRoot = document.getElementById('xlink-topology-filters');
