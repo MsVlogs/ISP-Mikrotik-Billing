@@ -18,6 +18,7 @@
   <div class="d-flex justify-content-between align-items-center mb-2"><div><strong>Network Graph</strong><div class="nt-muted">{{ count($nodes) }} nodes · {{ count($graphEdges) }} connections</div></div><div class="d-flex align-items-center gap-2"><span class="badge bg-light text-dark">Click node = workspace</span><button type="button" id="xlink-auto-layout" class="btn btn-sm btn-outline-success">Auto Layout</button>@if($mode==='live')<span id="xlink-topology-live-state" class="badge bg-success">LIVE</span><button type="button" id="xlink-topology-refresh" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button><button type="button" id="xlink-topology-sync" class="btn btn-sm btn-outline-warning"><i class="bi bi-lightning-charge me-1"></i>Sync Live</button>@endif</div></div>
   <div class="input-group input-group-sm mb-2"><span class="input-group-text"><i class="bi bi-search"></i></span><input id="xlink-topology-search" class="form-control" placeholder="Search customer, ONU, OLT, splitter, port…"><button type="button" id="xlink-topology-locate" class="btn btn-primary">Locate</button></div><div id="xlink-topology-search-result" class="small text-muted mb-2"></div><div class="d-flex flex-wrap gap-2 mb-2" id="xlink-topology-filters"><button type="button" class="btn btn-sm btn-outline-dark active" data-status-filter="all">All</button><button type="button" class="btn btn-sm btn-outline-success" data-status-filter="online">Online</button><button type="button" class="btn btn-sm btn-outline-danger" data-status-filter="offline">Offline</button><button type="button" class="btn btn-sm btn-outline-secondary" data-status-filter="unknown">Unknown</button></div>
   <div id="xlink-topology-graph" class="nt-canvas"></div>
+  <div id="xlink-node-detail" class="nt-card mt-2 d-none"><div class="p-3 border-bottom d-flex justify-content-between align-items-center"><strong>Node Details</strong><button type="button" id="xlink-node-detail-close" class="btn btn-sm btn-outline-secondary">Close</button></div><div id="xlink-node-detail-body" class="p-3"></div></div>
   <div class="d-flex flex-wrap gap-2 mt-2"><span class="badge bg-success">Online {{ $statusSummary['online'] ?? 0 }}</span><span class="badge bg-danger">Offline {{ $statusSummary['offline'] ?? 0 }}</span><span class="badge bg-secondary">Unknown {{ $statusSummary['unknown'] ?? 0 }}</span><span class="badge bg-light text-dark border">{{ count($graphEdges) }} paths</span><span class="badge bg-warning text-dark">Alarm propagation active</span></div><div class="nt-muted mt-2">Green = online · Red = offline · Grey = unknown · Fiber = solid green · Dashed = logical service. Link labels show utilization where capacity/traffic are configured.</div>
  </div></div>
  @if($mode==='designer')
@@ -94,8 +95,23 @@ const locateBtn=document.getElementById('xlink-topology-locate'); const searchBo
 network.on('click', function(params) {
   if (!params.nodes.length) return;
   const node = nodes.get(params.nodes[0]);
-  if (node && node.url) window.location.href = node.url;
+  if (!node) return;
+  const detail = document.getElementById('xlink-node-detail');
+  const body = document.getElementById('xlink-node-detail-body');
+  if (!detail || !body) return;
+  const connected = edgeRows.filter(e => e.from === node.id || e.to === node.id);
+  const esc = value => String(value ?? '—').replace(/</g,'&lt;');
+  const metrics = connected.map(e => {
+    const side = e.from === node.id ? 'OUT' : 'IN';
+    const peer = e.from === node.id ? e.to : e.from;
+    const util = e.utilization != null ? e.utilization + '%' : '—';
+    return '<div class="border rounded-3 p-2 mb-2"><div class="d-flex justify-content-between"><strong>'+side+' · '+esc(String(e.connection_type || 'link').replace(/_/g,' '))+'</strong><span class="badge bg-light text-dark border">'+util+'</span></div><div class="small text-muted">'+esc(peer)+' · '+esc(e.source_port || e.target_port || 'No port')+'</div><div class="small">'+(e.traffic_mbps != null ? e.traffic_mbps+' Mbps traffic · ' : '')+(e.capacity_mbps ? e.capacity_mbps+' Mbps capacity · ' : '')+(e.latency_ms != null ? e.latency_ms+' ms latency · ' : '')+(e.packet_loss != null ? e.packet_loss+'% loss' : '')+'</div></div>';
+  }).join('');
+  body.innerHTML = '<div class="row g-3"><div class="col-md-4"><div class="nt-muted">Node</div><strong>'+esc(node.label)+'</strong><div class="small text-muted">'+esc(node.group)+'</div></div><div class="col-md-2"><div class="nt-muted">Status</div><span class="badge '+(node.status==='online'?'bg-success':node.status==='offline'?'bg-danger':'bg-secondary')+'">'+esc(node.status || 'unknown')+'</span></div><div class="col-md-2"><div class="nt-muted">Alarm</div><span class="badge '+(node.alarm==='critical'?'bg-danger':node.alarm==='warning'?'bg-warning text-dark':'bg-success')+'">'+esc(node.alarm || 'online')+'</span></div><div class="col-md-4"><div class="nt-muted">Info</div><span class="small">'+esc(node.title || '')+'</span></div></div><hr><strong>Connected Links ('+connected.length+')</strong><div class="mt-2">'+(metrics || '<span class="text-muted">No connected links.</span>')+'</div>'+(node.url ? '<a class="btn btn-sm btn-outline-primary mt-2" href="'+node.url+'">Open Device / Mapping</a>' : '');
+  detail.classList.remove('d-none');
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
  });
+document.getElementById('xlink-node-detail-close')?.addEventListener('click',()=>document.getElementById('xlink-node-detail')?.classList.add('d-none'));
  // WeatherMap-style traffic pulse: active links periodically animate their dash offset.
  let pulse=0;
  const pulseTimer=setInterval(()=>{ if(!el._network) return; pulse=(pulse+1)%20; edgeRows.forEach(e=>{ const u=Number(e.utilization||0); if((e.traffic_mbps||0)>0){ e.dashes=true; e.dashOffset=pulse; e.width=u>=90?6:u>=70?5:3; } else { e.dashes=e.dashes||false; }}); edges.update(edgeRows); }, 700);
