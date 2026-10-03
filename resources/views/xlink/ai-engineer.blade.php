@@ -50,7 +50,33 @@
   @else <div class="ai-muted small">No unmapped ONU currently in the review queue.</div>@endif
  </div>
 
-<div class="ai-card p-3 mb-4"><div class="d-flex flex-wrap justify-content-between gap-2"><span><i class="bi bi-database-check me-1"></i> Local diagnostic data is available now.</span><span class="ai-readonly">Conversational AI: {{ ($overview['ai_configured'] ?? $overview['openai_configured']) ? strtoupper($overview['ai_provider'] ?? 'external') . ' configured' : 'local read-only mode' }} · read-only</span></div></div>
+ <div class="row g-3 mb-4">
+  <div class="col-xl-7"><div class="ai-card p-4 h-100">
+   <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0"><i class="bi bi-diagram-3 me-1"></i> Shared Upstream Impact</h2><span class="badge text-bg-info">{{ count($upstreamCorrelation['groups'] ?? []) }} paths</span></div>
+   @forelse(($upstreamCorrelation['groups'] ?? []) as $g)
+    <div class="border rounded p-2 mb-2 small">
+      <div class="fw-semibold">OLT {{ $g['olt_device_id'] ?? 'unknown' }} · PON {{ $g['pon'] ?? 'unknown' }}</div>
+      <div class="ai-muted">{{ $g['affected_onus'] ?? 0 }} affected ONU(s) · {{ $g['affected_customers'] ?? 0 }} affected customer(s) · confidence {{ $g['confidence'] ?? 'low' }}</div>
+      <div class="mt-1">{{ implode(', ', $g['statuses'] ?? []) }}</div>
+      <div class="ai-muted mt-1">{{ ($g['evidence'][0] ?? 'Shared-path correlation only; root cause is not confirmed.') }}</div>
+    </div>
+   @empty <div class="ai-muted small">No shared OLT/PON impact group is currently detected.</div>@endforelse
+   <div class="ai-readonly mt-2">Correlation is evidence only; AI Engineer does not change service state.</div>
+  </div></div>
+  <div class="col-xl-5"><div class="ai-card p-4 h-100">
+   <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0"><i class="bi bi-person-check me-1"></i> ONU ↔ Customer Candidates</h2><span class="badge text-bg-warning">{{ count($matchingCandidates['matches'] ?? []) }}</span></div>
+   @forelse(($matchingCandidates['matches'] ?? []) as $m)
+    <div class="border rounded p-2 mb-2 small">
+      <div class="fw-semibold">{{ $m['candidate']['customer_id'] ?? '—' }} · {{ $m['candidate']['customer_name'] ?? '—' }}</div>
+      <div class="ai-muted">ONU {{ $m['onu_id'] ?? '—' }} · PON {{ $m['pon'] ?? '—' }} · score {{ $m['candidate']['score'] ?? 0 }}/100</div>
+      <div class="mt-1">{{ implode(' · ', $m['candidate']['reasons'] ?? []) }}</div>
+    </div>
+   @empty <div class="ai-muted small">No candidate matches found.</div>@endforelse
+   <div class="ai-readonly mt-2">Recommendation only — no automatic mapping or assignment.</div>
+  </div></div>
+ </div>
+
+ <div class="ai-card p-3 mb-4"><div class="d-flex flex-wrap justify-content-between gap-2"><span><i class="bi bi-database-check me-1"></i> Local diagnostic data is available now.</span><span class="ai-readonly">Conversational AI: {{ ($overview['ai_configured'] ?? $overview['openai_configured']) ? strtoupper($overview['ai_provider'] ?? 'external') . ' configured' : 'local read-only mode' }} · read-only</span></div></div>
 <div class="ai-card p-4 mb-4"><div class="row g-3 align-items-end"><div class="col-lg-9"><label class="form-label fw-semibold">Customer</label><input id="aiCustomer" class="form-control form-control-lg" value="{{ $customerId }}" placeholder="Customer ID, name, mobile or PPPoE username" autocomplete="off"><div id="aiSuggestions" class="mt-2 d-flex flex-wrap gap-2"></div></div><div class="col-lg-3"><button id="aiDiagnose" class="btn btn-primary btn-lg w-100"><i class="bi bi-stars me-1"></i> Diagnose</button></div></div><div class="mt-3 d-flex flex-wrap gap-2"><button class="ai-chip js-question" data-q="Why is this customer offline?">Why is this customer offline?</button><button class="ai-chip js-question" data-q="What is wrong with this customer's service path?">Check service path</button><button class="ai-chip js-question" data-q="What billing issue should I check?">Check billing</button></div></div>
  <div class="ai-card p-4 mb-4"><div id="aiChatLog" class="ai-chat mb-3"><div class="ai-bubble"><strong>AI Engineer:</strong> Ask me about this customer, device, billing, or outage.</div></div><div class="input-group"><input id="aiQuestion" class="form-control" placeholder="Why is this customer offline?"><button id="aiAsk" class="btn btn-primary">Ask AI Engineer</button></div></div>
  <div id="aiResult" class="ai-card p-4 ai-chat">@if($diagnosis && ($diagnosis['ok'] ?? false)) @include('xlink.partials.ai-engineer-result',['diagnosis'=>$diagnosis]) @else <div class="text-center py-5 ai-muted"><i class="bi bi-chat-square-text fs-1"></i><h2 class="h5 mt-3">Ask AI Engineer</h2><p class="mb-0">Open a customer and ask a question. No network configuration or customer status will be changed.</p></div>@endif</div>
