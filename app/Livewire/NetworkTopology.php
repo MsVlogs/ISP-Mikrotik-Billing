@@ -182,6 +182,27 @@ class NetworkTopology extends Component
         $this->message = 'Topology connection deleted.';
     }
 
+    public function tracePath(string $startKey): void
+    {
+        $links = NetworkTopologyLink::query()->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
+        $nodes = collect($this->baseNodes())->keyBy('id');
+        $custom = NetworkTopologyNode::query()->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
+        foreach ($custom as $node) $nodes->put('custom:'.$node->id, ['id'=>'custom:'.$node->id,'label'=>$node->name,'group'=>$node->type,'status'=>$node->status ?: 'unknown']);
+        $queue = [$startKey]; $seen = []; $path = [];
+        while ($queue) {
+            $key = array_shift($queue); if (isset($seen[$key])) continue; $seen[$key] = true;
+            $path[] = ['key'=>$key,'label'=>$nodes->get($key)['label'] ?? $key,'port'=>null,'connection'=>null];
+            foreach ($links->where('source_key', $key) as $link) {
+                if (isset($seen[$link->target_key])) continue;
+                $next = $link->target_key;
+                $path[count($path)-1]['port'] = $link->source_port ?: $link->target_port;
+                $path[count($path)-1]['connection'] = $link->connection_type;
+                $queue[] = $next;
+            }
+        }
+        $this->dispatch('xlink-topology-trace', path: $path);
+    }
+
     private function nodeOptions(): array
     {
         $options = [];
