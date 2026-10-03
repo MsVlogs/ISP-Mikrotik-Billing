@@ -87,24 +87,24 @@ class AiEngineerDiagnosticService
         if (in_array($status,['disable','disabled','inactive'],true)) { $severity='critical'; $causes[]='বিলিং সিস্টেমে গ্রাহকের অ্যাকাউন্ট নিষ্ক্রিয়।'; $checks[]='Review customer status before restoring service.'; }
         elseif ($status==='pending') { $severity='warning'; $causes[]='গ্রাহকের সংযোগ এখনো অপেক্ষমাণ অবস্থায় আছে।'; $checks[]='Verify service activation workflow and router status.'; }
 
-        if (! $ppp) { $severity='critical'; $causes[]='এই গ্রাহকের সঙ্গে কোনো PPP ব্যবহারকারী যুক্ত নেই।'; $checks[]='Verify PPPoE assignment.'; }
+        if (! $ppp) { $severity='critical'; $causes[]='এই গ্রাহকের সঙ্গে কোনো PPP ব্যবহারকারী যুক্ত নেই।'; $checks[]='PPPoE সংযোগ নির্ধারণ পরীক্ষা করুন।'; }
         else {
             if (! $ppp->username) { $severity='critical'; $causes[]='PPPoE ব্যবহারকারীর নাম খালি।'; }
-            if (strtolower((string)$ppp->status)!=='active') { $severity=$severity==='critical'?'critical':'warning'; $causes[]='যুক্ত PPP সংযোগটি সক্রিয় নয়।'; $checks[]='Verify PPP secret state on the assigned router.'; }
-            if ($ppp->last_disconnect_reason) $findings[]='Last disconnect reason: '.$ppp->last_disconnect_reason;
-            if ($ppp->last_logged_out) $findings[]='Last logged out: '.$ppp->last_logged_out;
-            if ($ppp->username) $findings[]='PPPoE username: '.$ppp->username;
+            if (strtolower((string)$ppp->status)!=='active') { $severity=$severity==='critical'?'critical':'warning'; $causes[]='যুক্ত PPP সংযোগটি সক্রিয় নয়।'; $checks[]='নির্ধারিত রাউটারে PPP গোপনীয় সংযোগের অবস্থা পরীক্ষা করুন।'; }
+            if ($ppp->last_disconnect_reason) $findings[]='সর্বশেষ বিচ্ছিন্ন হওয়ার কারণ: '.$ppp->last_disconnect_reason;
+            if ($ppp->last_logged_out) $findings[]='সর্বশেষ লগআউট: '.$ppp->last_logged_out;
+            if ($ppp->username) $findings[]='PPPoE ব্যবহারকারী: '.$ppp->username;
             if ($ppp->ppp_remote_ip) $findings[]='PPP remote IP: '.$ppp->ppp_remote_ip;
-            if ($ppp->uptime) $findings[]='PPP uptime recorded: '.$ppp->uptime;
-            if ($ppp->last_disconnect_reason) $findings[]='Disconnect evidence: '.$ppp->last_disconnect_reason;
+            if ($ppp->uptime) $findings[]='PPP uptime: '.$ppp->uptime;
+            if ($ppp->last_disconnect_reason) $findings[]='বিচ্ছিন্নতার প্রমাণ: '.$ppp->last_disconnect_reason;
             if (($livePpp['state'] ?? null) === 'online') {
-                $findings[]='Live MikroTik PPPoE session found for this username.';
+                $findings[]='এই PPPoE ব্যবহারকারীর জন্য সক্রিয় MikroTik PPPoE সেশন পাওয়া গেছে।';
             } elseif (($livePpp['state'] ?? null) === 'offline') {
                 $findings[]='এই ব্যবহারকারীর কোনো সক্রিয় MikroTik PPPoE সেশন পাওয়া যায়নি।';
                 if (strtolower((string)$ppp->status) === 'active') {
                     $severity=$severity==='critical'?'critical':'warning';
                     $causes[]='PPP secret is active in billing data, but no live PPPoE session was found on the assigned router.';
-                    $checks[]='Check router logs, PPPoE authentication errors, and customer CPE reachability.';
+                    $checks[]='রাউটার লগ, PPPoE অনুমোদন ত্রুটি এবং গ্রাহকের CPE-তে পৌঁছানো যাচ্ছে কি না পরীক্ষা করুন।';
                 }
             }
         }
@@ -114,8 +114,8 @@ class AiEngineerDiagnosticService
             if ($router->last_latency_ms !== null) $findings[]='Last recorded router latency: '.$router->last_latency_ms.' ms.';
             if ($router->last_checked_at) $findings[]='Router health last checked: '.$router->last_checked_at.' ('.(($routerAge ?? 0) > 900 ? 'stale, over 15 minutes old' : 'within 15 minutes').').';
             else $findings[]='Router health has no recorded last-check timestamp.';
-            if (in_array($rs,['offline','down','disabled'],true)) { $severity='critical'; $causes[]='Assigned MikroTik/router is marked '.$rs.'.'; $checks[]='Check router reachability and monitoring status.'; }
-        } elseif ($ppp?->router_name) { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Assigned router "'.$ppp->router_name.'" was not found in router inventory.'; $checks[]='Verify Router List mapping.'; }
+            if (in_array($rs,['offline','down','disabled'],true)) { $severity='critical'; $causes[]='Assigned MikroTik/router is marked '.$rs.'.'; $checks[]='রাউটারে পৌঁছানো এবং মনিটরিং অবস্থা পরীক্ষা করুন।'; }
+        } elseif ($ppp?->router_name) { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Assigned router "'.$ppp->router_name.'" was not found in router inventory.'; $checks[]='Router List-এর সংযোগ পরীক্ষা করুন।'; }
 
         if ($mapping) {
             $findings[]='ONU mapping: PON '.($mapping->pon_port?:'unknown').', ONU '.($mapping->onu_id?:'unknown').', status '.($mapping->status?:'unknown').'.';
@@ -130,21 +130,48 @@ class AiEngineerDiagnosticService
                 if (in_array($os, ['offline','down','critical','unreachable'], true)) {
                     $severity = $os === 'critical' ? 'critical' : ($severity === 'critical' ? 'critical' : 'warning');
                     $causes[] = 'Linked OLT inventory is marked '.$os.'.';
-                    $checks[] = 'Verify OLT reachability and review recent OLT/PON alarms; no provisioning action was taken.';
+                    $checks[] = 'OLT-তে পৌঁছানো যাচ্ছে কি না এবং সাম্প্রতিক OLT/PON অ্যালার্ম পরীক্ষা করুন; কোনো provisioning পরিবর্তন করা হয়নি।';
                 }
             }
             $ms=strtolower((string)$mapping->status);
-            if (in_array($ms,['los','offline','down'],true)) { $severity=$ms==='los'?'critical':($severity==='critical'?'critical':'warning'); $causes[]='ONU is reported as '.strtoupper($ms).'.'; $checks[]='Check fiber/ONU power and OLT PON alarms.'; }
+            if (in_array($ms,['los','offline','down'],true)) { $severity=$ms==='los'?'critical':($severity==='critical'?'critical':'warning'); $causes[]='ONU is reported as '.strtoupper($ms).'.'; $checks[]='ফাইবার/ONU পাওয়ার এবং OLT PON অ্যালার্ম পরীক্ষা করুন।'; }
         } else $findings[]='No discovered OLT/ONU mapping is currently linked to this customer.';
 
         if ($billing) {
             $due=(float)($billing->total_due_amount ?? $billing->due_amount ?? 0);
-            if ($due>0) { $findings[]='Outstanding billing: '.number_format($due,2); if ((bool)($billing->auto_disable??false)) { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Billing has auto-disable enabled with outstanding dues.'; $checks[]='Review billing due and auto-disable policy.'; } }
+            if ($due>0) { $findings[]='Outstanding billing: '.number_format($due,2); if ((bool)($billing->auto_disable??false)) { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Billing has auto-disable enabled with outstanding dues.'; $checks[]='বকেয়া বিল এবং auto-disable নীতি পরীক্ষা করুন।'; } }
         }
-        if ($tickets['count']>0) { $findings[]='Support tickets linked: '.$tickets['count'].($tickets['open']!==null?' · open: '.$tickets['open']:''); if (($tickets['open']??0)>0) $checks[]='Review the latest open support ticket before changing service state.'; }
-        if (!$causes) { $causes[]='উপলভ্য বিলিং ও নেটওয়ার্ক তথ্য থেকে অফলাইনের নির্দিষ্ট কারণ নিশ্চিত করা যায়নি।'; $checks[]='Check live router session state, last-seen time, and upstream OLT/ONU alarms.'; }
+        if ($tickets['count']>0) { $findings[]='Support tickets linked: '.$tickets['count'].($tickets['open']!==null?' · open: '.$tickets['open']:''); if (($tickets['open']??0)>0) $checks[]='সেবা অবস্থা পরিবর্তনের আগে সর্বশেষ খোলা support ticket পরীক্ষা করুন।'; }
+        if (!$causes) { $causes[]='উপলভ্য বিলিং ও নেটওয়ার্ক তথ্য থেকে অফলাইনের নির্দিষ্ট কারণ নিশ্চিত করা যায়নি।'; $checks[]='লাইভ রাউটার সেশন, সর্বশেষ দেখা সময় এবং আপস্ট্রিম OLT/ONU অ্যালার্ম পরীক্ষা করুন।'; }
 
-        return ['ok'=>true,'customer'=>['id'=>$customer->customer_unique_id,'name'=>$customer->customer_name,'status'=>$customer->status,'mobile'=>$customer->mobile,'package'=>$customer->package?->package], 'severity'=>$severity,'summary'=>$this->summary($severity,$customer,$causes),'likely_causes'=>array_values(array_unique($causes)),'evidence'=>array_values(array_unique($findings)),'support'=>$tickets,'recommended_checks'=>array_values(array_unique($checks)),'service_path'=>$path,'read_only'=>true,'generated_at'=>now()->toIso8601String()];
+        // একই OLT/PON পথে একাধিক ONU আক্রান্ত হলে সম্ভাব্য যৌথ আপস্ট্রিম প্রভাব দেখানো হবে।
+        $upstreamImpact = ['found'=>false,'confidence'=>'low','affected_onus'=>0,'affected_customers'=>0,'olt_device_id'=>null,'pon'=>null,'evidence'=>[],'read_only'=>true];
+        if ($mapping) {
+            $groups = $this->upstreamCorrelation(100)['groups'] ?? [];
+            foreach ($groups as $group) {
+                if ((string)($group['olt_device_id'] ?? '') === (string)$mapping->olt_device_id &&
+                    strtolower(trim((string)($group['pon'] ?? ''))) === strtolower(trim((string)$mapping->pon_port ?? ''))) {
+                    $upstreamImpact = [
+                        'found'=>($group['affected_onus'] ?? 0) >= 2,
+                        'confidence'=>$group['confidence'] ?? 'low',
+                        'affected_onus'=>$group['affected_onus'] ?? 0,
+                        'affected_customers'=>$group['affected_customers'] ?? 0,
+                        'olt_device_id'=>$group['olt_device_id'] ?? null,
+                        'pon'=>$group['pon'] ?? null,
+                        'evidence'=>['একই OLT/PON পথে '.$group['affected_onus'].'টি সমস্যাগ্রস্ত ONU পাওয়া গেছে; এটি যৌথ আপস্ট্রিম সমস্যার সম্ভাবনা দেখায়, তবে মূল কারণ নিশ্চিত করে না।'],
+                        'read_only'=>true,
+                    ];
+                    if ($upstreamImpact['found']) {
+                        $severity = $severity === 'critical' ? 'critical' : 'warning';
+                        $causes[] = 'একই OLT/PON পথে একাধিক ONU আক্রান্ত; সম্ভাব্য যৌথ আপস্ট্রিম সমস্যা।';
+                        $checks[] = 'একই PON-এর অন্যান্য ONU এবং OLT/PON অ্যালার্ম পরীক্ষা করুন।';
+                    }
+                    break;
+                }
+            }
+        }
+
+        return ['ok'=>true,'customer'=>['id'=>$customer->customer_unique_id,'name'=>$customer->customer_name,'status'=>$customer->status,'mobile'=>$customer->mobile,'package'=>$customer->package?->package], 'severity'=>$severity,'summary'=>$this->summary($severity,$customer,$causes),'likely_causes'=>array_values(array_unique($causes)),'evidence'=>array_values(array_unique($findings)),'support'=>$tickets,'recommended_checks'=>array_values(array_unique($checks)),'service_path'=>$path,'upstream_impact'=>$upstreamImpact,'read_only'=>true,'generated_at'=>now()->toIso8601String()];
     }
 
     private function stateForCustomer(?string $status): string
