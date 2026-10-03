@@ -44,6 +44,9 @@ class NetworkTopology extends Component
         $this->mode = $mode;
     }
 
+    public function updatedSourceKey(): void { $this->source_port = ''; }
+    public function updatedTargetKey(): void { $this->target_port = ''; }
+
     public function saveLink(): void
     {
         if ($this->mode !== 'designer') abort(403);
@@ -62,6 +65,19 @@ class NetworkTopology extends Component
             'source_port' => ['nullable', 'string', 'max:40'],
             'target_port' => ['nullable', 'string', 'max:40'],
         ]);
+
+        foreach ([['key'=>$data['source_key'],'port'=>$data['source_port'],'field'=>'source_port','node_field'=>'output_ports'],['key'=>$data['target_key'],'port'=>$data['target_port'],'field'=>'target_port','node_field'=>'input_ports']] as $ep) {
+            if (!$ep['port'] || !str_starts_with($ep['key'], 'custom:')) continue;
+            $node = NetworkTopologyNode::find((int) str_replace('custom:', '', $ep['key']));
+            if (!$node || $node->type !== 'splitter') continue;
+            $capacity = (int) ($node->{$ep['node_field']} ?: ($ep['node_field'] === 'output_ports' ? $node->splitter_ratio : 1));
+            $port = ($ep['field'] === 'source_port' ? 'OUT-' : 'IN-').preg_replace('/^(OUT-|IN-|P)/i', '', strtoupper(trim((string) $ep['port'])));
+            $query = NetworkTopologyLink::where($ep['field'] === 'source_port' ? 'source_key' : 'target_key', $ep['key'])->whereNotNull($ep['field']);
+            $used = $query->get()->filter(fn($l) => !($l->source_key === $data['source_key'] && $l->target_key === $data['target_key'] && $l->connection_type === $data['connection_type']))->pluck($ep['field'])->map(fn($v) => ($ep['field'] === 'source_port' ? 'OUT-' : 'IN-').preg_replace('/^(OUT-|IN-|P)/i', '', strtoupper(trim((string)$v))))->all();
+            if (in_array($port, $used, true)) { $this->addError($ep['field'], 'This port is occupied. Choose a free port.'); return; }
+            if ($capacity > 0 && count(array_unique($used)) >= $capacity) { $this->addError($ep['field'], 'No free ports remain on this splitter.'); return; }
+            if (!preg_match('/^(OUT|IN|P)?-?\d+$/i', $port)) { $this->addError($ep['field'], 'Use a port such as P1, IN-1 or OUT-1.'); return; }
+        }
 
         NetworkTopologyLink::updateOrCreate(
             ['source_key' => $data['source_key'], 'target_key' => $data['target_key'], 'connection_type' => $data['connection_type']],
@@ -303,6 +319,16 @@ class NetworkTopology extends Component
 
         $nodeOptions = $this->nodeOptions();
         $customNodes = NetworkTopologyNode::query()->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->latest()->get();
+        $sourcePortOptions = []; $targetPortOptions = [];
+        foreach ($customNodes->where('type', 'splitter') as $splitter) {
+            $key = 'custom:'.$splitter->id;
+            $outCount = (int) ($splitter->output_ports ?: $splitter->splitter_ratio ?: 0);
+            $inCount = (int) ($splitter->input_ports ?: 1);
+            $usedOut = $links->where('source_key', $key)->pluck('source_port')->filter()->map(fn($v)=>'OUT-'.preg_replace('/^(OUT-|IN-|P)/i','',strtoupper(trim((string)$v))))->all();
+            $usedIn = $links->where('target_key', $key)->pluck('target_port')->filter()->map(fn($v)=>'IN-'.preg_replace('/^(OUT-|IN-|P)/i','',strtoupper(trim((string)$v))))->all();
+            for ($i=1; $i<=$outCount; $i++) { $port='OUT-'.$i; $sourcePortOptions[$key][$port] = $port.(in_array($port,$usedOut,true) ? ' — OCCUPIED' : ' — FREE'); }
+            for ($i=1; $i<=$inCount; $i++) { $port='IN-'.$i; $targetPortOptions[$key][$port] = $port.(in_array($port,$usedIn,true) ? ' — OCCUPIED' : ' — FREE'); }
+        }
         // Calculate splitter port occupancy from topology links. Each source/target port is treated as a physical port.
         $portStats = [];
         foreach ($customNodes as $splitter) {
@@ -314,7 +340,7 @@ class NetworkTopology extends Component
             $portStats[$splitter->id] = ['in_capacity'=>$inCapacity,'out_capacity'=>$outCapacity,'in_used'=>count($usedIn),'out_used'=>count($usedOut),'in_free'=>max(0,$inCapacity-count($usedIn)),'out_free'=>max(0,$outCapacity-count($usedOut)),'in_ports'=>$usedIn,'out_ports'=>$usedOut];
         }
         $statusSummary = collect($nodes)->countBy('status')->all();
-        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary', 'mappingHealth', 'portStats'))
+        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary', 'mappingHealth', 'portStats', 'sourcePortOptions', 'targetPortOptions'))
             ->layout('layouts.app');
     }
 }
