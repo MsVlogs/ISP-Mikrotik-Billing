@@ -585,7 +585,21 @@ Route::middleware([
             return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,'recentMovements'=>$recentMovements,
                 'stats'=>[['Products',\App\Models\StockInventoryProduct::count()],['Total Qty',$totalQty],['Stock Value',number_format($stockValue,2).' '.siteUrlSettings('site_currency')],['Low Stock',$lowStock],['Out of Stock',$outOfStock]]]);
         })->name('xlink.stock-inventory');
-        Route::get('/stock-inventory/products', function () { $products=\App\Models\StockInventoryProduct::orderBy('name')->paginate(25)->withQueryString(); return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[]]); })->name('stock-inventory.products');
+        Route::get('/stock-inventory/products', function (\Illuminate\Http\Request $r) {
+            $q=\App\Models\StockInventoryProduct::query();
+            if($r->filled('q')){ $term=trim($r->input('q')); $q->where(function($x) use($term){$x->where('sku','like','%'.$term.'%')->orWhere('name','like','%'.$term.'%')->orWhere('category','like','%'.$term.'%');}); }
+            if($r->filled('status')) $q->where('status',$r->input('status'));
+            $products=$q->orderBy('name')->paginate(25)->withQueryString();
+            return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[],'filters'=>['q'=>$r->input('q'),'status'=>$r->input('status')]]);
+        })->name('stock-inventory.products');
+        Route::post('/stock-inventory/products/{product}/update', function(\Illuminate\Http\Request $r, \App\Models\StockInventoryProduct $product){
+            $d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku,'.$product->id,'name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','status'=>'required|in:active,inactive','notes'=>'nullable|string|max:1000']);
+            $product->update($d); return back()->with('inventory_message','Product updated.');
+        })->name('stock-inventory.products.update');
+        Route::post('/stock-inventory/products/{product}/delete', function(\App\Models\StockInventoryProduct $product){
+            abort_if($product->movements()->exists(),422,'Product cannot be deleted because stock movements exist. Mark it inactive instead.');
+            $product->delete(); return back()->with('inventory_message','Product deleted.');
+        })->name('stock-inventory.products.delete');
         Route::post('/stock-inventory/products', function(\Illuminate\Http\Request $r){$d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku','name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','quantity'=>'required|integer|min:0','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryProduct::create($d); return back()->with('inventory_message','Product added.');})->name('stock-inventory.products.store');
         Route::post('/stock-inventory/movements', function(\Illuminate\Http\Request $r){$d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','movement_type'=>'required|in:stock-in,issue,sale,adjustment','quantity'=>'required|integer|min:1','reference'=>'nullable|string|max:120','source'=>'nullable|string|max:120','destination'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); $p=\App\Models\StockInventoryProduct::findOrFail($d['product_id']); $delta=in_array($d['movement_type'],['stock-in','adjustment'],true)?$d['quantity']:-$d['quantity']; abort_if($delta<0 && $p->quantity < abs($delta),422,'Insufficient stock.'); $p->increment('quantity',$delta); \App\Models\StockInventoryMovement::create($d); return back()->with('inventory_message','Stock movement recorded.');})->name('stock-inventory.movements.store');
         Route::get('/stock-inventory/movements', function(){ $movements=\App\Models\StockInventoryMovement::with('product')->latest()->paginate(30); return view('xlink.stock-inventory',['tab'=>'movements','movements'=>$movements,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.movements');
