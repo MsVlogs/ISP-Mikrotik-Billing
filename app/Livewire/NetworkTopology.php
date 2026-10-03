@@ -354,6 +354,24 @@ class NetworkTopology extends Component
             return $node;
         }, $nodes);
 
+        $branchHealth = [];
+        foreach ($nodes as $node) {
+            if (!in_array($node["group"], ["olt_pon", "splitter"], true)) continue;
+            $reachable = [$node["id"] => true]; $frontier = [$node["id"]];
+            for ($round = 0; $round < 20 && $frontier; $round++) {
+                $next = [];
+                foreach ($graphEdges as $edge) {
+                    if (!in_array($edge["connection_type"], ["fiber_core", "splitter", "logical_service"], true) || !in_array($edge["from"], $frontier, true) || isset($reachable[$edge["to"]])) continue;
+                    $reachable[$edge["to"]] = true; $next[] = $edge["to"];
+                }
+                $frontier = $next;
+            }
+            $affected = 0; $offline = 0;
+            foreach ($nodes as $child) { if (!isset($reachable[$child["id"]]) || !in_array($child["group"], ["onu", "customer"], true)) continue; if (in_array($child["status"], ["offline", "unknown"], true)) $affected++; if ($child["status"] === "offline") $offline++; }
+            $branchHealth[] = ["id" => $node["id"], "label" => $node["label"], "alarm" => $node["alarm"] ?? "online", "affected" => $affected, "offline" => $offline];
+        }
+        usort($branchHealth, fn($a, $b) => ($b["offline"] <=> $a["offline"]) ?: ($b["affected"] <=> $a["affected"]));
+
         $mappingHealth = null;
         if ($this->mode === 'live') {
             $mappingQuery = OltOnuCustomerMapping::query();
@@ -391,7 +409,7 @@ class NetworkTopology extends Component
             $portStats[$splitter->id] = ['in_capacity'=>$inCapacity,'out_capacity'=>$outCapacity,'in_used'=>count($usedIn),'out_used'=>count($usedOut),'in_free'=>max(0,$inCapacity-count($usedIn)),'out_free'=>max(0,$outCapacity-count($usedOut)),'in_ports'=>$usedIn,'out_ports'=>$usedOut];
         }
         $statusSummary = collect($nodes)->countBy('status')->all();
-        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary', 'mappingHealth', 'portStats', 'sourcePortOptions', 'targetPortOptions'))
+        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary', 'mappingHealth', 'portStats', 'sourcePortOptions', 'targetPortOptions', 'branchHealth'))
             ->layout('layouts.app');
     }
 }
