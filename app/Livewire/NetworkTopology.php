@@ -182,6 +182,15 @@ class NetworkTopology extends Component
         $this->message = 'Topology connection deleted.';
     }
 
+    public function locateTopology(string $query): void
+    {
+        $q = mb_strtolower(trim($query)); if ($q === '') return;
+        $nodes = collect($this->baseNodes());
+        $match = $nodes->first(fn($n) => str_contains(mb_strtolower((string)$n['label']), $q) || str_contains(mb_strtolower((string)($n['title'] ?? '')), $q));
+        if ($match) { $this->tracePath($match['id']); return; }
+        $this->dispatch('xlink-topology-locate', found: false, query: $query);
+    }
+
     public function tracePath(string $startKey): void
     {
         $links = NetworkTopologyLink::query()->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
@@ -191,12 +200,13 @@ class NetworkTopology extends Component
         $queue = [$startKey]; $seen = []; $path = [];
         while ($queue) {
             $key = array_shift($queue); if (isset($seen[$key])) continue; $seen[$key] = true;
-            $path[] = ['key'=>$key,'label'=>$nodes->get($key)['label'] ?? $key,'port'=>null,'connection'=>null];
+            $path[] = ['key'=>$key,'label'=>$nodes->get($key)['label'] ?? $key,'port'=>null,'connection'=>null,'edge'=>null];
             foreach ($links->where('source_key', $key) as $link) {
                 if (isset($seen[$link->target_key])) continue;
                 $next = $link->target_key;
                 $path[count($path)-1]['port'] = $link->source_port ?: $link->target_port;
                 $path[count($path)-1]['connection'] = $link->connection_type;
+                $path[count($path)-1]['edge'] = 'link:'.$link->id;
                 $queue[] = $next;
             }
         }
