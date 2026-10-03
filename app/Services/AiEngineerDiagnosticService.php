@@ -37,6 +37,8 @@ class AiEngineerDiagnosticService
             'network' => $network,
             'incidents' => $incidents,
             'insights' => $insights,
+            'upstream_correlation' => $this->upstreamCorrelation(100),
+            'matching_candidates' => $this->matchingCandidates(100),
             'ai_provider' => (string) config('services.ai.provider', 'gemini'),
             'ai_configured' => (string) config('services.'.config('services.ai.provider', 'gemini').'.api_key') !== '',
             'openai_configured' => (string) config('services.openai.api_key') !== '',
