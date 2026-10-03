@@ -247,7 +247,7 @@ class AiEngineerDiagnosticService
         usort($groups, fn($a,$b) => $b['affected_onus'] <=> $a['affected_onus']);
         return [
             'groups' => array_slice($groups, 0, 25),
-            'affected_customers' => count(array_unique(array_merge(...array_map(fn($g)=>$g['customer_ids'], $groups ?: [[]])))),
+            'affected_customers' => count(array_unique(array_merge([], ...array_map(fn($g) => $g['customer_ids'] ?? [], $groups)))),
             'read_only' => true,
         ];
     }
