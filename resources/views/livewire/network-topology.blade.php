@@ -98,7 +98,7 @@ network.on('click', function(params) {
  });
  // WeatherMap-style traffic pulse: active links periodically animate their dash offset.
  let pulse=0;
- const pulseTimer=setInterval(()=>{ if(!el._network) return; pulse=(pulse+1)%20; edgeRows.forEach(e=>{ if((e.traffic_mbps||0)>0){ e.dashes=true; e.dashOffset=pulse; }}); edges.update(edgeRows); }, 700);
+ const pulseTimer=setInterval(()=>{ if(!el._network) return; pulse=(pulse+1)%20; edgeRows.forEach(e=>{ const u=Number(e.utilization||0); if((e.traffic_mbps||0)>0){ e.dashes=true; e.dashOffset=pulse; e.width=u>=90?6:u>=70?5:3; } else { e.dashes=e.dashes||false; }}); edges.update(edgeRows); }, 700);
  el._pulseTimer=pulseTimer;
  @if($mode==='live')
  const sync=document.getElementById('xlink-topology-sync'); sync?.addEventListener('click',()=>{ sync.disabled=true; sync.innerText='Syncing…'; @this.$refresh().then(()=>{ setTimeout(()=>{ sync.disabled=false; sync.innerHTML='<i class=\"bi bi-lightning-charge me-1\"></i>Sync Live'; window.initXlinkTopology?.(); },200); }); });
