@@ -581,6 +581,7 @@ Route::middleware([
             $stockValue=(float)\App\Models\StockInventoryProduct::selectRaw('COALESCE(SUM(quantity * unit_cost),0) total')->value('total');
             $lowStock=(int)\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count();
             $outOfStock=(int)\App\Models\StockInventoryProduct::where('quantity',0)->count();
+            \App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->where('warranty_end','<',now()->toDateString())->update(['status'=>'expired']);
             $warrantyExpiring=(int)\App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->whereBetween('warranty_end',[now()->toDateString(),now()->addDays(30)->toDateString()])->count();
             $openDamage=(int)\App\Models\StockInventoryDamageRecord::where('status','open')->count();
             $recentMovements=\App\Models\StockInventoryMovement::with('product')->latest()->limit(8)->get();
@@ -643,9 +644,21 @@ Route::middleware([
         })->name('stock-inventory.damaged');
         Route::post('/stock-inventory/damaged', function(\Illuminate\Http\Request $r){
             $d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','quantity'=>'required|integer|min:1','asset_serial'=>'nullable|string|max:160','asset_mac'=>'nullable|string|max:80','record_type'=>'required|in:damaged,lost','incident_date'=>'required|date','reason'=>'nullable|string|max:190','status'=>'required|in:open,recovered,resolved,disposed','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']);
-            \App\Models\StockInventoryDamageRecord::create($d); return back()->with('inventory_message','Lost/damaged record added. Stock quantity was not changed; use a stock movement when physical stock changes.');
+            if($d['record_type']==='lost' && $d['status']==='open'){
+                \Illuminate\Support\Facades\DB::transaction(function() use($d){
+                    $p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail();
+                    abort_if($p->quantity < $d['quantity'],422,'Insufficient stock for this lost quantity.');
+                    \App\Models\StockInventoryDamageRecord::create($d);
+                    $p->update(['quantity'=>$p->quantity-$d['quantity']]);
+                    \App\Models\StockInventoryMovement::create(['product_id'=>$p->id,'movement_type'=>'issue','quantity'=>$d['quantity'],'reference'=>$d['reference']??'Lost asset','source'=>'Lost/Damaged register','destination'=>'Loss','notes'=>$d['notes']??null]);
+                });
+            } else { \App\Models\StockInventoryDamageRecord::create($d); }
+            return back()->with('inventory_message',$d['record_type']==='lost' && $d['status']==='open' ? 'Lost record added and stock ledger updated.' : 'Lost/damaged record added. Stock quantity was not changed.');
         })->name('stock-inventory.damaged.store');
-        Route::get('/stock-inventory/settings', fn()=>view('xlink.stock-inventory',['tab'=>'settings','title'=>'Settings','products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[]]))->name('stock-inventory.settings');
+        Route::get('/stock-inventory/settings', function(){
+            $expired=\App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->where('warranty_end','<',now()->toDateString())->update(['status'=>'expired']);
+            return view('xlink.stock-inventory',['tab'=>'settings','title'=>'Settings','products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[],'expiredWarrantyUpdated'=>$expired]);
+        })->name('stock-inventory.settings');
 
         Route::get('/communication-center', function () {
             $templates = \App\Models\SmsTemplate::count();
