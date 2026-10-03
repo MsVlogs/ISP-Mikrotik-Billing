@@ -304,7 +304,7 @@ class AiEngineerDiagnosticService
 
         // Local diagnostics remain available if the selected provider has no key.
         if ($apiKey==='') {
-            return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true];
+            return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true];
         }
         $safeHistory=array_slice(array_map(fn($m)=>['role'=>in_array($m['role']??'', ['user','assistant'],true)?$m['role']:'user','content'=>mb_substr((string)($m['content']??''),0,4000)],$history),-8);
         $systemPrompt='আপনি একজন ISP AI Engineer। শুধুমাত্র পড়ার/বিশ্লেষণের কাজ করবেন। কোনো কিছু পরিবর্তন, প্রভিশন, রিবুট, সক্রিয়, নিষ্ক্রিয়, মুছে ফেলা বা কনফিগার করা হয়েছে বলে কখনো দাবি করবেন না। শুধু সরবরাহ করা তথ্য ব্যবহার করুন। প্রমাণ ও সম্ভাব্য কারণ আলাদা করে বলুন। লাইভ স্ট্যাটাস বানিয়ে বলবেন না। ব্যবহারকারী যে ভাষায় প্রশ্ন করবেন, সেই ভাষাতেই উত্তর দিন; বাংলা প্রশ্ন হলে সম্পূর্ণ উত্তর বাংলায় দিন।';
@@ -318,16 +318,16 @@ class AiEngineerDiagnosticService
                 $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->retry(2,500,fn($exception,$request)=>true,false)->post($baseUrl.'/chat/completions',$payload);
             } catch (\Throwable $e) {
                 \Log::error('AI Engineer Gemini request exception',['error'=>$e->getMessage()]);
-                return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+                return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
             }
             if(!$response->successful()){
                 \Log::error('AI Engineer Gemini request failed',['status'=>$response->status(),'body'=>mb_substr($response->body(),0,1000)]);
-                return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+                return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
             }
             $body=$response->json();
             $text=$body['choices'][0]['message']['content']??'';
             if(is_array($text))$text=implode("\n",array_map(fn($part)=>(string)($part['text']??''),$text));
-            return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'gemini','message'=>trim((string)$text),'read_only'=>true];
+            return ['ok'=>true,'configured'=>true,'provider'=>'gemini','message'=>trim((string)$text),'read_only'=>true];
         }
 
         $input=[['role'=>'developer','content'=>$systemPrompt],['role'=>'user','content'=>'Diagnostic context: '.$context]];
@@ -337,15 +337,15 @@ class AiEngineerDiagnosticService
             $response=Http::withToken($apiKey)->acceptJson()->timeout(30)->post('https://api.openai.com/v1/responses',['model'=>config('services.openai.model'),'store'=>false,'input'=>$input]);
         } catch (\Throwable $e) {
             \Log::error('AI Engineer OpenAI request exception',['error'=>$e->getMessage()]);
-            return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
+            return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true,'fallback'=>true];
         }
         if(!$response->successful()){
             \Log::error('AI Engineer OpenAI request failed',['status'=>$response->status(),'body'=>mb_substr($response->body(),0,2000)]);
-            return ['ok'=>false,'কনফিগার করা'=>true,'provider'=>'openai','message'=>'OpenAI অনুরোধ ব্যর্থ (HTTP '.$response->status().'). প্রোভাইডার ত্রুটির জন্য Laravel লগ দেখুন।'];
+            return ['ok'=>false,'configured'=>true,'provider'=>'openai','message'=>'OpenAI অনুরোধ ব্যর্থ (HTTP '.$response->status().'). প্রোভাইডার ত্রুটির জন্য Laravel লগ দেখুন।'];
         }
         $body=$response->json(); $text=$body['output_text']??'';
         if($text==='')foreach(($body['output']??[]) as $item)foreach(($item['content']??[]) as $content)if(($content['type']??'')==='output_text')$text.=$content['text']??'';
-        return ['ok'=>true,'কনফিগার করা'=>true,'provider'=>'openai','message'=>trim($text),'read_only'=>true];
+        return ['ok'=>true,'configured'=>true,'provider'=>'openai','message'=>trim($text),'read_only'=>true];
     }
 
     private function localChatResponse(string $question, ?array $diagnosis): string
