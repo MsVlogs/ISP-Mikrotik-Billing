@@ -216,6 +216,9 @@ class NetworkTopology extends Component
                 'id' => 'link:'.$link->id, 'from' => $link->source_key, 'to' => $link->target_key,
                 'label' => $link->label ?: str_replace('_', ' ', $link->connection_type),
                 'connection_type' => $link->connection_type, 'arrows' => 'to',
+                'capacity_mbps' => $link->capacity_mbps, 'traffic_mbps' => $link->traffic_mbps,
+                'latency_ms' => $link->latency_ms, 'packet_loss' => $link->packet_loss,
+                'utilization' => ($link->capacity_mbps && $link->capacity_mbps > 0) ? round(($link->traffic_mbps ?: 0) / $link->capacity_mbps * 100, 1) : null,
                 'dashes' => $link->connection_type === 'logical_service',
             ];
         }
@@ -235,7 +238,7 @@ class NetworkTopology extends Component
                     ];
                     $existing->put($ponKey, true);
                     $oltKey = 'device:'.$mapping->olt_device_id;
-                    if ($existing->has($oltKey)) $graphEdges[] = ['id'=>'auto:olt-pon:'.$ponKey,'from'=>$oltKey,'to'=>$ponKey,'label'=>$ponRef,'connection_type'=>'fiber_core','arrows'=>'to'];
+                    if ($existing->has($oltKey)) $graphEdges[] = ['id'=>'auto:olt-pon:'.$ponKey,'from'=>$oltKey,'to'=>$ponKey,'label'=>$ponRef,'connection_type'=>'fiber_core','arrows'=>'to','capacity_mbps'=>null,'traffic_mbps'=>null,'utilization'=>null];
                 }
                 $customerName = $mapping->customer?->customer_name ?: $mapping->customer?->customer_unique_id ?: 'Unmapped ONU';
                 $mappingStatus = strtolower(trim((string) $mapping->status));
@@ -254,7 +257,7 @@ class NetworkTopology extends Component
                 ];
                 $oltKey = 'device:'.$mapping->olt_device_id;
                 if ($existing->has($oltKey)) {
-                    $graphEdges[] = ['id'=>'auto:pon-onu:'.$mapping->id,'from'=>$ponKey,'to'=>$onuKey,'label'=>$mapping->pon_port ?: 'ONU','connection_type'=>'splitter','arrows'=>'to'];
+                    $graphEdges[] = ['id'=>'auto:pon-onu:'.$mapping->id,'from'=>$ponKey,'to'=>$onuKey,'label'=>$mapping->pon_port ?: 'ONU','connection_type'=>'splitter','arrows'=>'to','capacity_mbps'=>null,'traffic_mbps'=>null,'utilization'=>null];
                 }
                 if ($mapping->customer_id && $mapping->customer) {
                     $customerKey = 'customer:'.$mapping->customer_id;
@@ -267,7 +270,7 @@ class NetworkTopology extends Component
                         ];
                         $existing->put($customerKey, true);
                     }
-                    $graphEdges[] = ['id'=>'auto:onu-customer:'.$mapping->id,'from'=>$onuKey,'to'=>$customerKey,'label'=>'service','connection_type'=>'logical_service','arrows'=>'to','dashes'=>true];
+                    $graphEdges[] = ['id'=>'auto:onu-customer:'.$mapping->id,'from'=>$onuKey,'to'=>$customerKey,'label'=>'service','connection_type'=>'logical_service','arrows'=>'to','dashes'=>true,'capacity_mbps'=>null,'traffic_mbps'=>null,'utilization'=>null];
                 }
             }
         }

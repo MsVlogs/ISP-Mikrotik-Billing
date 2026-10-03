@@ -15,10 +15,10 @@
 @if($mode==='live' && $mappingHealth)<div class="row g-2 mb-3"><div class="col-md-3"><div class="nt-card p-3"><div class="nt-muted">ONU mappings</div><strong class="fs-5">{{ $mappingHealth['total'] }}</strong></div></div><div class="col-md-3"><div class="nt-card p-3"><div class="nt-muted">Unmapped customer</div><strong class="fs-5">{{ $mappingHealth['unmapped_customer'] }}</strong></div></div><div class="col-md-3"><div class="nt-card p-3"><div class="nt-muted">Stale &gt; 15 min</div><strong class="fs-5">{{ $mappingHealth['stale'] }}</strong></div></div><div class="col-md-3"><div class="nt-card p-3"><div class="nt-muted">Data issues</div><strong class="fs-5">{{ $mappingHealth['missing_olt'] + $mappingHealth['missing_identifier'] + $mappingHealth['missing_identity'] + $mappingHealth['invalid_status'] }}</strong></div></div></div>@endif
 <div class="row g-3">
  <div class="{{ $mode==='designer'?'col-xl-8':'col-12' }}"><div class="nt-card p-3">
-  <div class="d-flex justify-content-between align-items-center mb-2"><div><strong>Network Graph</strong><div class="nt-muted">{{ count($nodes) }} nodes · {{ count($graphEdges) }} connections</div></div><span class="badge bg-light text-dark">Click a node to open its workspace</span></div>
+  <div class="d-flex justify-content-between align-items-center mb-2"><div><strong>Network Graph</strong><div class="nt-muted">{{ count($nodes) }} nodes · {{ count($graphEdges) }} connections</div></div><div class="d-flex align-items-center gap-2"><span class="badge bg-light text-dark">Click node = workspace</span>@if($mode==='live')<span id="xlink-topology-live-state" class="badge bg-success">LIVE</span><button type="button" id="xlink-topology-refresh" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>@endif</div></div>
   <div class="d-flex flex-wrap gap-2 mb-2" id="xlink-topology-filters"><button type="button" class="btn btn-sm btn-outline-dark active" data-status-filter="all">All</button><button type="button" class="btn btn-sm btn-outline-success" data-status-filter="online">Online</button><button type="button" class="btn btn-sm btn-outline-danger" data-status-filter="offline">Offline</button><button type="button" class="btn btn-sm btn-outline-secondary" data-status-filter="unknown">Unknown</button></div>
   <div id="xlink-topology-graph" class="nt-canvas"></div>
-  <div class="d-flex flex-wrap gap-2 mt-2"><span class="badge bg-success">Online {{ $statusSummary['online'] ?? 0 }}</span><span class="badge bg-danger">Offline {{ $statusSummary['offline'] ?? 0 }}</span><span class="badge bg-secondary">Unknown {{ $statusSummary['unknown'] ?? 0 }}</span><span class="badge bg-light text-dark border">{{ count($graphEdges) }} paths</span></div><div class="nt-muted mt-2">Green = online · Red = offline · Grey = unknown · Dashed lines = logical service links. Use the status filters below to isolate affected paths.</div>
+  <div class="d-flex flex-wrap gap-2 mt-2"><span class="badge bg-success">Online {{ $statusSummary['online'] ?? 0 }}</span><span class="badge bg-danger">Offline {{ $statusSummary['offline'] ?? 0 }}</span><span class="badge bg-secondary">Unknown {{ $statusSummary['unknown'] ?? 0 }}</span><span class="badge bg-light text-dark border">{{ count($graphEdges) }} paths</span></div><div class="nt-muted mt-2">Green = online · Red = offline · Grey = unknown · Fiber = solid green · Dashed = logical service. Link labels show utilization where capacity/traffic are configured.</div>
  </div></div>
  @if($mode==='designer')
  <div class="col-xl-4"><div class="nt-card p-3"><h5 class="mb-1">Create Connection</h5><p class="nt-muted">Select existing inventory nodes. New connections remain drafts until published.</p>
@@ -64,7 +64,7 @@ window.initXlinkTopology = function () {
   shape: n.group === 'router' ? 'box' : (n.group === 'olt' ? 'database' : (n.group === 'onu' ? 'diamond' : (n.group === 'customer' ? 'ellipse' : (n.group === 'splitter' ? 'triangle' : (n.group === 'odf' ? 'hexagon' : (n.group === 'pop' ? 'star' : (n.group === 'fiber_segment' ? 'text' : 'box'))))))),
   font: {color:'#172033', size:13}, borderWidth:1, margin:12
  })));
- const edgeRows = rawEdges.map(e => ({...e, color:{color:e.connection_type==='fiber_core' || e.connection_type==='splitter'?'#16a34a':(e.connection_type==='uplink'?'#2563eb':'#94a3b8')}, font:{size:10,align:'middle'}, smooth:{type:'dynamic'}}));
+ const edgeRows = rawEdges.map(e => { const u=Number(e.utilization||0); const color=e.connection_type==='fiber_core'||e.connection_type==='splitter'?(u>=90?'#dc2626':u>=70?'#f59e0b':'#16a34a'):(e.connection_type==='uplink'?'#2563eb':'#94a3b8'); const metric=e.utilization!==null&&e.utilization!==undefined ? ' · '+e.utilization+'%' : ''; return {...e,label:(e.label||'')+metric,color:{color,highlight:color},width:e.utilization>=90?5:e.utilization>=70?4:2,font:{size:10,align:'middle'},smooth:{type:'dynamic'},dashes:e.dashes||false}; });
  const edges = new vis.DataSet(edgeRows);
  const network = new vis.Network(el, {nodes, edges}, {
   autoResize:true, interaction:{hover:true,navigationButtons:true,keyboard:{enabled:true}},
@@ -86,6 +86,15 @@ window.initXlinkTopology = function () {
   const node = nodes.get(params.nodes[0]);
   if (node && node.url) window.location.href = node.url;
  });
+ // WeatherMap-style traffic pulse: active links periodically animate their dash offset.
+ let pulse=0;
+ const pulseTimer=setInterval(()=>{ if(!el._network) return; pulse=(pulse+1)%20; edgeRows.forEach(e=>{ if((e.traffic_mbps||0)>0){ e.dashes=true; e.dashOffset=pulse; }}); edges.update(edgeRows); }, 700);
+ el._pulseTimer=pulseTimer;
+ @if($mode==='live')
+ const refresh=document.getElementById('xlink-topology-refresh');
+ refresh?.addEventListener('click',()=>{ const state=document.getElementById('xlink-topology-live-state'); if(state) state.textContent='REFRESHING…'; @this.$refresh().then(()=>{ setTimeout(()=>window.initXlinkTopology?.(),150); }); });
+ if(!window.xlinkTopologyAutoRefresh) window.xlinkTopologyAutoRefresh=setInterval(()=>{ const state=document.getElementById('xlink-topology-live-state'); if(state) state.textContent='SYNC…'; @this.$refresh().then(()=>{ setTimeout(()=>{ if(state) state.textContent='LIVE'; window.initXlinkTopology?.(); },150); }); },30000);
+ @endif
 };
 document.addEventListener('livewire:navigated', () => window.initXlinkTopology?.());
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => window.initXlinkTopology?.()); else window.initXlinkTopology?.();
