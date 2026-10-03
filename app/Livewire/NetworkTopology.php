@@ -25,6 +25,10 @@ class NetworkTopology extends Component
     public string $fiber_type = 'singlemode';
     public string $splitter_ratio = '';
     public string $port_reference = '';
+    public string $source_port = '';
+    public string $target_port = '';
+    public string $input_ports = '1';
+    public string $output_ports = '';
     public string $message = '';
     public string $newNodeType = 'splitter';
     public string $newNodeName = '';
@@ -55,14 +59,16 @@ class NetworkTopology extends Component
             'packet_loss' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'fiber_core' => ['nullable', 'integer', 'min:1'],
             'fiber_type' => ['nullable', Rule::in(['singlemode', 'multimode', 'drop', 'unknown'])],
+            'source_port' => ['nullable', 'string', 'max:40'],
+            'target_port' => ['nullable', 'string', 'max:40'],
         ]);
 
         NetworkTopologyLink::updateOrCreate(
             ['source_key' => $data['source_key'], 'target_key' => $data['target_key'], 'connection_type' => $data['connection_type']],
-            ['label' => $data['label'] ?: null, 'capacity_mbps' => $data['capacity_mbps'] ?: null, 'traffic_mbps' => $data['traffic_mbps'] ?: null, 'latency_ms' => $data['latency_ms'] ?: null, 'packet_loss' => $data['packet_loss'] ?: null, 'fiber_core' => $data['fiber_core'] ?: null, 'fiber_type' => $data['fiber_type'] ?: null, 'status' => 'unknown', 'is_published' => false, 'created_by' => auth()->id()]
+            ['label' => $data['label'] ?: null, 'capacity_mbps' => $data['capacity_mbps'] ?: null, 'traffic_mbps' => $data['traffic_mbps'] ?: null, 'latency_ms' => $data['latency_ms'] ?: null, 'packet_loss' => $data['packet_loss'] ?: null, 'fiber_core' => $data['fiber_core'] ?: null, 'fiber_type' => $data['fiber_type'] ?: null, 'source_port' => $data['source_port'] ?: null, 'target_port' => $data['target_port'] ?: null, 'status' => 'unknown', 'is_published' => false, 'created_by' => auth()->id()]
         );
 
-        $this->reset(['source_key', 'target_key', 'label', 'capacity_mbps', 'traffic_mbps', 'latency_ms', 'packet_loss', 'fiber_core']);
+        $this->reset(['source_key', 'target_key', 'label', 'capacity_mbps', 'traffic_mbps', 'latency_ms', 'packet_loss', 'fiber_core', 'source_port', 'target_port']);
         $this->fiber_type = 'singlemode';
         $this->connection_type = 'fiber_core';
         $this->message = 'Topology connection saved as a draft. Publish it to show it in Live Topology.';
@@ -78,11 +84,15 @@ class NetworkTopology extends Component
             'newNodeNotes' => ['nullable', 'string', 'max:1000'],
             'splitter_ratio' => ['nullable', 'integer', 'min:2', 'max:64'],
             'port_reference' => ['nullable', 'string', 'max:80'],
+            'input_ports' => ['nullable', 'integer', 'min:1', 'max:64'],
+            'output_ports' => ['nullable', 'integer', 'min:1', 'max:64'],
         ]);
         NetworkTopologyNode::create([
             'type' => $data['newNodeType'], 'name' => trim($data['newNodeName']),
             'location' => $data['newNodeLocation'] ?: null, 'port_reference' => $this->port_reference ?: null,
             'splitter_ratio' => $data['newNodeType'] === 'splitter' && $this->splitter_ratio !== '' ? (int) $this->splitter_ratio : null,
+            'input_ports' => $data['newNodeType'] === 'splitter' ? (int) ($this->input_ports ?: 1) : null,
+            'output_ports' => $data['newNodeType'] === 'splitter' ? (int) ($this->output_ports ?: ($this->splitter_ratio ?: 1)) : null,
             'notes' => $data['newNodeNotes'] ?: null,
             'is_published' => false, 'created_by' => auth()->id(),
         ]);
@@ -90,6 +100,8 @@ class NetworkTopology extends Component
         $this->newNodeType = 'splitter';
         $this->splitter_ratio = '';
         $this->port_reference = '';
+        $this->input_ports = '1';
+        $this->output_ports = '';
         $this->message = 'Topology node saved as a draft. Publish it before publishing its connections.';
     }
 
@@ -214,8 +226,8 @@ class NetworkTopology extends Component
             if (! in_array($link->source_key, $nodeKeys, true) || ! in_array($link->target_key, $nodeKeys, true)) continue;
             $graphEdges[] = [
                 'id' => 'link:'.$link->id, 'from' => $link->source_key, 'to' => $link->target_key,
-                'label' => $link->label ?: str_replace('_', ' ', $link->connection_type),
-                'connection_type' => $link->connection_type, 'arrows' => 'to',
+                'label' => $link->label ?: trim((string) (($link->source_port ?: '') . (($link->source_port || $link->target_port) ? ' → ' : '') . ($link->target_port ?: str_replace('_', ' ', $link->connection_type)))),
+                'connection_type' => $link->connection_type, 'source_port' => $link->source_port, 'target_port' => $link->target_port, 'arrows' => 'to',
                 'capacity_mbps' => $link->capacity_mbps, 'traffic_mbps' => $link->traffic_mbps,
                 'latency_ms' => $link->latency_ms, 'packet_loss' => $link->packet_loss,
                 'utilization' => ($link->capacity_mbps && $link->capacity_mbps > 0) ? round(($link->traffic_mbps ?: 0) / $link->capacity_mbps * 100, 1) : null,
