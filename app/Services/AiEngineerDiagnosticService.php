@@ -51,7 +51,7 @@ class AiEngineerDiagnosticService
     {
         $customer = CustomersInfo::with(['pppUser', 'package', 'billing'])
             ->where('customer_unique_id', $customerId)->first();
-        if (! $customer) return ['ok'=>false,'message'=>'Customer not found.'];
+        if (! $customer) return ['ok'=>false,'message'=>'গ্রাহক পাওয়া যায়নি.'];
 
         $ppp = $customer->pppUser;
         $billing = $customer->billing;
@@ -84,13 +84,13 @@ class AiEngineerDiagnosticService
         $findings=[]; $causes=[]; $checks=[]; $severity='info';
 
         $status = strtolower((string)$customer->status);
-        if (in_array($status,['disable','disabled','inactive'],true)) { $severity='critical'; $causes[]='Customer account is disabled/inactive in billing.'; $checks[]='Review customer status before restoring service.'; }
-        elseif ($status==='pending') { $severity='warning'; $causes[]='Customer is still in Pending state.'; $checks[]='Verify service activation workflow and router status.'; }
+        if (in_array($status,['disable','disabled','inactive'],true)) { $severity='critical'; $causes[]='বিলিং সিস্টেমে গ্রাহকের অ্যাকাউন্ট নিষ্ক্রিয়।'; $checks[]='Review customer status before restoring service.'; }
+        elseif ($status==='pending') { $severity='warning'; $causes[]='গ্রাহকের সংযোগ এখনো অপেক্ষমাণ অবস্থায় আছে।'; $checks[]='Verify service activation workflow and router status.'; }
 
-        if (! $ppp) { $severity='critical'; $causes[]='No PPP user is linked to this customer.'; $checks[]='Verify PPPoE assignment.'; }
+        if (! $ppp) { $severity='critical'; $causes[]='এই গ্রাহকের সঙ্গে কোনো PPP ব্যবহারকারী যুক্ত নেই।'; $checks[]='Verify PPPoE assignment.'; }
         else {
-            if (! $ppp->username) { $severity='critical'; $causes[]='PPP username is empty.'; }
-            if (strtolower((string)$ppp->status)!=='active') { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Linked PPP secret is not active.'; $checks[]='Verify PPP secret state on the assigned router.'; }
+            if (! $ppp->username) { $severity='critical'; $causes[]='PPPoE ব্যবহারকারীর নাম খালি।'; }
+            if (strtolower((string)$ppp->status)!=='active') { $severity=$severity==='critical'?'critical':'warning'; $causes[]='যুক্ত PPP সংযোগটি সক্রিয় নয়।'; $checks[]='Verify PPP secret state on the assigned router.'; }
             if ($ppp->last_disconnect_reason) $findings[]='Last disconnect reason: '.$ppp->last_disconnect_reason;
             if ($ppp->last_logged_out) $findings[]='Last logged out: '.$ppp->last_logged_out;
             if ($ppp->username) $findings[]='PPPoE username: '.$ppp->username;
@@ -100,7 +100,7 @@ class AiEngineerDiagnosticService
             if (($livePpp['state'] ?? null) === 'online') {
                 $findings[]='Live MikroTik PPPoE session found for this username.';
             } elseif (($livePpp['state'] ?? null) === 'offline') {
-                $findings[]='No live MikroTik PPPoE session found for this username.';
+                $findings[]='এই ব্যবহারকারীর কোনো সক্রিয় MikroTik PPPoE সেশন পাওয়া যায়নি।';
                 if (strtolower((string)$ppp->status) === 'active') {
                     $severity=$severity==='critical'?'critical':'warning';
                     $causes[]='PPP secret is active in billing data, but no live PPPoE session was found on the assigned router.';
@@ -142,7 +142,7 @@ class AiEngineerDiagnosticService
             if ($due>0) { $findings[]='Outstanding billing: '.number_format($due,2); if ((bool)($billing->auto_disable??false)) { $severity=$severity==='critical'?'critical':'warning'; $causes[]='Billing has auto-disable enabled with outstanding dues.'; $checks[]='Review billing due and auto-disable policy.'; } }
         }
         if ($tickets['count']>0) { $findings[]='Support tickets linked: '.$tickets['count'].($tickets['open']!==null?' · open: '.$tickets['open']:''); if (($tickets['open']??0)>0) $checks[]='Review the latest open support ticket before changing service state.'; }
-        if (!$causes) { $causes[]='No clear offline cause is recorded in the available billing/network data.'; $checks[]='Check live router session state, last-seen time, and upstream OLT/ONU alarms.'; }
+        if (!$causes) { $causes[]='উপলভ্য বিলিং ও নেটওয়ার্ক তথ্য থেকে অফলাইনের নির্দিষ্ট কারণ নিশ্চিত করা যায়নি।'; $checks[]='Check live router session state, last-seen time, and upstream OLT/ONU alarms.'; }
 
         return ['ok'=>true,'customer'=>['id'=>$customer->customer_unique_id,'name'=>$customer->customer_name,'status'=>$customer->status,'mobile'=>$customer->mobile,'package'=>$customer->package?->package], 'severity'=>$severity,'summary'=>$this->summary($severity,$customer,$causes),'likely_causes'=>array_values(array_unique($causes)),'evidence'=>array_values(array_unique($findings)),'support'=>$tickets,'recommended_checks'=>array_values(array_unique($checks)),'service_path'=>$path,'read_only'=>true,'generated_at'=>now()->toIso8601String()];
     }
@@ -278,7 +278,7 @@ class AiEngineerDiagnosticService
             return ['ok'=>true,'configured'=>true,'provider'=>'local','message'=>$this->localChatResponse($question,$diagnosis),'read_only'=>true];
         }
         $safeHistory=array_slice(array_map(fn($m)=>['role'=>in_array($m['role']??'', ['user','assistant'],true)?$m['role']:'user','content'=>mb_substr((string)($m['content']??''),0,4000)],$history),-8);
-        $systemPrompt='You are an ISP AI Engineer. READ-ONLY. Never claim to have changed, provisioned, rebooted, enabled, disabled, deleted, or configured anything. Use only supplied context; distinguish evidence from likely causes; never invent live status; answer concisely in the user language.';
+        $systemPrompt='আপনি একজন ISP AI Engineer। শুধুমাত্র পড়ার/বিশ্লেষণের কাজ করবেন। কোনো কিছু পরিবর্তন, প্রভিশন, রিবুট, সক্রিয়, নিষ্ক্রিয়, মুছে ফেলা বা কনফিগার করা হয়েছে বলে কখনো দাবি করবেন না। শুধু সরবরাহ করা তথ্য ব্যবহার করুন। প্রমাণ ও সম্ভাব্য কারণ আলাদা করে বলুন। লাইভ স্ট্যাটাস বানিয়ে বলবেন না। ব্যবহারকারী যে ভাষায় প্রশ্ন করবেন, সেই ভাষাতেই উত্তর দিন; বাংলা প্রশ্ন হলে সম্পূর্ণ উত্তর বাংলায় দিন।';
         if($provider==='gemini') {
             $messages=[['role'=>'system','content'=>$systemPrompt],['role'=>'user','content'=>'Diagnostic context: '.$context]];
             foreach($safeHistory as $m)$messages[]=$m;
@@ -540,5 +540,5 @@ class AiEngineerDiagnosticService
         $latest=(clone $q)->latest('id')->first();
         return ['count'=>$count,'open'=>$open,'latest'=>$latest?['id'=>$latest->id,'subject'=>$latest->subject??null,'status'=>$latest->status??null]:null];
     }
-    private function summary(string $severity,CustomersInfo $customer,array $causes):string{return (match($severity){'critical'=>'High-priority issue found.','warning'=>'Potential service issue found.',default=>'No critical issue is visible from the available data.'}).' '.$customer->customer_unique_id.' — '.$causes[0];}
+    private function summary(string $severity,CustomersInfo $customer,array $causes):string{return (match($severity){'critical'=>'গুরুতর সমস্যা শনাক্ত হয়েছে।','warning'=>'সম্ভাব্য সেবা সমস্যা শনাক্ত হয়েছে।',default=>'উপলভ্য তথ্য অনুযায়ী গুরুতর সমস্যা পাওয়া যায়নি.'}).' '.$customer->customer_unique_id.' — '.$causes[0];}
 }
