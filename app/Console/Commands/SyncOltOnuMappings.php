@@ -34,41 +34,13 @@ class SyncOltOnuMappings extends Command
                 if ($onuId === null || trim((string) $onuId) === '') { $skipped++; $issues[] = 'missing ONU id'; continue; }
                 $onuId = trim((string) $onuId);
 
-                $username = $row['pppoe_username'] ?? $row['pppoeUsername'] ?? $row['username'] ?? null;
                 $onuMac = $row['onu_mac'] ?? $row['mac'] ?? $row['onuMac'] ?? null;
-                $pppId = null; $customerId = null; $autoMatch = null;
+                $pppId = null; $customerId = null;
                 $existingMapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)
                     ->where('onu_id', $onuId)->first();
-                if ($username !== null && $username !== '') {
-                    $ppps = PPPSecrets::where('username', (string) $username)->limit(2)->get();
-                    if ($ppps->count() === 1) {
-                        $ppp = $ppps->first();
-                        $pppId = $ppp->id; $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id');
-                        $autoMatch = 'username';
-                    }
-                }
-                if ($pppId === null && $onuMac !== null && trim((string) $onuMac) !== '') {
-                    $normalizedMac = $this->normalizeMac($onuMac);
-                    if ($normalizedMac !== '') {
-                        $ppps = PPPSecrets::query()
-                            ->whereNotNull('caller_id')
-                            ->orWhereNotNull('last_caller_id')
-                            ->get(['id', 'caller_id', 'last_caller_id']);
-                        $matches = $ppps->filter(function ($ppp) use ($normalizedMac) {
-                            return $this->normalizeMac($ppp->caller_id) === $normalizedMac
-                                || $this->normalizeMac($ppp->last_caller_id) === $normalizedMac;
-                        })->values();
-                        if ($matches->count() === 1) {
-                            $ppp = $matches->first();
-                            $pppId = $ppp->id;
-                            $customerId = CustomersInfo::where('ppp_user_id', $ppp->id)->value('id');
-                            $autoMatch = 'mac';
-                        }
-                    }
-                }
-                if ($pppId === null && $existingMapping) {
-                    // OLT telemetry often has no PPPoE username. Never erase an operator's
-                    // existing customer/PPPoE mapping just because telemetry omitted it.
+                if ($existingMapping) {
+                    // Synchronisation refreshes telemetry only. Existing operator mappings
+                    // are preserved; new customer assignments require explicit review/save.
                     $pppId = $existingMapping->ppp_user_id;
                     $customerId = $existingMapping->customer_id;
                 }
@@ -111,7 +83,7 @@ class SyncOltOnuMappings extends Command
                         'tx_power' => $row['tx_power'] ?? $row['opticalTx'] ?? null,
                         'onu_ip' => $row['onu_ip'] ?? $row['ip'] ?? $row['onuIp'] ?? null,
                         'last_seen_at' => $lastSeen,
-                        'notes' => $existingMapping ? $existingMapping->notes : ($autoMatch ? 'Auto-mapped by '.$autoMatch : ($row['detail'] ?? null)),
+                        'notes' => $existingMapping ? $existingMapping->notes : ($row['detail'] ?? 'Discovered by read-only ONU synchronisation; customer mapping requires explicit review.'),
                     ]
                 );
                 $count++;

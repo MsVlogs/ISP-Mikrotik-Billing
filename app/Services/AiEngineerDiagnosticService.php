@@ -270,9 +270,11 @@ class AiEngineerDiagnosticService
             foreach ($customers as $customer) {
                 $score = 0; $reasons = [];
                 $ppp = $customer->pppUser;
-                foreach ([['mac',$mapMac,$customer->mac_address ?? null,60],['ip',$mapIp,$customer->static_ip ?? null,25],['serial',$mapSerial,$customer->onu_serial ?? null,30]] as $item) {
+                $pppMacs = $ppp ? [$ppp->caller_id ?? null, $ppp->last_caller_id ?? null] : [];
+                foreach ([['mac',$mapMac,$pppMacs,60],['ip',$mapIp,[$ppp->ppp_remote_ip ?? null],25],['serial',$mapSerial,[],30]] as $item) {
                     [$field,$a,$b,$weight] = $item;
-                    if ($a !== '' && $this->normalizeIdentifier($b) !== '' && $a === $this->normalizeIdentifier($b)) { $score += $weight; $reasons[] = strtoupper($field).' exact match'; }
+                    $matched = $a !== '' && collect((array) $b)->contains(fn($candidate) => $this->normalizeIdentifier($candidate) !== '' && $a === $this->normalizeIdentifier($candidate));
+                    if ($matched) { $score += $weight; $reasons[] = strtoupper($field).' exact match'; }
                 }
                 if ($ppp && $mapIp !== '' && $this->normalizeIdentifier($ppp->ppp_remote_ip ?? null) === $mapIp) { $score += 20; $reasons[] = 'PPPoE remote IP match'; }
                 if ($score > 0 && (!$best || $score > $best['score'])) $best = ['customer_id'=>$customer->customer_unique_id,'customer_name'=>$customer->customer_name,'score'=>min(100,$score),'reasons'=>$reasons];
