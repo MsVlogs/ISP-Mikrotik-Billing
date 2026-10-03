@@ -73,6 +73,15 @@ class NetworkEvents extends Component
             : ucfirst($channel).' test failed: '.($item['error'] ?? 'Unknown error');
     }
 
+    public function resendTelegram(int $id): void
+    {
+        $event = NetworkEvent::findOrFail($id);
+        $result = app(NetworkAlertNotificationService::class)->resendTelegram($event)['telegram'] ?? [];
+        $this->message = ! empty($result['ok'])
+            ? 'Telegram alert পুনরায় পাঠানো হয়েছে।'
+            : 'Telegram resend ব্যর্থ: '.($result['error'] ?? 'অজানা সমস্যা');
+    }
+
     public function acknowledge(int $id): void
     {
         $event = NetworkEvent::whereKey($id)->where('status', 'open')->firstOrFail();
@@ -98,7 +107,7 @@ class NetworkEvents extends Component
 
     public function render()
     {
-        $query = NetworkEvent::query()->with(['device', 'acknowledgedBy', 'resolvedBy'])->latest('last_seen_at')->latest('id');
+        $query = NetworkEvent::query()->with(['device', 'acknowledgedBy', 'resolvedBy', 'alertDeliveries'])->latest('last_seen_at')->latest('id');
         if ($this->status !== 'all') {
             $query->where('status', $this->status ?: 'open');
         }

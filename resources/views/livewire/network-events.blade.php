@@ -49,8 +49,19 @@
  <td><span class="badge {{ $event->status==='resolved'?'bg-success':($event->status==='acknowledged'?'bg-warning text-dark':'bg-danger') }}">{{ ucfirst($event->status) }}</span>
  @if($event->status==='acknowledged' && $event->acknowledgedBy)<div class="ne-muted">ACK: {{ $event->acknowledgedBy->name }} · {{ optional($event->acknowledged_at)->diffForHumans() }}</div>@endif
  @if($event->status==='resolved')<div class="ne-muted">Resolved: {{ $event->resolvedBy?->name ?: 'Monitor' }} · {{ optional($event->resolved_at)->diffForHumans() ?: '—' }}</div>@endif
+ @php($telegramDelivery = $event->alertDeliveries->where('channel','telegram')->sortByDesc('id')->first())
+ @if($telegramDelivery)
+  <div class="ne-muted mt-1"><i class="bi bi-telegram"></i> Telegram:
+   <span class="badge {{ $telegramDelivery->status==='sent'?'bg-success':($telegramDelivery->status==='pending'?'bg-warning text-dark':'bg-danger') }}">{{ ucfirst($telegramDelivery->status) }}</span>
+   @if($telegramDelivery->sent_at) · {{ optional($telegramDelivery->sent_at)->diffForHumans() }}@endif
+   @if($telegramDelivery->status==='failed' && $telegramDelivery->error) · {{ Str::limit($telegramDelivery->error, 70) }}@endif
+  </div>
+ @else
+  <div class="ne-muted mt-1"><i class="bi bi-telegram"></i> Telegram: Not sent</div>
+ @endif
  </td>
  <td class="text-end"><div class="btn-group btn-group-sm">
+ <button wire:click="resendTelegram({{ $event->id }})" class="btn btn-outline-primary" title="Resend Telegram"><i class="bi bi-telegram"></i> Resend</button>
  @if($event->status==='open')<button wire:click="acknowledge({{ $event->id }})" class="btn btn-outline-warning">ACK</button>@endif
  @if($event->status!=='resolved')<button wire:click="resolve({{ $event->id }})" class="btn btn-outline-success">Resolve</button>@else<button wire:click="reopen({{ $event->id }})" class="btn btn-outline-secondary">Reopen</button>@endif
  </div></td>

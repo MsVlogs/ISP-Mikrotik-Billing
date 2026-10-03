@@ -17,13 +17,17 @@ class SendNetworkEventAlertJob implements ShouldQueue
     public int $tries = 2;
     public int $timeout = 20;
 
-    public function __construct(public int $eventId) {}
+    public function __construct(
+        public int $eventId,
+        public bool $force = false,
+        public ?string $channel = null,
+    ) {}
 
     public function handle(NetworkAlertNotificationService $service): void
     {
         $event = NetworkEvent::find($this->eventId);
         if ($event) {
-            $service->send($event);
+            $service->send($event, $this->force, $this->channel);
         }
     }
 }

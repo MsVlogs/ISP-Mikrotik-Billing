@@ -4,12 +4,13 @@ namespace App\Services;
 
 use App\Models\MainSiteData;
 use App\Models\NetworkEvent;
+use App\Models\NetworkEventAlertDelivery;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class NetworkAlertNotificationService
 {
-    public function send(NetworkEvent $event): array
+    public function send(NetworkEvent $event, bool $force = false, ?string $channel = null): array
     {
         $results = [];
         $settings = MainSiteData::getValue('network_alert_channels', []);
@@ -18,21 +19,49 @@ class NetworkAlertNotificationService
         }
 
         $minSeverity = $settings['min_severity'] ?? 'warning';
-        if (! $this->severityAllowed($event, $minSeverity)) {
+        if (! $force && ! $this->severityAllowed($event, $minSeverity)) {
             return $results;
         }
 
         $message = $this->formatMessage($event);
 
-        if (! empty($settings['whatsapp_enabled'])) {
-            $results['whatsapp'] = $this->sendWhatsApp($settings, $message);
+        if (($channel === null || $channel === 'whatsapp') && ! empty($settings['whatsapp_enabled'])) {
+            $results['whatsapp'] = $this->deliver($event, 'whatsapp', fn () => $this->sendWhatsApp($settings, $message));
         }
 
-        if (! empty($settings['telegram_enabled'])) {
-            $results['telegram'] = $this->sendTelegram($settings, $message);
+        if (($channel === null || $channel === 'telegram') && ($force || ! empty($settings['telegram_enabled']))) {
+            $results['telegram'] = $this->deliver($event, 'telegram', fn () => $this->sendTelegram($settings, $message));
         }
 
         return $results;
+    }
+
+    public function resendTelegram(NetworkEvent $event): array
+    {
+        return ['telegram' => $this->send($event, true, 'telegram')['telegram'] ?? ['ok' => false, 'error' => 'Telegram delivery was not attempted.']];
+    }
+
+    private function deliver(NetworkEvent $event, string $channel, callable $sender): array
+    {
+        $delivery = NetworkEventAlertDelivery::create([
+            'network_event_id' => $event->id,
+            'channel' => $channel,
+            'status' => 'pending',
+            'attempts' => 1,
+        ]);
+        try {
+            $result = $sender();
+            $delivery->update([
+                'status' => ! empty($result['ok']) ? 'sent' : 'failed',
+                'http_status' => $result['status'] ?? null,
+                'error' => ! empty($result['ok']) ? null : ($result['error'] ?? 'Unknown delivery error'),
+                'sent_at' => ! empty($result['ok']) ? now() : null,
+            ]);
+            return $result;
+        } catch (\Throwable $e) {
+            $delivery->update(['status' => 'failed', 'error' => $e->getMessage()]);
+            throw $e;
+        }
     }
 
     public function test(string $channel): array

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Jobs\SendNetworkEventAlertJob;
 
 class NetworkEvent extends Model
@@ -30,6 +31,11 @@ class NetworkEvent extends Model
         'last_seen_at' => 'datetime',
         'metadata' => 'array',
     ];
+
+    public function alertDeliveries(): HasMany
+    {
+        return $this->hasMany(NetworkEventAlertDelivery::class, 'network_event_id');
+    }
 
     public function device(): BelongsTo
     {
