@@ -26,7 +26,8 @@
 <td>{{ $review->pon_port !== null && $review->pon_port !== '' ? $review->pon_port : '—' }}</td>
 <td><span class="badge {{ $review->status==='online'?'bg-success':($review->status==='offline'?'bg-danger':'bg-secondary') }}">{{ ucfirst($review->status) }}</span></td>
 <td>{{ $review->rx_power !== null ? $review->rx_power.' dBm' : '—' }} / {{ $review->tx_power !== null ? $review->tx_power.' dBm' : '—' }}</td>
-<td><span class="text-muted small">No unique PPPoE/MAC match found; manual review required.</span></td>
+<td>@php($candidate=$matchingCandidates[(string)$review->id] ?? null)
+@if($candidate && !empty($candidate["candidate"]))<span class="badge bg-info text-dark">সম্ভাব্য মিল {{ $candidate["candidate"]["score"] ?? 0 }}%</span><small class="d-block text-muted">{{ implode(" · ", $candidate["candidate"]["reasons"] ?? []) }}</small>@else<span class="text-muted small">কোনও নির্ভরযোগ্য মিল পাওয়া যায়নি; ম্যানুয়াল যাচাই প্রয়োজন।</span>@endif</td>
 <td><a class="btn btn-sm btn-outline-primary" href="{{ route('network-inventory.olt.customers',$device,['q'=>$review->onu_id]) }}">Review / Map</a></td>
 </tr>
 @endforeach
