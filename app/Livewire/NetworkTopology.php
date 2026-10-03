@@ -184,15 +184,62 @@ class NetworkTopology extends Component
 
     public function locateTopology(string $query): void
     {
-        $q = mb_strtolower(trim($query)); if ($q === '') return;
+        $q = mb_strtolower(trim($query));
+        if ($q === '') return;
+
+        // Search inventory + custom topology nodes first.
         $nodes = collect($this->baseNodes());
-        $match = $nodes->first(fn($n) => str_contains(mb_strtolower((string)$n['label']), $q) || str_contains(mb_strtolower((string)($n['title'] ?? '')), $q));
-        if ($match) { $this->tracePath($match['id']); return; }
+        $match = $nodes->first(fn($n) => str_contains(mb_strtolower((string) $n['label']), $q)
+            || str_contains(mb_strtolower((string) ($n['title'] ?? '')), $q));
+        if ($match) {
+            $this->tracePath($match['id']);
+            return;
+        }
+
+        // In Live mode also search the real ONU/customer mapping registry so an
+        // operator can locate by ONU id, serial/MAC, PON, customer name or CID.
+        if ($this->mode === 'live') {
+            $mapping = OltOnuCustomerMapping::with(['customer', 'olt'])
+                ->latest('last_seen_at')->limit(1000)->get()
+                ->first(function ($m) use ($q) {
+                    $values = [
+                        $m->onu_id, $m->onu_serial, $m->onu_mac, $m->pon_port,
+                        $m->customer?->customer_name, $m->customer?->customer_unique_id,
+                        $m->olt?->name, $m->olt?->olt_name, $m->olt?->ip_address,
+                    ];
+                    foreach ($values as $value) {
+                        if ($value !== null && str_contains(mb_strtolower((string) $value), $q)) return true;
+                    }
+                    return false;
+                });
+
+            if ($mapping) {
+                $this->traceMappingPath($mapping);
+                return;
+            }
+        }
+
         $this->dispatch('xlink-topology-locate', found: false, query: $query);
+    }
+
+    private function traceMappingPath(OltOnuCustomerMapping $mapping): void
+    {
+        $ponRef = trim((string) ($mapping->pon_port ?: 'PON'));
+        $ponKey = 'pon:'.$mapping->olt_device_id.':'.preg_replace('/[^A-Za-z0-9_.:-]/', '_', $ponRef);
+        $path = [
+            ['key' => 'device:'.$mapping->olt_device_id, 'label' => $mapping->olt?->name ?: 'OLT '.$mapping->olt_device_id, 'port' => $ponRef, 'connection' => 'fiber_core', 'edge' => 'auto:olt-pon:'.$ponKey],
+            ['key' => $ponKey, 'label' => 'PON '.$ponRef, 'port' => $mapping->onu_id, 'connection' => 'splitter', 'edge' => 'auto:pon-onu:'.$mapping->id],
+            ['key' => 'onu:'.$mapping->id, 'label' => 'ONU '.$mapping->onu_id, 'port' => 'service', 'connection' => 'logical_service', 'edge' => $mapping->customer_id ? 'auto:onu-customer:'.$mapping->id : null],
+        ];
+        if ($mapping->customer_id && $mapping->customer) {
+            $path[] = ['key' => 'customer:'.$mapping->customer_id, 'label' => $mapping->customer->customer_name ?: $mapping->customer->customer_unique_id ?: 'Customer', 'port' => null, 'connection' => null, 'edge' => null];
+        }
+        $this->dispatch('xlink-topology-trace', path: $path);
     }
 
     public function tracePath(string $startKey): void
     {
+        $startKey = preg_replace('/^custom:/', 'topology:', $startKey);
         $links = NetworkTopologyLink::query()->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
         $nodes = collect($this->baseNodes())->keyBy('id');
         $custom = NetworkTopologyNode::query()->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
