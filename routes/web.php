@@ -655,6 +655,20 @@ Route::middleware([
             } else { \App\Models\StockInventoryDamageRecord::create($d); }
             return back()->with('inventory_message',$d['record_type']==='lost' && $d['status']==='open' ? 'Lost record added and stock ledger updated.' : 'Lost/damaged record added. Stock quantity was not changed.');
         })->name('stock-inventory.damaged.store');
+        Route::get('/stock-inventory/export/movements.csv', function (\Illuminate\Http\Request $r) {
+            $from=$r->input('from',now()->startOfMonth()->toDateString()); $to=$r->input('to',now()->toDateString());
+            $rows=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
+            return response()->streamDownload(function() use($rows){$o=fopen('php://output','w'); fputcsv($o,['Date','Product','SKU','Type','Quantity','Reference','Source','Destination','Notes']); foreach($rows as $m) fputcsv($o,[$m->created_at->format('Y-m-d H:i:s'),$m->product->name??'', $m->product->sku??'', $m->movement_type,$m->quantity,$m->reference,$m->source,$m->destination,$m->notes]); fclose($o);},'stock-movements-'.$from.'-to-'.$to.'.csv',['Content-Type'=>'text/csv']);
+        })->name('stock-inventory.export.movements.csv');
+        Route::get('/stock-inventory/export/products.xlsx', function () {
+            $sheet=new \PhpOffice\PhpSpreadsheet\Spreadsheet(); $ws=$sheet->getActiveSheet(); $ws->fromArray([['SKU','Product','Category','Unit','Quantity','Reorder Level','Unit Cost','Status','Notes']],null,'A1'); $r=2;
+            foreach(\App\Models\StockInventoryProduct::orderBy('name')->get() as $p) $ws->fromArray([[$p->sku,$p->name,$p->category,$p->unit,$p->quantity,$p->reorder_level,$p->unit_cost,$p->status,$p->notes]],null,'A'.$r++);
+            foreach(range('A','I') as $c) $ws->getColumnDimension($c)->setAutoSize(true); $writer=new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($sheet); return response()->streamDownload(fn()=>$writer->save('php://output'),'stock-products-'.now()->format('Y-m-d').'.xlsx',['Content-Type'=>'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+        })->name('stock-inventory.export.products.xlsx');
+        Route::get('/stock-inventory/reports/print', function (\Illuminate\Http\Request $r) {
+            $from=$r->input('from',now()->startOfMonth()->toDateString()); $to=$r->input('to',now()->toDateString()); $mov=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
+            return view('xlink.stock-inventory-print',['from'=>$from,'to'=>$to,'movements'=>$mov,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'assets'=>\App\Models\StockInventoryAsset::orderBy('asset_type')->get(),'warranties'=>\App\Models\StockInventoryWarranty::with('product')->orderBy('warranty_end')->get(),'damageRecords'=>\App\Models\StockInventoryDamageRecord::with('product')->latest('incident_date')->get()]);
+        })->name('stock-inventory.reports.print');
         Route::get('/stock-inventory/reports', function (\Illuminate\Http\Request $r) {
             $from=$r->input('from', now()->startOfMonth()->toDateString()); $to=$r->input('to', now()->toDateString());
             $mov=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
