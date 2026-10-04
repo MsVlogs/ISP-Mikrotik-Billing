@@ -27,20 +27,284 @@
 @push('scripts')
 <script>
 (() => {
- const nodes=@json($nodes), edges=@json($mapEdges);
- const meta={router:["MikroTik Router","router"],olt:["OLT","olt"],onu:["ONU","onu"],"wifi-router":["WiFi Router","wifi-router"],"access-point":["Access Point","access-point"],switch:["Switch","switch"],customer:["Customer","customer"]};
- const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
- const statusIcon=(kind,status)=>{const cls=kind||"device";const letter=(meta[kind]?.[0]||"D").charAt(0);return L.divIcon({className:"",html:`<div class="xlink-map-marker ${cls}" title="${esc(status||"unknown")}">${letter}</div>`,iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-16]});};
- window.initNetworkMap=()=>{const el=document.getElementById("network-map");if(!el||el._leafletMap)return;if(!window.L){el.innerHTML="<div class=\"network-map-leaflet-status\"><div class=\"text-center p-4\"><h5>Network Map is initializing…</h5><p class=\"text-muted mb-0\">Leaflet asset is still loading.</p></div></div>";return;}try{el.innerHTML="";const map=L.map(el,{zoomControl:true,preferCanvas:true}).setView([23.8103,90.4125],11);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);el._leafletMap=map;
- let markers=[],lines=[];
- const clear=()=>{markers.forEach(m=>m.remove());lines.forEach(l=>l.remove());markers=[];lines=[];};
- const fit=pts=>{if(!pts.length){map.setView([23.8103,90.4125],11);return;}if(pts.length===1){map.setView(pts[0],15);return;}map.fitBounds(L.latLngBounds(pts),{padding:[40,40]});};
- const render=()=>{clear();const tf=document.getElementById("map-type-filter")?.value||"",rf=document.getElementById("map-router-filter")?.value||"",sf=document.getElementById("map-status-filter")?.value||"",q=(document.getElementById("map-customer-search")?.value||"").toLowerCase().trim();const filtered=nodes.filter(n=>(!tf||n.kind===tf)&&(!rf||n.router===rf)&&(!sf||n.status===sf)&&(!q||[n.id,n.label,n.ip,n.location,n.kind].some(v=>String(v??"").toLowerCase().includes(q))));const visibleKeys=new Set(filtered.map(n=>(n.kind==="router"?"router:":"device:")+n.id));
- edges.forEach(e=>{if(e.fromKey&&e.toKey&&(!visibleKeys.has(e.fromKey)||!visibleKeys.has(e.toKey)))return;const color=e.type==="logical_service"?"#2563eb":"#16a34a";const line=L.polyline([[e.from[0],e.from[1]],[e.to[0],e.to[1]]],{color,weight:e.type==="logical_service"?3:4,opacity:.75,dashArray:e.type==="logical_service"?"10 8":null}).addTo(map);line.bindPopup("<strong>"+esc(e.label)+"</strong><div>"+esc(e.type)+"</div>");lines.push(line);});
- const pts=[];filtered.forEach(n=>{const mta=meta[n.kind]||["Device","device"];const marker=L.marker([n.lat,n.lng],{icon:statusIcon(n.kind,n.status),title:n.label||mta[0]}).addTo(map);marker.bindPopup("<div style=\"min-width:190px\"><strong>"+esc(mta[0])+"</strong><div>"+esc(n.label)+"</div><small>IP: "+esc(n.ip||"—")+"</small><br><small>Status: "+esc(n.status||"unknown")+"</small><br><small>"+esc(n.location||"")+"</small></div>");markers.push(marker);pts.push([n.lat,n.lng]);});document.getElementById("map-result-count").textContent=filtered.length+" node"+(filtered.length===1?"":"s")+" shown";fit(pts);setTimeout(()=>map.invalidateSize(),50);};
- ["map-type-filter","map-router-filter","map-status-filter"].forEach(id=>document.getElementById(id)?.addEventListener("change",render));document.getElementById("map-customer-search")?.addEventListener("input",render);document.getElementById("map-fit")?.addEventListener("click",render);document.getElementById("map-reset")?.addEventListener("click",()=>{["map-type-filter","map-router-filter","map-status-filter"].forEach(id=>document.getElementById(id).value="");document.getElementById("map-customer-search").value="";render();});render();
- }catch(e){console.error("[X-Link Network Map] Leaflet:",e);el.innerHTML="<div class=\"network-map-leaflet-status\"><div class=\"text-center p-4\"><i class=\"bi bi-exclamation-triangle fs-1 text-warning\"></i><h5 class=\"mt-3\">Network Map could not load</h5><p class=\"text-muted mb-0\">"+(esc(e?.message||"Leaflet map error"))+"</p></div></div>";}};
- const boot=()=>setTimeout(()=>window.initNetworkMap?.(),100);document.addEventListener("livewire:navigated",boot);if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
+    const nodes = @json($nodes);
+    const edges = @json($mapEdges);
+
+    const meta = {
+        router: ["MikroTik Router", "router"],
+        olt: ["OLT", "olt"],
+        onu: ["ONU", "onu"],
+        "wifi-router": ["WiFi Router", "wifi-router"],
+        "access-point": ["Access Point", "access-point"],
+        switch: ["Switch", "switch"],
+        customer: ["Customer", "customer"]
+    };
+
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    }[char]));
+
+    const statusIcon = (kind, status) => {
+        const cls = kind || "device";
+        const letter = (meta[kind]?.[0] || "D").charAt(0);
+
+        return L.divIcon({
+            className: "",
+            html: '<div class="xlink-map-marker ' + cls + '" title="' +
+                esc(status || "unknown") + '">' + letter + "</div>",
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+        });
+    };
+
+    window.initNetworkMap = () => {
+        const el = document.getElementById("network-map");
+
+        if (!el || el._leafletMap) {
+            return;
+        }
+
+        if (!window.L) {
+            el.innerHTML =
+                '<div class="network-map-leaflet-status"><div class="text-center p-4">' +
+                "<h5>Network Map is initializing…</h5>" +
+                '<p class="text-muted mb-0">Leaflet asset is still loading.</p>' +
+                "</div></div>";
+            return;
+        }
+
+        try {
+            el.innerHTML = "";
+
+            const map = L.map(el, {
+                zoomControl: true,
+                preferCanvas: true
+            }).setView([23.8103, 90.4125], 11);
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: "&copy; OpenStreetMap contributors"
+            }).addTo(map);
+
+            el._leafletMap = map;
+
+            let markers = [];
+            let lines = [];
+
+            const clear = () => {
+                markers.forEach((marker) => marker.remove());
+                lines.forEach((line) => line.remove());
+                markers = [];
+                lines = [];
+            };
+
+            const fit = (points) => {
+                if (!points.length) {
+                    map.setView([23.8103, 90.4125], 11);
+                    return;
+                }
+
+                if (points.length === 1) {
+                    map.setView(points[0], 15);
+                    return;
+                }
+
+                map.fitBounds(L.latLngBounds(points), {
+                    padding: [40, 40]
+                });
+            };
+
+            const render = () => {
+                clear();
+
+                const typeFilter =
+                    document.getElementById("map-type-filter")?.value || "";
+                const routerFilter =
+                    document.getElementById("map-router-filter")?.value || "";
+                const statusFilter =
+                    document.getElementById("map-status-filter")?.value || "";
+                const query =
+                    (document.getElementById("map-customer-search")?.value || "")
+                        .toLowerCase()
+                        .trim();
+
+                const filtered = nodes.filter((node) => {
+                    const matchesType =
+                        !typeFilter || node.kind === typeFilter;
+                    const matchesRouter =
+                        !routerFilter || node.router === routerFilter;
+                    const matchesStatus =
+                        !statusFilter || node.status === statusFilter;
+                    const matchesQuery =
+                        !query ||
+                        [node.id, node.label, node.ip, node.location, node.kind]
+                            .some((value) =>
+                                String(value ?? "")
+                                    .toLowerCase()
+                                    .includes(query)
+                            );
+
+                    return (
+                        matchesType &&
+                        matchesRouter &&
+                        matchesStatus &&
+                        matchesQuery
+                    );
+                });
+
+                const visibleKeys = new Set(
+                    filtered.map((node) =>
+                        (node.kind === "router" ? "router:" : "device:") +
+                        node.id
+                    )
+                );
+
+                edges.forEach((edge) => {
+                    if (
+                        edge.fromKey &&
+                        edge.toKey &&
+                        (!visibleKeys.has(edge.fromKey) ||
+                            !visibleKeys.has(edge.toKey))
+                    ) {
+                        return;
+                    }
+
+                    const isLogical = edge.type === "logical_service";
+
+                    const line = L.polyline(
+                        [
+                            [edge.from[0], edge.from[1]],
+                            [edge.to[0], edge.to[1]]
+                        ],
+                        {
+                            color: isLogical ? "#2563eb" : "#16a34a",
+                            weight: isLogical ? 3 : 4,
+                            opacity: 0.75,
+                            dashArray: isLogical ? "10 8" : null
+                        }
+                    ).addTo(map);
+
+                    line.bindPopup(
+                        "<strong>" +
+                        esc(edge.label) +
+                        "</strong><div>" +
+                        esc(edge.type) +
+                        "</div>"
+                    );
+
+                    lines.push(line);
+                });
+
+                const points = [];
+
+                filtered.forEach((node) => {
+                    const deviceMeta =
+                        meta[node.kind] || ["Device", "device"];
+
+                    const marker = L.marker(
+                        [node.lat, node.lng],
+                        {
+                            icon: statusIcon(node.kind, node.status),
+                            title: node.label || deviceMeta[0]
+                        }
+                    ).addTo(map);
+
+                    marker.bindPopup(
+                        '<div style="min-width:190px">' +
+                        "<strong>" + esc(deviceMeta[0]) + "</strong>" +
+                        "<div>" + esc(node.label) + "</div>" +
+                        "<small>IP: " + esc(node.ip || "—") + "</small><br>" +
+                        "<small>Status: " +
+                        esc(node.status || "unknown") +
+                        "</small><br>" +
+                        "<small>" +
+                        esc(node.location || "") +
+                        "</small></div>"
+                    );
+
+                    markers.push(marker);
+                    points.push([node.lat, node.lng]);
+                });
+
+                const resultCount =
+                    document.getElementById("map-result-count");
+
+                if (resultCount) {
+                    resultCount.textContent =
+                        filtered.length +
+                        " node" +
+                        (filtered.length === 1 ? "" : "s") +
+                        " shown";
+                }
+
+                fit(points);
+                setTimeout(() => map.invalidateSize(), 50);
+            };
+
+            ["map-type-filter", "map-router-filter", "map-status-filter"]
+                .forEach((id) => {
+                    document.getElementById(id)?.addEventListener(
+                        "change",
+                        render
+                    );
+                });
+
+            document.getElementById("map-customer-search")
+                ?.addEventListener("input", render);
+
+            document.getElementById("map-fit")
+                ?.addEventListener("click", render);
+
+            document.getElementById("map-reset")
+                ?.addEventListener("click", () => {
+                    ["map-type-filter", "map-router-filter", "map-status-filter"]
+                        .forEach((id) => {
+                            const element = document.getElementById(id);
+                            if (element) {
+                                element.value = "";
+                            }
+                        });
+
+                    const search =
+                        document.getElementById("map-customer-search");
+
+                    if (search) {
+                        search.value = "";
+                    }
+
+                    render();
+                });
+
+            render();
+        } catch (error) {
+            console.error("[X-Link Network Map] Leaflet:", error);
+
+            el.innerHTML =
+                '<div class="network-map-leaflet-status"><div class="text-center p-4">' +
+                '<i class="bi bi-exclamation-triangle fs-1 text-warning"></i>' +
+                '<h5 class="mt-3">Network Map could not load</h5>' +
+                '<p class="text-muted mb-0">' +
+                esc(error?.message || "Leaflet map error") +
+                "</p></div></div>";
+        }
+    };
+
+    const boot = () => {
+        setTimeout(() => window.initNetworkMap?.(), 100);
+    };
+
+    document.addEventListener("livewire:navigated", boot);
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot);
+    } else {
+        boot();
+    }
 })();
 </script>
 @endpush
