@@ -13,6 +13,10 @@ return [
         'api_key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-6-astra'),
     ],
+    'google_maps' => [
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
+        'map_id' => env('GOOGLE_MAPS_MAP_ID'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
