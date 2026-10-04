@@ -284,9 +284,17 @@ class CustomerList extends Component
                 return '<span class="text-muted">N/A</span>';
             })
             ->addColumn('mobile_display', function ($row) {
-                return ! empty($row->mobile)
-                    ? '<span class="text-nowrap">'.e($row->mobile).'</span>'
-                    : '<span class="text-muted">—</span>';
+                if (empty($row->mobile)) {
+                    return '<span class="text-muted">—</span>';
+                }
+                $mobile = preg_replace('/\\D+/', '', (string) $row->mobile);
+                if (str_starts_with($mobile, '00880')) {
+                    $mobile = substr($mobile, 2);
+                }
+                if (str_starts_with($mobile, '8801') && strlen($mobile) >= 13) {
+                    $mobile = '0'.substr($mobile, 3);
+                }
+                return '<span class="text-nowrap">'.e($mobile ?: $row->mobile).'</span>';
             })
             ->addColumn('package_display', function ($row) {
                 $name = $row->package?->package ?: $row->package_name;
