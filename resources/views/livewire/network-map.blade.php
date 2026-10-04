@@ -1,3 +1,7 @@
+@assets
+<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">
+<script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
+@endassets
 @push('styles')
 <link rel="stylesheet" href="{{ asset('xlink-network-monitoring/network-monitoring-polish.css') }}">
 <link rel="stylesheet" href="{{ asset('xlink-network-monitoring/network-map-polish.css') }}">
@@ -28,8 +32,7 @@
  const meta={router:["MikroTik Router","router"],olt:["OLT","olt"],onu:["ONU","onu"],"wifi-router":["WiFi Router","wifi-router"],"access-point":["Access Point","access-point"],switch:["Switch","switch"],customer:["Customer","customer"]};
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
  const statusIcon=(kind,status)=>{const cls=kind||"device";const letter=(meta[kind]?.[0]||"D").charAt(0);return L.divIcon({className:"",html:`<div class="xlink-map-marker ${cls}" title="${esc(status||"unknown")}">${letter}</div>`,iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-16]});};
- const loadLeaflet=()=>new Promise((resolve,reject)=>{if(window.L)return resolve();const s=document.createElement("script");s.src="{{ asset('vendor/leaflet/leaflet.js') }}";s.onload=()=>resolve();s.onerror=()=>reject(new Error("Leaflet failed to load"));document.head.appendChild(s);});
- window.initNetworkMap=async()=>{const el=document.getElementById("network-map");if(!el||el._leafletMap)return;try{await loadLeaflet();el.innerHTML="";const map=L.map(el,{zoomControl:true,preferCanvas:true}).setView([23.8103,90.4125],11);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);el._leafletMap=map;
+ window.initNetworkMap=()=>{const el=document.getElementById("network-map");if(!el||el._leafletMap)return;if(!window.L){el.innerHTML="<div class=\"network-map-leaflet-status\"><div class=\"text-center p-4\"><h5>Network Map is initializing…</h5><p class=\"text-muted mb-0\">Leaflet asset is still loading.</p></div></div>";return;}try{el.innerHTML="";const map=L.map(el,{zoomControl:true,preferCanvas:true}).setView([23.8103,90.4125],11);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);el._leafletMap=map;
  let markers=[],lines=[];
  const clear=()=>{markers.forEach(m=>m.remove());lines.forEach(l=>l.remove());markers=[];lines=[];};
  const fit=pts=>{if(!pts.length){map.setView([23.8103,90.4125],11);return;}if(pts.length===1){map.setView(pts[0],15);return;}map.fitBounds(L.latLngBounds(pts),{padding:[40,40]});};
