@@ -28,17 +28,9 @@
         </div>
         <div class="actions-card mb-3"><div class="section-label">Actions</div><div class="d-flex flex-wrap gap-2">
             <a class="action-btn" href="{{ route('customers.edit',$editId) }}"><i class="bi bi-pencil-square"></i>Edit</a>
-            <a class="action-btn" href="{{ route('customer.actions',['id'=>encrypt($customer->customer_unique_id),'action'=>'ledger']) }}"><i class="bi bi-receipt"></i>Billing Ledger</a>
             <a class="action-btn" href="{{ route('ai-engineer') }}?customer={{ urlencode($customer->customer_unique_id) }}"><i class="bi bi-cpu"></i>AI Diagnose</a>
-            <a class="action-btn" href="{{ route('customer.actions.invoice',encrypt($customer->customer_unique_id)) }}"><i class="bi bi-file-earmark-pdf"></i>Invoice</a>
-            <a class="action-btn" href="{{ route('customer.actions.print',encrypt($customer->customer_unique_id)) }}" target="_blank"><i class="bi bi-printer"></i>POS Print</a>
             <button class="action-btn" type="button" onclick="window.print()"><i class="bi bi-printer-fill"></i>Print Profile</button>
             <button class="action-btn" type="button" onclick="navigator.clipboard?.writeText(@js($customer->customer_unique_id))"><i class="bi bi-copy"></i>Copy ID</button>
-        </div></div>
-        <div class="actions-card mb-3"><div class="section-label">Customer Management &amp; Billing Actions</div><div class="d-flex flex-wrap gap-2">
-            @foreach(['owner'=>'Change Owner','class'=>'Change Class','billing-date'=>'Change Billing Date','password'=>'Change PPPoE Password','cash-credit'=>'Cash / Credit / Return','recharge'=>'Monthly Recharge','grace'=>'Extra Grace','sms'=>'Send SMS','online-graph'=>'Online Graph','ticket'=>'Create Ticket','ticket-history'=>'Ticket History','wifi-login'=>'WiFi Router Login'] as $actionKey=>$actionLabel)
-                <a class="action-btn" href="{{ route('customer.actions',['id'=>encrypt($customer->customer_unique_id),'action'=>$actionKey]) }}">{{ $actionLabel }}</a>
-            @endforeach
         </div></div>
         <div class="row g-3">
             <div class="col-xl-7"><div class="info-card h-100"><div class="card-title">Customer Information</div><div class="info-grid">
