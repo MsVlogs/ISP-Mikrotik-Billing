@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\NetworkInventoryDevice;
 use App\Models\NetworkTopologyLink;
 use App\Models\NetworkTopologyNode;
+use App\Models\NetworkTopologyMap;
 use App\Models\OltOnuCustomerMapping;
 use App\Models\RouterList;
 use Illuminate\Validation\Rule;
@@ -13,6 +14,9 @@ use Livewire\Component;
 class NetworkTopology extends Component
 {
     public string $mode = 'designer';
+    public int $mapId = 0;
+    public string $newMapName = '';
+    public string $newMapDescription = '';
     public string $source_key = '';
     public string $target_key = '';
     public string $connection_type = 'fiber_core';
@@ -42,6 +46,36 @@ class NetworkTopology extends Component
         }
         abort_unless(in_array($mode, ['designer', 'live'], true), 404);
         $this->mode = $mode;
+        $default = NetworkTopologyMap::where('is_default', true)->first() ?: NetworkTopologyMap::orderBy('id')->first();
+        abort_unless($default, 500);
+        $this->mapId = (int) $default->id;
+    }
+
+    public function updatedMapId(): void
+    {
+        $this->reset(['source_key', 'target_key', 'source_port', 'target_port']);
+        $this->message = 'Topology map switched.';
+    }
+
+    public function createMap(): void
+    {
+        if ($this->mode !== 'designer') abort(403);
+        $data = $this->validate(['newMapName' => ['required','string','max:120','unique:network_topology_maps,name'], 'newMapDescription' => ['nullable','string','max:1000']]);
+        $map = NetworkTopologyMap::create(['name'=>trim($data['newMapName']), 'slug'=>\Illuminate\Support\Str::slug($data['newMapName']).'-'.uniqid(), 'description'=>$data['newMapDescription'] ?: null, 'is_default'=>false, 'created_by'=>auth()->id()]);
+        $this->mapId = (int) $map->id;
+        $this->reset(['newMapName','newMapDescription','source_key','target_key','source_port','target_port']);
+        $this->message = 'New topology map created and selected.';
+    }
+
+    public function deleteMap(): void
+    {
+        if ($this->mode !== 'designer') abort(403);
+        $map = NetworkTopologyMap::findOrFail($this->mapId);
+        if ($map->is_default) { $this->message = 'The Main Network map cannot be deleted.'; return; }
+        $default = NetworkTopologyMap::where('is_default', true)->firstOrFail();
+        $map->delete();
+        $this->mapId = (int) $default->id;
+        $this->message = 'Topology map deleted.';
     }
 
     public function updatedSourceKey(): void { $this->source_port = ''; }
@@ -72,7 +106,7 @@ class NetworkTopology extends Component
             if (!$node || $node->type !== 'splitter') continue;
             $capacity = (int) ($node->{$ep['node_field']} ?: ($ep['node_field'] === 'output_ports' ? $node->splitter_ratio : 1));
             $port = ($ep['field'] === 'source_port' ? 'OUT-' : 'IN-').preg_replace('/^(OUT-|IN-|P)/i', '', strtoupper(trim((string) $ep['port'])));
-            $query = NetworkTopologyLink::where($ep['field'] === 'source_port' ? 'source_key' : 'target_key', $ep['key'])->whereNotNull($ep['field']);
+            $query = NetworkTopologyLink::where('map_id', $this->mapId)->where($ep['field'] === 'source_port' ? 'source_key' : 'target_key', $ep['key'])->whereNotNull($ep['field']);
             $used = $query->get()->filter(fn($l) => !($l->source_key === $data['source_key'] && $l->target_key === $data['target_key'] && $l->connection_type === $data['connection_type']))->pluck($ep['field'])->map(fn($v) => ($ep['field'] === 'source_port' ? 'OUT-' : 'IN-').preg_replace('/^(OUT-|IN-|P)/i', '', strtoupper(trim((string)$v))))->all();
             if (in_array($port, $used, true)) { $this->addError($ep['field'], 'This port is occupied. Choose a free port.'); return; }
             if ($capacity > 0 && count(array_unique($used)) >= $capacity) { $this->addError($ep['field'], 'No free ports remain on this splitter.'); return; }
@@ -80,7 +114,7 @@ class NetworkTopology extends Component
         }
 
         NetworkTopologyLink::updateOrCreate(
-            ['source_key' => $data['source_key'], 'target_key' => $data['target_key'], 'connection_type' => $data['connection_type']],
+            ['map_id' => $this->mapId, 'source_key' => $data['source_key'], 'target_key' => $data['target_key'], 'connection_type' => $data['connection_type']],
             ['label' => $data['label'] ?: null, 'capacity_mbps' => $data['capacity_mbps'] ?: null, 'traffic_mbps' => $data['traffic_mbps'] ?: null, 'latency_ms' => $data['latency_ms'] ?: null, 'packet_loss' => $data['packet_loss'] ?: null, 'fiber_core' => $data['fiber_core'] ?: null, 'fiber_type' => $data['fiber_type'] ?: null, 'source_port' => $data['source_port'] ?: null, 'target_port' => $data['target_port'] ?: null, 'status' => 'unknown', 'is_published' => false, 'created_by' => auth()->id()]
         );
 
@@ -104,7 +138,7 @@ class NetworkTopology extends Component
             'output_ports' => ['nullable', 'integer', 'min:1', 'max:64'],
         ]);
         NetworkTopologyNode::create([
-            'type' => $data['newNodeType'], 'name' => trim($data['newNodeName']),
+            'map_id' => $this->mapId, 'type' => $data['newNodeType'], 'name' => trim($data['newNodeName']),
             'location' => $data['newNodeLocation'] ?: null, 'port_reference' => $this->port_reference ?: null,
             'splitter_ratio' => $data['newNodeType'] === 'splitter' && $this->splitter_ratio !== '' ? (int) $this->splitter_ratio : null,
             'input_ports' => $data['newNodeType'] === 'splitter' ? (int) ($this->input_ports ?: 1) : null,
@@ -124,7 +158,7 @@ class NetworkTopology extends Component
     public function publishNode(int $id): void
     {
         if ($this->mode !== 'designer') abort(403);
-        NetworkTopologyNode::findOrFail($id)->update(['is_published' => true]);
+        NetworkTopologyNode::where('map_id', $this->mapId)->findOrFail($id)->update(['is_published' => true]);
         $this->message = 'Topology node published.';
     }
 
@@ -132,13 +166,13 @@ class NetworkTopology extends Component
     {
         if ($this->mode !== 'designer') abort(403);
         $nodeKey = 'topology:'.$id;
-        $hasPublishedLinks = NetworkTopologyLink::where('is_published', true)
+        $hasPublishedLinks = NetworkTopologyLink::where('map_id', $this->mapId)->where('is_published', true)
             ->where(fn ($q) => $q->where('source_key', $nodeKey)->orWhere('target_key', $nodeKey))->exists();
         if ($hasPublishedLinks) {
             $this->message = 'Unpublish or remove this node’s published connections first.';
             return;
         }
-        NetworkTopologyNode::findOrFail($id)->update(['is_published' => false]);
+        NetworkTopologyNode::where('map_id', $this->mapId)->findOrFail($id)->update(['is_published' => false]);
         $this->message = 'Topology node moved back to draft.';
     }
 
@@ -146,15 +180,15 @@ class NetworkTopology extends Component
     {
         if ($this->mode !== 'designer') abort(403);
         $nodeKey = 'topology:'.$id;
-        NetworkTopologyLink::where('source_key', $nodeKey)->orWhere('target_key', $nodeKey)->delete();
-        NetworkTopologyNode::findOrFail($id)->delete();
+        NetworkTopologyLink::where('map_id', $this->mapId)->where(fn ($q) => $q->where('source_key', $nodeKey)->orWhere('target_key', $nodeKey))->delete();
+        NetworkTopologyNode::where('map_id', $this->mapId)->findOrFail($id)->delete();
         $this->message = 'Topology node and its connections deleted.';
     }
 
     public function publish(int $id): void
     {
         if ($this->mode !== 'designer') abort(403);
-        $link = NetworkTopologyLink::findOrFail($id);
+        $link = NetworkTopologyLink::where('map_id', $this->mapId)->findOrFail($id);
         foreach ([$link->source_key, $link->target_key] as $key) {
             if (str_starts_with($key, 'topology:')) {
                 $node = NetworkTopologyNode::find(substr($key, 9));
@@ -171,14 +205,14 @@ class NetworkTopology extends Component
     public function unpublish(int $id): void
     {
         if ($this->mode !== 'designer') abort(403);
-        NetworkTopologyLink::findOrFail($id)->update(['is_published' => false, 'status' => 'draft']);
+        NetworkTopologyLink::where('map_id', $this->mapId)->findOrFail($id)->update(['is_published' => false, 'status' => 'draft']);
         $this->message = 'Connection moved back to draft.';
     }
 
     public function deleteLink(int $id): void
     {
         if ($this->mode !== 'designer') abort(403);
-        NetworkTopologyLink::findOrFail($id)->delete();
+        NetworkTopologyLink::where('map_id', $this->mapId)->findOrFail($id)->delete();
         $this->message = 'Topology connection deleted.';
     }
 
@@ -240,9 +274,9 @@ class NetworkTopology extends Component
     public function tracePath(string $startKey): void
     {
         $startKey = preg_replace('/^custom:/', 'topology:', $startKey);
-        $links = NetworkTopologyLink::query()->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
+        $links = NetworkTopologyLink::query()->where('map_id', $this->mapId)->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
         $nodes = collect($this->baseNodes())->keyBy('id');
-        $custom = NetworkTopologyNode::query()->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
+        $custom = NetworkTopologyNode::query()->where('map_id', $this->mapId)->when($this->mode === 'live', fn($q) => $q->where('is_published', true))->get();
         foreach ($custom as $node) $nodes->put('custom:'.$node->id, ['id'=>'custom:'.$node->id,'label'=>$node->name,'group'=>$node->type,'status'=>$node->status ?: 'unknown']);
         $queue = [$startKey]; $seen = []; $path = [];
         while ($queue) {
@@ -269,7 +303,7 @@ class NetworkTopology extends Component
         foreach (NetworkInventoryDevice::orderBy('name')->get() as $device) {
             $options['device:'.$device->id] = strtoupper(str_replace('-', ' ', $device->type)).' · '.$device->name.' ('.($device->ip_address ?: $device->host ?: 'no IP').')';
         }
-        $customNodes = NetworkTopologyNode::query()->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->orderBy('name')->get();
+        $customNodes = NetworkTopologyNode::query()->where('map_id', $this->mapId)->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->orderBy('name')->get();
         foreach ($customNodes as $node) {
             $options['topology:'.$node->id] = strtoupper(str_replace('_', ' ', $node->type)).' · '.$node->name;
         }
@@ -296,7 +330,7 @@ class NetworkTopology extends Component
                 'url' => route('device-manager.detail', ['kind' => $device->type === 'olt' ? 'olt' : 'device', 'device' => $device->id]),
             ];
         }
-        $customNodes = NetworkTopologyNode::query()->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->orderBy('name')->get();
+        $customNodes = NetworkTopologyNode::query()->where('map_id', $this->mapId)->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->orderBy('name')->get();
         foreach ($customNodes as $node) {
             $nodes[] = [
                 'id' => 'topology:'.$node->id, 'label' => $node->name, 'group' => $node->type,
@@ -310,7 +344,7 @@ class NetworkTopology extends Component
     public function render()
     {
         $nodes = $this->baseNodes();
-        $query = NetworkTopologyLink::query()->latest();
+        $query = NetworkTopologyLink::query()->where('map_id', $this->mapId)->latest();
         if ($this->mode === 'live') $query->where('is_published', true);
         $links = $query->get();
 
@@ -433,8 +467,9 @@ class NetworkTopology extends Component
             ];
         }
 
+        $maps = NetworkTopologyMap::orderByDesc('is_default')->orderBy('name')->get();
         $nodeOptions = $this->nodeOptions();
-        $customNodes = NetworkTopologyNode::query()->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->latest()->get();
+        $customNodes = NetworkTopologyNode::query()->where('map_id', $this->mapId)->when($this->mode === 'live', fn ($q) => $q->where('is_published', true))->latest()->get();
         $sourcePortOptions = []; $targetPortOptions = [];
         foreach ($customNodes->where('type', 'splitter') as $splitter) {
             $key = 'custom:'.$splitter->id;
@@ -456,7 +491,7 @@ class NetworkTopology extends Component
             $portStats[$splitter->id] = ['in_capacity'=>$inCapacity,'out_capacity'=>$outCapacity,'in_used'=>count($usedIn),'out_used'=>count($usedOut),'in_free'=>max(0,$inCapacity-count($usedIn)),'out_free'=>max(0,$outCapacity-count($usedOut)),'in_ports'=>$usedIn,'out_ports'=>$usedOut];
         }
         $statusSummary = collect($nodes)->countBy('status')->all();
-        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary', 'mappingHealth', 'portStats', 'sourcePortOptions', 'targetPortOptions', 'branchHealth'))
+        return view('livewire.network-topology', compact('nodes', 'links', 'graphEdges', 'nodeOptions', 'customNodes', 'statusSummary', 'mappingHealth', 'portStats', 'sourcePortOptions', 'targetPortOptions', 'branchHealth', 'maps'))
             ->layout('layouts.app');
     }
 }

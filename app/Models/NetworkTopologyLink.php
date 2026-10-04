@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class NetworkTopologyLink extends Model
 {
     protected $fillable = [
-        'source_key', 'target_key', 'connection_type', 'label', 'capacity_mbps',
+        'map_id', 'source_key', 'target_key', 'connection_type', 'label', 'capacity_mbps',
         'traffic_mbps', 'latency_ms', 'packet_loss', 'fiber_core', 'fiber_type', 'source_port', 'target_port',
         'status', 'is_published', 'created_by',
     ];
