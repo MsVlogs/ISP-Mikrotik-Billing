@@ -35,6 +35,44 @@ class CustomersInfo extends Model
         // 'extra_date',
     ];
 
+    /**
+     * Keep Bangladesh customer mobile numbers in local format (01XXXXXXXXX).
+     * Entry screens should never require a country code, and this mutator also
+     * protects database writes coming from imports, controllers, and other forms.
+     */
+    public static function normalizeBangladeshMobile($value): ?string
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        if (str_starts_with($digits, '00880')) {
+            $digits = substr($digits, 2);
+        }
+
+        if (str_starts_with($digits, '8801') && strlen($digits) >= 13) {
+            return '0'.substr($digits, 3);
+        }
+
+        if (str_starts_with($digits, '01') && strlen($digits) === 11) {
+            return $digits;
+        }
+
+        return $digits !== '' ? $digits : null;
+    }
+
+    public function setMobileAttribute($value): void
+    {
+        $this->attributes['mobile'] = self::normalizeBangladeshMobile($value);
+    }
+
+    public function setAlternativeMobileAttribute($value): void
+    {
+        $this->attributes['alternative_mobile'] = self::normalizeBangladeshMobile($value);
+    }
+
     protected static function boot()
     {
         parent::boot();

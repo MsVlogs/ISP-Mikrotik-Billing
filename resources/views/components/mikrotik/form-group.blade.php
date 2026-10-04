@@ -67,7 +67,7 @@
         <x-error name='{{ $name }}' />
     @elseif ($type == 'mobile')
         <div wire:ignore>
-            <input type="text" id="{{ $name }}" class="form-control form-control-sm @error($name) is-invalid @enderror" placeholder="{{ __($placeholder ?? $label) }}" name="{{ $name }}" x-data="intlTelInput('{{ $name }}')" value="{{ isset($this->{$name}) ? $this->{$name} : '' }}">
+            <input type="text" id="{{ $name }}" class="form-control form-control-sm @error($name) is-invalid @enderror" placeholder="{{ __($placeholder ?? '01XXXXXXXXX') }}" inputmode="numeric" autocomplete="tel-national" maxlength="11" name="{{ $name }}" x-data="intlTelInput('{{ $name }}')" value="{{ isset($this->{$name}) ? $this->{$name} : '' }}">
         </div>
         <x-error name='{{ $name }}' />
     @elseif ($type == 'dropdown')
