@@ -10,13 +10,17 @@ use App\Models\OltOnuCustomerMapping;
 use App\Models\RouterList;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\DB;
 
 class NetworkTopology extends Component
 {
+    use WithFileUploads;
     public string $mode = 'designer';
     public int $mapId = 0;
     public string $newMapName = '';
     public string $newMapDescription = '';
+    public $topologyImportFile;
     public string $source_key = '';
     public string $target_key = '';
     public string $connection_type = 'fiber_core';
@@ -76,6 +80,52 @@ class NetworkTopology extends Component
         $map->delete();
         $this->mapId = (int) $default->id;
         $this->message = 'Topology map deleted.';
+    }
+
+
+    public function exportMap()
+    {
+        if ($this->mode !== 'designer') abort(403);
+        $map = NetworkTopologyMap::findOrFail($this->mapId);
+        $nodes = NetworkTopologyNode::where('map_id', $this->mapId)->get();
+        $links = NetworkTopologyLink::where('map_id', $this->mapId)->get();
+        $payload = [
+            'format' => 'xlink-topology-backup', 'version' => 1, 'exported_at' => now()->toIso8601String(),
+            'map' => ['name'=>$map->name, 'slug'=>$map->slug, 'description'=>$map->description, 'is_default'=>$map->is_default],
+            'nodes' => $nodes->map(fn($n)=>['backup_key'=>'custom:'.$n->id,'type'=>$n->type,'subtype'=>$n->subtype,'name'=>$n->name,'location'=>$n->location,'port_reference'=>$n->port_reference,'splitter_ratio'=>$n->splitter_ratio,'input_ports'=>$n->input_ports,'output_ports'=>$n->output_ports,'port_capacity'=>$n->port_capacity,'latitude'=>$n->latitude,'longitude'=>$n->longitude,'notes'=>$n->notes,'is_published'=>$n->is_published])->values()->all(),
+            'links' => $links->map(fn($l)=>['source_key'=>$l->source_key,'target_key'=>$l->target_key,'connection_type'=>$l->connection_type,'label'=>$l->label,'capacity_mbps'=>$l->capacity_mbps,'traffic_mbps'=>$l->traffic_mbps,'latency_ms'=>$l->latency_ms,'packet_loss'=>$l->packet_loss,'fiber_core'=>$l->fiber_core,'fiber_type'=>$l->fiber_type,'source_port'=>$l->source_port,'target_port'=>$l->target_port,'status'=>$l->status,'is_published'=>$l->is_published])->values()->all(),
+        ];
+        $name = preg_replace('/[^A-Za-z0-9_-]+/', '-', $map->name).'-'.now()->format('Ymd-His').'.json';
+        return response()->streamDownload(function() use ($payload) { echo json_encode($payload, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES); }, $name, ['Content-Type'=>'application/json']);
+    }
+
+    public function importMap(): void
+    {
+        if ($this->mode !== 'designer') abort(403);
+        $this->validate(['topologyImportFile'=>['required','file','max:5120','mimetypes:application/json,text/plain']]);
+        $raw = file_get_contents($this->topologyImportFile->getRealPath());
+        $payload = json_decode($raw, true);
+        if (!is_array($payload) || ($payload['format'] ?? '') !== 'xlink-topology-backup' || (int)($payload['version'] ?? 0) !== 1) { $this->addError('topologyImportFile','Invalid X-Link topology backup file.'); return; }
+        $map = NetworkTopologyMap::findOrFail($this->mapId);
+        $nodes = is_array($payload['nodes'] ?? null) ? $payload['nodes'] : [];
+        $links = is_array($payload['links'] ?? null) ? $payload['links'] : [];
+        DB::transaction(function() use ($map,$nodes,$links) {
+            NetworkTopologyLink::where('map_id',$map->id)->delete();
+            NetworkTopologyNode::where('map_id',$map->id)->delete();
+            $keyMap = [];
+            foreach ($nodes as $n) {
+                if (!is_array($n) || empty($n['name']) || empty($n['type'])) continue;
+                $created = NetworkTopologyNode::create(['map_id'=>$map->id,'type'=>$n['type'],'subtype'=>$n['subtype']??null,'name'=>$n['name'],'location'=>$n['location']??null,'port_reference'=>$n['port_reference']??null,'splitter_ratio'=>$n['splitter_ratio']??null,'input_ports'=>$n['input_ports']??null,'output_ports'=>$n['output_ports']??null,'port_capacity'=>$n['port_capacity']??null,'latitude'=>$n['latitude']??null,'longitude'=>$n['longitude']??null,'notes'=>$n['notes']??null,'is_published'=>(bool)($n['is_published']??false),'created_by'=>auth()->id()]);
+                if (!empty($n['backup_key'])) $keyMap[$n['backup_key']] = 'custom:'.$created->id;
+            }
+            foreach ($links as $l) {
+                if (!is_array($l) || empty($l['source_key']) || empty($l['target_key']) || empty($l['connection_type'])) continue;
+                $source = $keyMap[$l['source_key']] ?? $l['source_key']; $target = $keyMap[$l['target_key']] ?? $l['target_key'];
+                NetworkTopologyLink::create(['map_id'=>$map->id,'source_key'=>$source,'target_key'=>$target,'connection_type'=>$l['connection_type'],'label'=>$l['label']??null,'capacity_mbps'=>$l['capacity_mbps']??null,'traffic_mbps'=>$l['traffic_mbps']??null,'latency_ms'=>$l['latency_ms']??null,'packet_loss'=>$l['packet_loss']??null,'fiber_core'=>$l['fiber_core']??null,'fiber_type'=>$l['fiber_type']??null,'source_port'=>$l['source_port']??null,'target_port'=>$l['target_port']??null,'status'=>$l['status']??'unknown','is_published'=>(bool)($l['is_published']??false),'created_by'=>auth()->id()]);
+            }
+        });
+        $this->reset('topologyImportFile');
+        $this->message = 'Topology backup imported into the selected map.';
     }
 
     public function updatedSourceKey(): void { $this->source_port = ''; }
