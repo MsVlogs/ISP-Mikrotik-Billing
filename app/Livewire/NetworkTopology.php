@@ -82,6 +82,80 @@ class NetworkTopology extends Component
         $this->message = 'Topology map deleted.';
     }
 
+    public function cloneMap(): void
+    {
+        if ($this->mode !== 'designer') abort(403);
+
+        $this->validate([
+            'newMapName' => ['required', 'string', 'max:120', 'unique:network_topology_maps,name'],
+            'newMapDescription' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $source = NetworkTopologyMap::findOrFail($this->mapId);
+        $name = trim($this->newMapName);
+        $description = trim((string) $this->newMapDescription);
+
+        DB::transaction(function () use ($source, $name, $description): void {
+            $clone = NetworkTopologyMap::create([
+                'name' => $name,
+                'slug' => \Illuminate\Support\Str::slug($name) . '-' . uniqid(),
+                'description' => $description !== '' ? $description : $source->description,
+                'is_default' => false,
+                'created_by' => auth()->id(),
+            ]);
+
+            $keyMap = [];
+            $nodes = NetworkTopologyNode::where('map_id', $source->id)->get();
+            foreach ($nodes as $node) {
+                $created = NetworkTopologyNode::create([
+                    'map_id' => $clone->id,
+                    'type' => $node->type,
+                    'subtype' => $node->subtype,
+                    'name' => $node->name,
+                    'location' => $node->location,
+                    'port_reference' => $node->port_reference,
+                    'splitter_ratio' => $node->splitter_ratio,
+                    'input_ports' => $node->input_ports,
+                    'output_ports' => $node->output_ports,
+                    'port_capacity' => $node->port_capacity,
+                    'latitude' => $node->latitude,
+                    'longitude' => $node->longitude,
+                    'notes' => $node->notes,
+                    'is_published' => $node->is_published,
+                    'created_by' => auth()->id(),
+                ]);
+                $keyMap['custom:' . $node->id] = 'custom:' . $created->id;
+            }
+
+            $links = NetworkTopologyLink::where('map_id', $source->id)->get();
+            foreach ($links as $link) {
+                NetworkTopologyLink::create([
+                    'map_id' => $clone->id,
+                    'source_key' => $keyMap[$link->source_key] ?? $link->source_key,
+                    'target_key' => $keyMap[$link->target_key] ?? $link->target_key,
+                    'connection_type' => $link->connection_type,
+                    'label' => $link->label,
+                    'capacity_mbps' => $link->capacity_mbps,
+                    'traffic_mbps' => $link->traffic_mbps,
+                    'latency_ms' => $link->latency_ms,
+                    'packet_loss' => $link->packet_loss,
+                    'fiber_core' => $link->fiber_core,
+                    'fiber_type' => $link->fiber_type,
+                    'source_port' => $link->source_port,
+                    'target_port' => $link->target_port,
+                    'status' => $link->status,
+                    'is_published' => $link->is_published,
+                    'created_by' => auth()->id(),
+                ]);
+            }
+
+            $this->mapId = (int) $clone->id;
+        });
+
+        $this->reset(['newMapName', 'newMapDescription', 'source_key', 'target_key', 'source_port', 'target_port']);
+        $this->message = 'Topology map cloned successfully. The cloned map is now selected.';
+    }
+
 
     public function exportMap()
     {
