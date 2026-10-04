@@ -22,7 +22,7 @@
 <div class="network-map-footer"><span><i class="bi bi-info-circle me-1"></i>Markers are based on stored coordinates. Connections appear only when both endpoints have coordinates.</span><span id="map-result-count"></span></div>
 </div></div>
 </div>
-<script>
+@script
 (() => {
  const nodes=@json($nodes), edges=@json($mapEdges);
  const meta={router:["MikroTik Router","router"],olt:["OLT","olt"],onu:["ONU","onu"],"wifi-router":["WiFi Router","wifi-router"],"access-point":["Access Point","access-point"],switch:["Switch","switch"],customer:["Customer","customer"]};
@@ -40,4 +40,4 @@
  }catch(e){console.error("[X-Link Network Map] Leaflet:",e);el.innerHTML="<div class=\"network-map-leaflet-status\"><div class=\"text-center p-4\"><i class=\"bi bi-exclamation-triangle fs-1 text-warning\"></i><h5 class=\"mt-3\">Network Map could not load</h5><p class=\"text-muted mb-0\">"+(esc(e?.message||"Leaflet map error"))+"</p></div></div>";}}};
  const boot=()=>setTimeout(()=>window.initNetworkMap?.(),100);document.addEventListener("livewire:navigated",boot);if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();
-</script>
+@endscript
