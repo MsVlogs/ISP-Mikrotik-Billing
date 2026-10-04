@@ -1,7 +1,7 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('xlink-network-monitoring/network-monitoring-polish.css') }}">
 <link rel="stylesheet" href="{{ asset('xlink-network-monitoring/network-map-polish.css') }}">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">
 <style>#network-map{min-height:650px;height:650px;border-radius:12px;overflow:hidden}.network-map-leaflet-status{min-height:650px;display:flex;align-items:center;justify-content:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px}.xlink-map-marker{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);color:#fff;font-size:12px;font-weight:700}.xlink-map-marker.router{background:#2563eb}.xlink-map-marker.olt{background:#7c3aed}.xlink-map-marker.onu{background:#059669}.xlink-map-marker.wifi-router{background:#ea580c}.xlink-map-marker.access-point{background:#0891b2}.xlink-map-marker.switch{background:#475569}.xlink-map-marker.customer{background:#dc2626}</style>
 @endpush
 <div class="container-fluid py-3 network-map-page">
@@ -18,7 +18,7 @@
 <div class="col-lg-2 col-md-6"><label class="form-label">Status</label><select id="map-status-filter" class="form-select"><option value="">All Status</option><option value="online">Online</option><option value="offline">Offline</option><option value="unknown">Unknown</option></select></div>
 <div class="col-lg-4 col-md-6"><label class="form-label">Search</label><div class="input-group"><input id="map-customer-search" class="form-control" placeholder="Name, IP, ID or location"><button id="map-fit" class="btn btn-outline-secondary" type="button" title="Fit visible nodes"><i class="bi bi-bounding-box"></i></button><button id="map-reset" class="btn btn-outline-secondary" type="button" title="Reset filters"><i class="bi bi-arrow-counterclockwise"></i></button></div></div>
 </div>
-<div id="network-map" class="network-map-canvas" aria-label="Interactive Leaflet network map"></div>
+<div id="network-map" class="network-map-canvas" wire:ignore aria-label="Interactive Leaflet network map"></div>
 <div class="network-map-footer"><span><i class="bi bi-info-circle me-1"></i>Markers are based on stored coordinates. Connections appear only when both endpoints have coordinates.</span><span id="map-result-count"></span></div>
 </div></div>
 </div>
@@ -28,7 +28,7 @@
  const meta={router:["MikroTik Router","router"],olt:["OLT","olt"],onu:["ONU","onu"],"wifi-router":["WiFi Router","wifi-router"],"access-point":["Access Point","access-point"],switch:["Switch","switch"],customer:["Customer","customer"]};
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
  const statusIcon=(kind,status)=>{const cls=kind||"device";const letter=(meta[kind]?.[0]||"D").charAt(0);return L.divIcon({className:"",html:`<div class="xlink-map-marker ${cls}" title="${esc(status||"unknown")}">${letter}</div>`,iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-16]});};
- const loadLeaflet=()=>new Promise((resolve,reject)=>{if(window.L)return resolve();const s=document.createElement("script");s.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";s.onload=()=>resolve();s.onerror=()=>reject(new Error("Leaflet failed to load"));document.head.appendChild(s);});
+ const loadLeaflet=()=>new Promise((resolve,reject)=>{if(window.L)return resolve();const s=document.createElement("script");s.src="{{ asset('vendor/leaflet/leaflet.js') }}";s.onload=()=>resolve();s.onerror=()=>reject(new Error("Leaflet failed to load"));document.head.appendChild(s);});
  window.initNetworkMap=async()=>{const el=document.getElementById("network-map");if(!el||el._leafletMap)return;try{await loadLeaflet();el.innerHTML="";const map=L.map(el,{zoomControl:true,preferCanvas:true}).setView([23.8103,90.4125],11);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);el._leafletMap=map;
  let markers=[],lines=[];
  const clear=()=>{markers.forEach(m=>m.remove());lines.forEach(l=>l.remove());markers=[];lines=[];};
@@ -38,6 +38,6 @@
  const pts=[];filtered.forEach(n=>{const mta=meta[n.kind]||["Device","device"];const marker=L.marker([n.lat,n.lng],{icon:statusIcon(n.kind,n.status),title:n.label||mta[0]}).addTo(map);marker.bindPopup("<div style=\"min-width:190px\"><strong>"+esc(mta[0])+"</strong><div>"+esc(n.label)+"</div><small>IP: "+esc(n.ip||"—")+"</small><br><small>Status: "+esc(n.status||"unknown")+"</small><br><small>"+esc(n.location||"")+"</small></div>");markers.push(marker);pts.push([n.lat,n.lng]);});document.getElementById("map-result-count").textContent=filtered.length+" node"+(filtered.length===1?"":"s")+" shown";fit(pts);setTimeout(()=>map.invalidateSize(),50);};
  ["map-type-filter","map-router-filter","map-status-filter"].forEach(id=>document.getElementById(id)?.addEventListener("change",render));document.getElementById("map-customer-search")?.addEventListener("input",render);document.getElementById("map-fit")?.addEventListener("click",render);document.getElementById("map-reset")?.addEventListener("click",()=>{["map-type-filter","map-router-filter","map-status-filter"].forEach(id=>document.getElementById(id).value="");document.getElementById("map-customer-search").value="";render();});render();
  }catch(e){console.error("[X-Link Network Map] Leaflet:",e);el.innerHTML="<div class=\"network-map-leaflet-status\"><div class=\"text-center p-4\"><i class=\"bi bi-exclamation-triangle fs-1 text-warning\"></i><h5 class=\"mt-3\">Network Map could not load</h5><p class=\"text-muted mb-0\">"+(esc(e?.message||"Leaflet map error"))+"</p></div></div>";}}};
- document.addEventListener("livewire:navigated",()=>window.initNetworkMap?.());if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>window.initNetworkMap?.());else window.initNetworkMap?.();
+ const boot=()=>setTimeout(()=>window.initNetworkMap?.(),100);document.addEventListener("livewire:navigated",boot);if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();
 </script>
