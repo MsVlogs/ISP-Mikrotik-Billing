@@ -29,18 +29,42 @@ class VsolSshOpmCollector
             $opmCommand = (string) data_get($config, 'opm.command', 'show onu opm-diag all');
             $opmOutput = trim((string) $ssh->exec($opmCommand));
             $opmRows = $this->parseOpm($opmOutput);
+
+            // Some VSOL firmware exposes only the PON-scoped command even when
+            // "show onu opm-diag all" is accepted interactively. Fall back to each
+            // discovered PON and merge the parseable rows.
+            if (! $opmRows) {
+                $ponNumbers = [];
+                foreach ($baseOnus as $onu) {
+                    $pon = $this->ponNumber($onu['pon_port'] ?? '');
+                    if ($pon !== null) $ponNumbers[$pon] = true;
+                }
+                foreach (array_keys($ponNumbers) as $ponNumber) {
+                    $output = trim((string) $ssh->exec("show onu opm-diag pon {$ponNumber}"));
+                    foreach ($this->parseOpm($output) as $row) $opmRows[] = $row;
+                }
+            }
+
             if (! $opmRows) return $this->fail('VSOL OPM command returned no parseable ONU rows.');
 
-            // The CLI output uses EPON0/<PON>:<ONU> with ONU numbering starting at 1,
-            // while our SNMP normalized inventory may expose a zero-based ONU id.
-            // Build both exact and +1 keys and prefer the CLI's 1-based key.
+            // The CLI uses EPON0/<PON>:<ONU> and normally starts ONU numbering at 1,
+            // while some SNMP normalized inventories expose the same ONU as zero-based.
+            // Detect the base inventory convention first, then map the CLI identity
+            // deterministically so ONU 1 cannot accidentally bind to inventory ONU 1
+            // when that row actually represents CLI ONU 2.
+            $numericIds = array_values(array_filter(array_map(
+                fn ($onu) => ctype_digit(trim((string) ($onu['onu_id'] ?? ''))) ? (int) trim((string) $onu['onu_id']) : null,
+                $baseOnus
+            ), fn ($id) => $id !== null));
+            $inventoryZeroBased = in_array(0, $numericIds, true);
+
             $byCliKey = [];
             foreach ($baseOnus as $index => $onu) {
-                $pon = trim((string) ($onu['pon_port'] ?? ''));
+                $pon = $this->ponNumber($onu['pon_port'] ?? '');
                 $id = trim((string) ($onu['onu_id'] ?? ''));
-                if ($pon === '' || $id === '') continue;
-                $byCliKey[$pon.':'.$id] ??= $index;
-                if (ctype_digit($id)) $byCliKey[$pon.':'.((int) $id + 1)] ??= $index;
+                if ($pon === null || $id === '' || !ctype_digit($id)) continue;
+                $cliId = (int) $id + ($inventoryZeroBased ? 1 : 0);
+                $byCliKey[$pon.':'.$cliId] ??= $index;
             }
 
             $merged = 0;
@@ -85,14 +109,37 @@ class VsolSshOpmCollector
         $rows = [];
         foreach (preg_split('/\R/', $output) as $line) {
             $line = trim(preg_replace('/\s+/', ' ', $line) ?? '');
-            if (! preg_match('/^(EPON0\/(\d+):(\d+))\s+([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)(?:\s*\wW\s*)?\s+([-+]?\d+(?:\.\d+)?)$/i', $line, $m)) continue;
+            if ($line === '' || stripos($line, 'ONU-ID') === 0 || str_starts_with($line, '------')) continue;
+
+            // Expected VSOL format:
+            // EPON0/1:1 27.17 3.28 0.00 2.10 -10.47
+            // Be tolerant of optional unit text around optical power values.
+            if (! preg_match(
+                '/^(EPON0\/(\d+):(\d+))\s+([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)(?:\s+(?:mW|dBm))?\s+([-+]?\d+(?:\.\d+)?)(?:\s*dBm)?$/i',
+                $line,
+                $m
+            )) continue;
+
             $rows[] = [
-                'cli_id' => $m[1], 'cli_key' => $m[2].':'.$m[3],
-                'temperature' => (float) $m[4], 'supply_voltage' => (float) $m[5],
-                'tx_bias_current' => (float) $m[6], 'tx_power' => (float) $m[7], 'rx_power' => (float) $m[8],
+                'cli_id' => $m[1],
+                'cli_key' => $m[2].':'.$m[3],
+                'temperature' => (float) $m[4],
+                'supply_voltage' => (float) $m[5],
+                'tx_bias_current' => (float) $m[6],
+                'tx_power' => (float) $m[7],
+                'rx_power' => (float) $m[8],
             ];
         }
         return $rows;
+    }
+
+    private function ponNumber(mixed $value): ?int
+    {
+        $value = trim((string) $value);
+        if ($value === '') return null;
+        if (preg_match('/(?:EPON0\/|PON)?(\d+)$/i', $value, $m)) return (int) $m[1];
+        if (preg_match('/EPON0\/(\d+)/i', $value, $m)) return (int) $m[1];
+        return ctype_digit($value) ? (int) $value : null;
     }
 
     private function config(NetworkInventoryDevice $device): array
