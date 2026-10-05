@@ -556,7 +556,7 @@ Route::middleware([
         })->name('network-inventory.olt.customers');
         Route::post('/network-inventory/olt/{device}/customers/mapping', function(\Illuminate\Http\Request $request, \App\Models\NetworkInventoryDevice $device){
             abort_unless($device->type==='olt',404);
-            $data=$request->validate(['onu_id'=>'required|string|max:120','onu_mac'=>'nullable|string|max:80','onu_serial'=>'nullable|string|max:160','pon_port'=>'nullable|string|max:80','customer_id'=>'required|integer|exists:customers_infos,id','confirm_overwrite'=>'nullable|boolean']);
+            $data=$request->validate(['onu_id'=>'required|string|max:120','onu_mac'=>'nullable|string|max:80','onu_serial'=>'nullable|string|max:160','pon_port'=>'nullable|string|max:80','customer_id'=>'required|integer|exists:customers_infos,id','confirm_overwrite'=>'nullable|boolean','confirm_reuse'=>'nullable|boolean']);
             $normalizeStable = static fn ($value) => strtolower(preg_replace('/[^a-z0-9]/i','',(string)$value));
             $macKey=$normalizeStable($data['onu_mac']??'');
             $serialKey=strtolower(trim((string)($data['onu_serial']??'')));
@@ -567,6 +567,15 @@ Route::middleware([
             if(!$mapping) $mapping=$existing->first(fn($m)=>(string)$m->onu_id===(string)$data['onu_id']);
             if($mapping && $mapping->customer_id && !$request->boolean('confirm_overwrite')) return back()->with('inventory_message','Existing mapping found. Confirm replacement before saving.')->with('onu_sync_success',false);
             $customer=\App\Models\CustomersInfo::with('pppUser')->findOrFail($data['customer_id']);
+            $reuseQuery=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id);
+            if($mapping) $reuseQuery->where('id','<>',$mapping->id);
+            $sameCustomer=$reuseQuery->where('customer_id',$customer->id)->exists();
+            $samePpp=$customer->ppp_user_id ? (clone $reuseQuery)->where('ppp_user_id',$customer->ppp_user_id)->exists() : false;
+            if(($sameCustomer || $samePpp) && !$request->boolean('confirm_reuse')) {
+                $who=$sameCustomer && $samePpp ? 'Customer and PPPoE' : ($sameCustomer ? 'Customer' : 'PPPoE');
+                return back()->with('inventory_message',"This {$who} is already mapped to another ONU. Confirm reuse before saving.")
+                    ->with('onu_sync_success',false);
+            }
             $payload=['customer_id'=>$customer->id,'ppp_user_id'=>$customer->ppp_user_id,'onu_serial'=>$data['onu_serial']??$mapping?->onu_serial,'onu_mac'=>$data['onu_mac']??$mapping?->onu_mac,'pon_port'=>$data['pon_port']??$mapping?->pon_port,'status'=>$mapping?->status ?? 'unknown','last_seen_at'=>$mapping?->last_seen_at ?? now()];
             if($mapping){
                 $idConflict=(string)$mapping->onu_id!==(string)$data['onu_id'] && \App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->where('onu_id',$data['onu_id'])->where('id','<>',$mapping->id)->exists();
