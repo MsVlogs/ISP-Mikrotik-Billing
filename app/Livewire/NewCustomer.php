@@ -230,6 +230,7 @@ class NewCustomer extends Component
             'profile' => 'nullable|required_if:service,pppoe|string|max:25',
             'username' => 'nullable|required_if:service,pppoe|string|max:25',
             'monthly_rent' => 'required|numeric',
+            'package_name' => 'nullable|string|max:255',
             'connected_by' => 'required',
             'billing_type' => 'required',
             'connection_type' => 'required',
@@ -255,12 +256,14 @@ class NewCustomer extends Component
 
     public function updated($propertyName)
     {
-        $this->validateOnly($propertyName);
+        $rules = $this->rules();
+        if (array_key_exists($propertyName, $rules)) {
+            $this->validateOnly($propertyName);
+        }
     }
 
-    public function packageName($value)
+    public function updatedPackageName(): void
     {
-        $this->package_name = $this->profile;
         $this->calculateTotal('package_name');
     }
 
