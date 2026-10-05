@@ -683,13 +683,20 @@ class NewCustomer extends Component
                 $customerAddress->save();
             }
 
-            if ($this->latitude !== null || $this->longitude !== null) {
-                CustomersAddress::create([
-                    'customer_address_unique_id' => $customer->customer_unique_id,
-                    'label_name' => 'Network Location',
-                    'latitude' => $this->latitude,
-                    'longitude' => $this->longitude,
-                ]);
+            $latitude = is_numeric($this->latitude) ? (float) $this->latitude : null;
+            $longitude = is_numeric($this->longitude) ? (float) $this->longitude : null;
+
+            if ($latitude !== null || $longitude !== null) {
+                CustomersAddress::updateOrCreate(
+                    [
+                        'customer_address_unique_id' => $customer->customer_unique_id,
+                        'label_name' => 'Network Location',
+                    ],
+                    [
+                        'latitude' => $latitude,
+                        'longitude' => $longitude,
+                    ]
+                );
             }
 
             $customerBilling = new BillingInfo;
