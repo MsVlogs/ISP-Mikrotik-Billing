@@ -3,6 +3,7 @@ namespace App\Services\Olt\Adapters;
 
 use App\Contracts\OltReadOnlyAdapter;
 use App\Models\NetworkInventoryDevice;
+use App\Services\Olt\VsolSshOpmCollector;
 use Illuminate\Support\Facades\Crypt;
 
 class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
@@ -84,6 +85,15 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             $result['onus'] = $this->enrichOnus($host, $community, $result['onus'], $timeout, $retries);
             $result['meta']['onu_count'] = count($result['onus']);
             $result['meta']['onu_discovery_configured'] = true;
+
+            // VSOL exposes the ONU OPM values through its read-only CLI. Merge those
+            // values by ONU MAC so discovery index/order cannot attach telemetry to
+            // the wrong customer/ONU.
+            $opm = app(VsolSshOpmCollector::class)->collect($device, $result['onus']);
+            $result['meta']['opm_status'] = $opm['status'] ?? 'unknown';
+            $result['meta']['opm_message'] = $opm['message'] ?? null;
+            $result['meta']['opm_source'] = $opm['meta']['source'] ?? null;
+            if (! empty($opm['onus'])) $result['onus'] = $opm['onus'];
         }
 
         if ($result['meta']['oid_count'] === 0 && !$result['meta']['onu_discovery_configured']) {
