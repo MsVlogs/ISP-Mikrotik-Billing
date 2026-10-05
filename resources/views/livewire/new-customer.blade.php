@@ -341,13 +341,12 @@
                     </x-slot>
                     <x-slot name="aside">
                         <x-mikrotik.form-group
-                            label="{{ __('Package Name') }}"
+                            label="{{ __('Package Plan') }}"
                             type="dropdown"
                             name="package_name"
-                            wChange="calculateTotal('package_name')"
-                            placeholder="{{ __('Select Any One') }}"
+                            placeholder="{{ __('Select Package Plan') }}"
                             required="true"
-                            :options="$packages->pluck('package')->toArray()"
+                            :options="$packages->pluck('package')->unique()->values()->toArray()"
                         />
                         <x-mikrotik.form-group
                             label="{{ __('Monthly Charge') }}"
