@@ -25,8 +25,8 @@ class NetworkMap extends Component
         $nodes = CustomersAddress::query()->leftJoin('customers_infos as ci','ci.customer_unique_id','=','customers_addresses.customer_address_unique_id')->leftJoin('p_p_p_secrets as ps','ps.id','=','ci.ppp_user_id')
             ->where('customers_addresses.label_name', 'Network Location')
             ->whereNotNull('customers_addresses.latitude')->whereNotNull('customers_addresses.longitude')->limit(1000)
-            ->get(['customers_addresses.latitude','customers_addresses.longitude','customers_addresses.customer_address_unique_id','customers_addresses.label_name','ci.status as customer_status','ps.router_name'])
-            ->map(fn($a)=>['lat'=>(float)$a->latitude,'lng'=>(float)$a->longitude,'id'=>$a->customer_address_unique_id,'label'=>$a->customer_address_unique_id,'status'=>$this->normalizeStatus($a->customer_status),'router'=>$a->router_name,'kind'=>'customer'])->values()->toArray();
+            ->get(['customers_addresses.latitude','customers_addresses.longitude','customers_addresses.customer_address_unique_id','customers_addresses.label_name','ci.customer_name','ci.status as customer_status','ps.router_name'])
+            ->map(fn($a)=>['lat'=>(float)$a->latitude,'lng'=>(float)$a->longitude,'id'=>$a->customer_address_unique_id,'label'=>$a->customer_name ?: $a->customer_address_unique_id,'customer_uid'=>$a->customer_address_unique_id,'customer_url'=>route('customers.show',['id'=>$a->customer_address_unique_id]),'status'=>$this->normalizeStatus($a->customer_status),'router'=>$a->router_name,'kind'=>'customer'])->values()->toArray();
         $nodes = collect(array_merge($nodes, $routerNodes, $deviceLocations));
         $coordinates = $nodes->keyBy(fn ($node) => ($node['kind'] === 'router' ? 'router:' : 'device:').$node['id']);
         $mapEdges = NetworkTopologyLink::query()->where('is_published', true)->get()->map(function ($link) use ($coordinates) {

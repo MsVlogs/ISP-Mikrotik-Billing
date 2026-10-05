@@ -141,7 +141,7 @@
                         !statusFilter || node.status === statusFilter;
                     const matchesQuery =
                         !query ||
-                        [node.id, node.label, node.ip, node.location, node.kind]
+                        [node.id, node.label, node.customer_uid, node.ip, node.location, node.kind]
                             .some((value) =>
                                 String(value ?? "")
                                     .toLowerCase()
@@ -216,14 +216,19 @@
                     marker.bindPopup(
                         '<div style="min-width:190px">' +
                         "<strong>" + esc(deviceMeta[0]) + "</strong>" +
-                        "<div>" + esc(node.label || node.id) + "</div>" +
+                        "<div><strong>" + esc(node.label || node.id) + "</strong></div>" +
+                        (node.customer_uid ? "<small>Customer ID: " + esc(node.customer_uid) + "</small><br>" : "") +
                         "<small>IP: " + esc(node.ip || "—") + "</small><br>" +
                         "<small>Status: " +
                         esc(node.status || "unknown") +
                         "</small><br>" +
                         "<small>" +
                         esc(node.location || "") +
-                        "</small></div>"
+                        "</small>" +
+                        (node.kind === "customer" && node.customer_url
+                            ? '<div class="mt-2"><a class="btn btn-sm btn-primary" href="' + esc(node.customer_url) + '">View Customer</a></div>'
+                            : "") +
+                        "</div>"
                     );
 
                     markers.push(marker);
