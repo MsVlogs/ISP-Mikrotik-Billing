@@ -169,9 +169,11 @@ class SyncOltOnuMappings extends Command
                 $mappingData = [
                     'customer_id' => $customerId ?? $existingMapping?->customer_id,
                     'ppp_user_id' => $pppId ?? $existingMapping?->ppp_user_id,
-                    'onu_serial' => $onuSerial,
-                    'onu_mac' => $onuMac,
-                    'pon_port' => $row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? null,
+                    'onu_serial' => trim((string) $onuSerial) !== '' ? $onuSerial : $existingMapping?->onu_serial,
+                    'onu_mac' => $this->normalizeMac($onuMac) !== '' ? $onuMac : $existingMapping?->onu_mac,
+                    'pon_port' => trim((string) ($row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? '')) !== ''
+                        ? ($row['pon_port'] ?? $row['ponPort'] ?? $row['pon'])
+                        : $existingMapping?->pon_port,
                     'distance_m' => $row['distance'] ?? $row['distance_m'] ?? $existingMapping?->distance_m,
                     'temperature' => $row['temperature'] ?? $row['temp'] ?? $existingMapping?->temperature,
                     'supply_voltage' => $row['supply_voltage'] ?? $row['voltage'] ?? $existingMapping?->supply_voltage,

@@ -3,7 +3,6 @@ namespace App\Services\Olt\Adapters;
 
 use App\Contracts\OltReadOnlyAdapter;
 use App\Models\NetworkInventoryDevice;
-use App\Services\Olt\VsolSshOpmCollector;
 use Illuminate\Support\Facades\Crypt;
 
 class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
@@ -89,34 +88,32 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             // The application only needs three automatic OPM fields:
             // ONU MAC (from read-only SNMP discovery) plus TX/RX optical power.
             // Temperature, voltage and TX bias are intentionally not required.
-            $snmpMetricNames = ['tx_power', 'rx_power'];
-            $snmpMetricCount = 0;
+            $txCount = 0;
+            $rxCount = 0;
             foreach ($result['onus'] as $onu) {
-                foreach ($snmpMetricNames as $metric) if (is_numeric($onu[$metric] ?? null)) $snmpMetricCount++;
+                if (is_numeric($onu['tx_power'] ?? null)) $txCount++;
+                if (is_numeric($onu['rx_power'] ?? null)) $rxCount++;
             }
             $macCount = 0;
-            foreach ($result['onus'] as $onu) if (trim((string) ($onu['onu_mac'] ?? '')) !== '') $macCount++;
+            foreach ($result['onus'] as $onu) {
+                if (trim((string) ($onu['onu_mac'] ?? '')) !== '') $macCount++;
+            }
 
+            $onuCount = count($result['onus']);
+            $snmpMetricCount = $txCount + $rxCount;
             $result['meta']['onu_mac_count'] = $macCount;
             $result['meta']['snmp_opm_metric_count'] = $snmpMetricCount;
-            $result['meta']['opm_status'] = $snmpMetricCount > 0 ? 'partial' : 'not_ready';
+            $result['meta']['opm_tx_count'] = $txCount;
+            $result['meta']['opm_rx_count'] = $rxCount;
+            $result['meta']['opm_tx_coverage'] = $onuCount > 0 ? round(($txCount / $onuCount) * 100, 1) : 0;
+            $result['meta']['opm_rx_coverage'] = $onuCount > 0 ? round(($rxCount / $onuCount) * 100, 1) : 0;
+            $result['meta']['opm_status'] = ($txCount > 0 && $rxCount > 0)
+                ? (($txCount === $onuCount && $rxCount === $onuCount) ? 'ok' : 'partial')
+                : 'not_ready';
             $result['meta']['opm_message'] = $snmpMetricCount > 0
-                ? "VSOL SNMP supplied {$macCount} ONU MACs and {$snmpMetricCount} TX/RX values."
-                : "VSOL SNMP supplied {$macCount} ONU MACs; TX/RX requires the VSOL read-only CLI.";
+                ? "VSOL SNMP supplied {$macCount} ONU MACs; TX {$txCount}/{$onuCount}, RX {$rxCount}/{$onuCount}."
+                : "VSOL SNMP supplied {$macCount} ONU MACs; TX/RX OPM is temporarily unavailable. Last-known values are preserved by mapping sync.";
             $result['meta']['opm_source'] = $snmpMetricCount > 0 ? 'vsol-snmp-opm' : null;
-
-            // If SSH CLI is configured and reachable, use it to fill any metrics
-            // that the SNMP agent does not expose. Never let an SSH failure erase
-            // valid SNMP OPM values.
-            $opm = app(VsolSshOpmCollector::class)->collect($device, $result['onus']);
-            if (($opm['status'] ?? '') === 'ok' && ! empty($opm['onus'])) {
-                $result['onus'] = $opm['onus'];
-                $result['meta']['opm_status'] = 'ok';
-                $result['meta']['opm_message'] = $opm['message'] ?? 'VSOL SSH OPM populated successfully.';
-                $result['meta']['opm_source'] = 'vsol-snmp-opm+ssh-cli';
-            } elseif (($opm['status'] ?? '') !== 'not_ready' && $snmpMetricCount === 0) {
-                $result['meta']['opm_message'] = $opm['message'] ?? $result['meta']['opm_message'];
-            }
         }
 
         if ($result['meta']['oid_count'] === 0 && !$result['meta']['onu_discovery_configured']) {
@@ -144,8 +141,8 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         $tables = [];
         foreach ($onuConfig as $field => $baseOid) {
             if (!is_string($field) || !is_string($baseOid) || !preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/', trim($baseOid))) continue;
-            $walk = @snmp2_real_walk($host, $community, trim($baseOid), $timeout, $retries);
-            if (!is_array($walk)) continue;
+            $walk = $this->walkWithRetry($host, $community, trim($baseOid), $timeout, $retries);
+            if (!is_array($walk) || !$walk) continue;
             $position = 0;
             foreach ($walk as $returnedOid => $value) {
                 $index = $this->oidIndex((string) $returnedOid, trim($baseOid));
@@ -183,6 +180,22 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         if ($returned === $base) return '';
         $prefix = $base . '.';
         return str_starts_with($returned, $prefix) ? substr($returned, strlen($prefix)) : null;
+    }
+
+    private function walkWithRetry(string $host, string $community, string $oid, int $timeout, int $retries): array
+    {
+        $attempts = 3;
+        $baseTimeout = max(250000, min(1000000, $timeout));
+        $baseRetries = max(0, min(2, $retries));
+
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            $attemptTimeout = min(1500000, $baseTimeout * $attempt);
+            $attemptRetries = min(2, $baseRetries + ($attempt - 1));
+            $walk = @snmp2_real_walk($host, $community, $oid, $attemptTimeout, $attemptRetries);
+            if (is_array($walk) && $walk) return $walk;
+        }
+
+        return [];
     }
 
     private function cleanSnmpValue(mixed $value): mixed
@@ -245,24 +258,28 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             'sw' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.7',
         ],
         'opm' => [
-            'temperature' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.3',
-            'supply_voltage' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.4',
-            'tx_bias_current' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.5',
+            // Only the required read-only optical metrics are polled.
             'tx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.6',
             'rx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.7',
         ],
     ];
+    $numericIds = array_values(array_filter(array_map(
+        fn ($onu) => ctype_digit(trim((string) ($onu['onu_id'] ?? ''))) ? (int) trim((string) $onu['onu_id']) : null,
+        $onus
+    ), fn ($id) => $id !== null));
+    $inventoryZeroBased = in_array(0, $numericIds, true);
+
     $lookup = [];
     foreach ($tables as $group => $fields) {
         foreach ($fields as $field => $base) {
-            $walk = @snmp2_real_walk($host, $community, $base, $timeout, $retries);
-            if (!is_array($walk)) continue;
+            $walk = $this->walkWithRetry($host, $community, $base, $timeout, $retries);
+            if (!is_array($walk) || !$walk) continue;
             foreach ($walk as $oid => $value) {
                 $idx = $this->oidIndex((string) $oid, $base);
                 if ($idx === null) continue;
                 $parts = array_values(array_filter(explode('.', $idx), 'strlen'));
                 $key = count($parts) >= 2 ? $parts[count($parts)-2].'.'.$parts[count($parts)-1] : (string) ($parts[0] ?? '');
-                if (in_array($group, ['sn','opm'], true) && count($parts) >= 2 && ctype_digit((string) $parts[count($parts)-1])) {
+                if (in_array($group, ['sn','opm'], true) && $inventoryZeroBased && count($parts) >= 2 && ctype_digit((string) $parts[count($parts)-1])) {
                     $key = $parts[count($parts)-2].'.'.max(0, ((int) $parts[count($parts)-1]) - 1);
                 }
                 $lookup[$group][$key][$field] = $this->cleanSnmpValue($value);
@@ -273,7 +290,7 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         $pon = (string) ($onu['pon_port'] ?? '');
         $id = (string) ($onu['onu_id'] ?? '');
         $key = $pon !== '' ? $pon.'.'.$id : $id;
-        $shiftedKey = $pon !== '' && ctype_digit($id) ? $pon.'.'.((int) $id + 1) : null;
+        $shiftedKey = $pon !== '' && $inventoryZeroBased && ctype_digit($id) ? $pon.'.'.((int) $id + 1) : null;
         $snKey = $shiftedKey ?: $key;
         $snExtra = [];
         $targetMac = $this->normalizeMac($onu['onu_mac'] ?? '');
