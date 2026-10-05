@@ -36,28 +36,19 @@
   </div>
   <div class="table-responsive">
     <table class="table table-sm table-hover align-middle mb-0 text-nowrap">
-      <thead><tr><th>ONU ID</th><th>MAC Address</th><th>Description</th><th>Distance(m)</th><th>Temperature(°C)</th><th>Supply Voltage(V)</th><th>TX Bias Current(mA)</th><th>TX Power(dBm)</th><th>RX Power(dBm)</th></tr></thead>
+      <thead><tr><th>ONU ID</th><th>ONU MAC</th><th>TX Power(dBm)</th><th>RX Power(dBm)</th></tr></thead>
       <tbody>
       @forelse(($rows ?? []) as $row)
-        @php($distance=$row['distance'] ?? $row['distance_m'] ?? null)
-        @php($temperature=$row['temperature'] ?? $row['temp'] ?? null)
-        @php($voltage=$row['supply_voltage'] ?? $row['voltage'] ?? null)
-        @php($bias=$row['tx_bias_current'] ?? $row['tx_bias'] ?? $row['bias_current'] ?? null)
         @php($tx=$row['tx_power'] ?? null)
         @php($rx=$row['rx_power'] ?? null)
         <tr>
           <td><strong>{{ $row['onu_id'] ?? '—' }}</strong><small class="d-block text-muted">EPON0/{{ $row['pon_port'] ?? '—' }}:{{ $row['onu_id'] ?? '—' }}</small></td>
           <td class="font-monospace">{{ $row['onu_mac'] ?? '—' }}</td>
-          <td>{{ $row['description'] ?? $row['onu_model'] ?? '—' }}</td>
-          <td>{{ is_numeric($distance) ? number_format((float)$distance,0) : '—' }}</td>
-          <td>{{ is_numeric($temperature) ? number_format((float)$temperature,2) : '—' }}</td>
-          <td>{{ is_numeric($voltage) ? number_format((float)$voltage,2) : '—' }}</td>
-          <td>{{ is_numeric($bias) ? number_format((float)$bias,2) : '—' }}</td>
           <td>{{ is_numeric($tx) ? number_format((float)$tx,2) : '—' }}</td>
           <td>{{ is_numeric($rx) ? number_format((float)$rx,2) : '—' }}</td>
         </tr>
       @empty
-        <tr><td colspan="9" class="text-center py-4 text-muted">No ONU OPM telemetry returned.</td></tr>
+        <tr><td colspan="4" class="text-center py-4 text-muted">No ONU MAC / TX / RX telemetry returned.</td></tr>
       @endforelse
       </tbody>
     </table>

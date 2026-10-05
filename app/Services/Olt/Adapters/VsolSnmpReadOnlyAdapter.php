@@ -86,19 +86,23 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             $result['meta']['onu_count'] = count($result['onus']);
             $result['meta']['onu_discovery_configured'] = true;
 
-            // VSOL exposes the ONU OPM values through its read-only CLI. Merge those
-            // values by ONU MAC so discovery index/order cannot attach telemetry to
-            // the wrong customer/ONU.
-            $snmpMetricNames = ['temperature', 'supply_voltage', 'tx_bias_current', 'tx_power', 'rx_power'];
+            // The application only needs three automatic OPM fields:
+            // ONU MAC (from read-only SNMP discovery) plus TX/RX optical power.
+            // Temperature, voltage and TX bias are intentionally not required.
+            $snmpMetricNames = ['tx_power', 'rx_power'];
             $snmpMetricCount = 0;
             foreach ($result['onus'] as $onu) {
                 foreach ($snmpMetricNames as $metric) if (is_numeric($onu[$metric] ?? null)) $snmpMetricCount++;
             }
+            $macCount = 0;
+            foreach ($result['onus'] as $onu) if (trim((string) ($onu['onu_mac'] ?? '')) !== '') $macCount++;
+
+            $result['meta']['onu_mac_count'] = $macCount;
             $result['meta']['snmp_opm_metric_count'] = $snmpMetricCount;
             $result['meta']['opm_status'] = $snmpMetricCount > 0 ? 'partial' : 'not_ready';
             $result['meta']['opm_message'] = $snmpMetricCount > 0
-                ? "VSOL SNMP OPM returned {$snmpMetricCount} metric values; remaining OPM fields require CLI/firmware exposure."
-                : 'VSOL SNMP OPM metrics were not returned by the configured OPM table.';
+                ? "VSOL SNMP supplied {$macCount} ONU MACs and {$snmpMetricCount} TX/RX values."
+                : "VSOL SNMP supplied {$macCount} ONU MACs; TX/RX requires the VSOL read-only CLI.";
             $result['meta']['opm_source'] = $snmpMetricCount > 0 ? 'vsol-snmp-opm' : null;
 
             // If SSH CLI is configured and reachable, use it to fill any metrics

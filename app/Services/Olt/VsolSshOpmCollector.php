@@ -73,9 +73,6 @@ class VsolSshOpmCollector
                 if ($baseIndex === null || ! isset($baseOnus[$baseIndex])) continue;
 
                 $baseOnus[$baseIndex]['opm_source'] = 'vsol-cli-ssh';
-                $baseOnus[$baseIndex]['temperature'] = $row['temperature'];
-                $baseOnus[$baseIndex]['supply_voltage'] = $row['supply_voltage'];
-                $baseOnus[$baseIndex]['tx_bias_current'] = $row['tx_bias_current'];
                 $baseOnus[$baseIndex]['tx_power'] = $row['tx_power'];
                 $baseOnus[$baseIndex]['rx_power'] = $row['rx_power'];
                 $merged++;
