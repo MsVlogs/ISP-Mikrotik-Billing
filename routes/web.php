@@ -543,7 +543,16 @@ Route::middleware([
                 ->keyBy(fn ($match) => (string) ($match['mapping_id'] ?? ''))
                 ->all();
             $recommendedCustomerId=(string)request('customer_id','');
-            return view('xlink.olt-customers',compact('device','mappings','mappingByOnu','customers','live','q','status','matchingCandidates','recommendedCustomerId'));
+
+            // Detect reused Customer/PPPoE assignments without changing existing data.
+            $customerMapCounts=$mappings->whereNotNull('customer_id')->groupBy('customer_id');
+            $pppMapCounts=$mappings->whereNotNull('ppp_user_id')->groupBy('ppp_user_id');
+            $mappingConflictIds=$mappings->filter(function($m) use($customerMapCounts,$pppMapCounts){
+                return ($m->customer_id && (($customerMapCounts->get($m->customer_id)?->count() ?? 0) > 1))
+                    || ($m->ppp_user_id && (($pppMapCounts->get($m->ppp_user_id)?->count() ?? 0) > 1));
+            })->pluck('id')->map(fn($id)=>(int)$id)->all();
+
+            return view('xlink.olt-customers',compact('device','mappings','mappingByOnu','customers','live','q','status','matchingCandidates','recommendedCustomerId','mappingConflictIds'));
         })->name('network-inventory.olt.customers');
         Route::post('/network-inventory/olt/{device}/customers/mapping', function(\Illuminate\Http\Request $request, \App\Models\NetworkInventoryDevice $device){
             abort_unless($device->type==='olt',404);
