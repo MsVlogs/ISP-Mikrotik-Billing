@@ -89,11 +89,30 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             // VSOL exposes the ONU OPM values through its read-only CLI. Merge those
             // values by ONU MAC so discovery index/order cannot attach telemetry to
             // the wrong customer/ONU.
+            $snmpMetricNames = ['temperature', 'supply_voltage', 'tx_bias_current', 'tx_power', 'rx_power'];
+            $snmpMetricCount = 0;
+            foreach ($result['onus'] as $onu) {
+                foreach ($snmpMetricNames as $metric) if (is_numeric($onu[$metric] ?? null)) $snmpMetricCount++;
+            }
+            $result['meta']['snmp_opm_metric_count'] = $snmpMetricCount;
+            $result['meta']['opm_status'] = $snmpMetricCount > 0 ? 'partial' : 'not_ready';
+            $result['meta']['opm_message'] = $snmpMetricCount > 0
+                ? "VSOL SNMP OPM returned {$snmpMetricCount} metric values; remaining OPM fields require CLI/firmware exposure."
+                : 'VSOL SNMP OPM metrics were not returned by the configured OPM table.';
+            $result['meta']['opm_source'] = $snmpMetricCount > 0 ? 'vsol-snmp-opm' : null;
+
+            // If SSH CLI is configured and reachable, use it to fill any metrics
+            // that the SNMP agent does not expose. Never let an SSH failure erase
+            // valid SNMP OPM values.
             $opm = app(VsolSshOpmCollector::class)->collect($device, $result['onus']);
-            $result['meta']['opm_status'] = $opm['status'] ?? 'unknown';
-            $result['meta']['opm_message'] = $opm['message'] ?? null;
-            $result['meta']['opm_source'] = $opm['meta']['source'] ?? null;
-            if (! empty($opm['onus'])) $result['onus'] = $opm['onus'];
+            if (($opm['status'] ?? '') === 'ok' && ! empty($opm['onus'])) {
+                $result['onus'] = $opm['onus'];
+                $result['meta']['opm_status'] = 'ok';
+                $result['meta']['opm_message'] = $opm['message'] ?? 'VSOL SSH OPM populated successfully.';
+                $result['meta']['opm_source'] = 'vsol-snmp-opm+ssh-cli';
+            } elseif (($opm['status'] ?? '') !== 'not_ready' && $snmpMetricCount === 0) {
+                $result['meta']['opm_message'] = $opm['message'] ?? $result['meta']['opm_message'];
+            }
         }
 
         if ($result['meta']['oid_count'] === 0 && !$result['meta']['onu_discovery_configured']) {
@@ -222,6 +241,9 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             'sw' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.7',
         ],
         'opm' => [
+            'temperature' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.3',
+            'supply_voltage' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.4',
+            'tx_bias_current' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.5',
             'tx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.6',
             'rx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.7',
         ],
@@ -274,8 +296,14 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
                 $onu['hardware_version'] = $extra['hw'] ?? null;
                 $onu['software_version'] = $extra['sw'] ?? null;
             } else {
+                $onu['temperature'] = $this->normalizeMetric($extra['temperature'] ?? ($onu['temperature'] ?? null));
+                $onu['supply_voltage'] = $this->normalizeMetric($extra['supply_voltage'] ?? ($onu['supply_voltage'] ?? null));
+                $onu['tx_bias_current'] = $this->normalizeMetric($extra['tx_bias_current'] ?? ($onu['tx_bias_current'] ?? null));
                 $onu['tx_power'] = $this->normalizeOpticalPower($extra['tx'] ?? ($onu['tx_power'] ?? null));
                 $onu['rx_power'] = $this->normalizeOpticalPower($extra['rx'] ?? ($onu['rx_power'] ?? null));
+                if ($onu['temperature'] !== null || $onu['supply_voltage'] !== null || $onu['tx_bias_current'] !== null || $onu['tx_power'] !== null || $onu['rx_power'] !== null) {
+                    $onu['opm_source'] = 'vsol-snmp-opm';
+                }
             }
         }
     }
@@ -287,7 +315,16 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
     {
         if ($value === null || $value === '') return null;
         if (preg_match('/\((-?\d+(?:\.\d+)?)\s*dBm\)/i', (string) $value, $m)) return (float) $m[1];
+        if (preg_match('/(-?\d+(?:\.\d+)?)\s*dBm/i', (string) $value, $m)) return (float) $m[1];
         return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function normalizeMetric(mixed $value): ?float
+    {
+        if ($value === null || $value === '') return null;
+        if (is_numeric($value)) return (float) $value;
+        if (preg_match('/-?\d+(?:\.\d+)?/', (string) $value, $m)) return (float) $m[0];
+        return null;
     }
 
     private function normalizeMac(mixed $value): string

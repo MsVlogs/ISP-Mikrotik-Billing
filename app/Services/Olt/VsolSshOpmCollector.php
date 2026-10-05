@@ -26,27 +26,26 @@ class VsolSshOpmCollector
             $ssh->setTimeout($timeout);
             if (! $ssh->login($username, $password)) return $this->fail('VSOL SSH authentication failed.');
 
-            $statusCommand = (string) data_get($config, 'opm.status_command', 'show onu status all');
             $opmCommand = (string) data_get($config, 'opm.command', 'show onu opm-diag all');
-            $statusOutput = trim((string) $ssh->exec($statusCommand));
             $opmOutput = trim((string) $ssh->exec($opmCommand));
-
-            $statusMap = $this->parseStatus($statusOutput);
             $opmRows = $this->parseOpm($opmOutput);
             if (! $opmRows) return $this->fail('VSOL OPM command returned no parseable ONU rows.');
 
-            $byMac = [];
+            // The CLI output uses EPON0/<PON>:<ONU> with ONU numbering starting at 1,
+            // while our SNMP normalized inventory may expose a zero-based ONU id.
+            // Build both exact and +1 keys and prefer the CLI's 1-based key.
+            $byCliKey = [];
             foreach ($baseOnus as $index => $onu) {
-                $mac = $this->normalizeMac($onu['onu_mac'] ?? null);
-                if ($mac !== '') $byMac[$mac] = $index;
+                $pon = trim((string) ($onu['pon_port'] ?? ''));
+                $id = trim((string) ($onu['onu_id'] ?? ''));
+                if ($pon === '' || $id === '') continue;
+                $byCliKey[$pon.':'.$id] ??= $index;
+                if (ctype_digit($id)) $byCliKey[$pon.':'.((int) $id + 1)] ??= $index;
             }
 
             $merged = 0;
             foreach ($opmRows as $row) {
-                $statusKey = $row['cli_key'];
-                $mac = $statusMap[$statusKey]['mac'] ?? '';
-                if ($mac === '') continue;
-                $baseIndex = $byMac[$this->normalizeMac($mac)] ?? null;
+                $baseIndex = $byCliKey[$row['cli_key']] ?? null;
                 if ($baseIndex === null || ! isset($baseOnus[$baseIndex])) continue;
 
                 $baseOnus[$baseIndex]['opm_source'] = 'vsol-cli-ssh';
@@ -55,18 +54,15 @@ class VsolSshOpmCollector
                 $baseOnus[$baseIndex]['tx_bias_current'] = $row['tx_bias_current'];
                 $baseOnus[$baseIndex]['tx_power'] = $row['tx_power'];
                 $baseOnus[$baseIndex]['rx_power'] = $row['rx_power'];
-                if (($baseOnus[$baseIndex]['distance'] ?? null) === null && isset($statusMap[$statusKey]['distance'])) {
-                    $baseOnus[$baseIndex]['distance'] = $statusMap[$statusKey]['distance'];
-                }
                 $merged++;
             }
 
             return [
                 'ok' => $merged > 0,
                 'status' => $merged > 0 ? 'ok' : 'partial',
-                'message' => $merged > 0 ? "VSOL SSH OPM populated {$merged} ONU rows." : 'VSOL SSH OPM parsed successfully, but no rows matched the live ONU MAC inventory.',
+                'message' => $merged > 0 ? "VSOL SSH OPM populated {$merged} ONU rows." : 'VSOL SSH OPM parsed successfully, but no rows matched the live ONU index inventory.',
                 'onus' => $baseOnus,
-                'meta' => ['source' => 'ssh-cli', 'status_rows' => count($statusMap), 'opm_rows' => count($opmRows), 'merged_rows' => $merged, 'read_only' => true, 'writes_performed' => false],
+                'meta' => ['source' => 'ssh-cli', 'opm_rows' => count($opmRows), 'merged_rows' => $merged, 'read_only' => true, 'writes_performed' => false],
             ];
         } catch (\Throwable $e) {
             return $this->fail('VSOL SSH OPM read failed: '.$e->getMessage());
