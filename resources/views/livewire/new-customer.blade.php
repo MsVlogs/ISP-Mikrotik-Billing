@@ -341,7 +341,7 @@
                     </x-slot>
                     <x-slot name="aside">
                         <x-mikrotik.form-group
-                            label="{{ __('Package Name') }}"
+                            label="{{ __('Package Plan') }}"
                             type="dropdown"
                             name="package_name"
                             wChange="calculateTotal('package_name')"

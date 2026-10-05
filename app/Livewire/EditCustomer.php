@@ -137,6 +137,25 @@ class EditCustomer extends Component
             ->pluck('package');
     }
 
+    public function loadPackagePrice(): void
+    {
+        $packageName = trim((string) ($this->fields['pppUser']['package_name'] ?? ''));
+        if ($packageName === '') {
+            return;
+        }
+
+        $routerName = trim((string) ($this->fields['pppUser']['router_name'] ?? ''));
+        $query = PackageList::where('package', $packageName);
+        if ($routerName !== '') {
+            $query->where('router_name', $routerName);
+        }
+
+        $package = $query->first();
+        if ($package) {
+            $this->fields['billing']['monthly_rent'] = $package->price;
+        }
+    }
+
     public function loadInterfaceNames()
     {
         if ($this->fields['pppUser']['router_name'] ?? false) {

@@ -277,7 +277,7 @@ class NewCustomer extends Component
                     })->first();
             } else {
                 $package = PackageList::where('package', $this->package_name)
-                    ->where('router_name', ! empty($this->router_name) ? $this->router_name : null)
+                    ->when(! empty($this->router_name), fn ($q) => $q->where('router_name', $this->router_name))
                     ->first();
             }
             $this->monthly_rent = $package?->price ?? '';
