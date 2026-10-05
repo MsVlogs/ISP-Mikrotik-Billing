@@ -65,7 +65,7 @@
 <x-mikrotik.section-form :class="'row'">
 <x-slot name="title"><span class="text-success fw-bold"><i class="bi bi-cash-stack me-2"></i>Billing Information</span></x-slot>
 <x-slot name="aside">
-<x-mikrotik.form-group label="Package Plan" name="fields.pppUser.package_name" type="text"/>
+<x-mikrotik.form-group label="Package Plan" name="fields.pppUser.package_name" type="dropdown" placeholder="Select Package Plan" :options="$packageLists->unique()->values()->toArray()"/>
 <x-mikrotik.form-group label="Monthly Charge" name="fields.billing.monthly_rent" type="number" required="true"/>
 <x-mikrotik.form-group label="Due Amount" name="fields.billing.due_amount" type="number"/>
 <x-mikrotik.form-group label="Additional Charge" name="fields.billing.additional_charge" type="number"/>
