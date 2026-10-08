@@ -83,6 +83,11 @@ class CustomersInfo extends Model
             }
         });
     }
+    public function setConnectionDateAttribute($value): void
+    {
+        $this->attributes['connection_date'] = filled($value) ? $value : null;
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
