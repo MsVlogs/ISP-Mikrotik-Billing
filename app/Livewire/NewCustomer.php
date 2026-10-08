@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Rules\ValidPhoneDigits;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
@@ -215,7 +216,7 @@ class NewCustomer extends Component
         // Start with the base rules
         $rules = [
             'customer_name' => 'required|min:3|max:255',
-            'customer_unique_id' => 'required|string|max:255|unique:customers_infos,customer_unique_id',
+            'customer_unique_id' => ['required', 'string', 'max:255', Rule::unique('customers_infos', 'customer_unique_id')->whereNull('deleted_at')],
             'mobile' => ['nullable', 'string', new ValidPhoneDigits],
             'email' => 'nullable|email',
             'alternative_mobile' => ['nullable', 'string', new ValidPhoneDigits],
