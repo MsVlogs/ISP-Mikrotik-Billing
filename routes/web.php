@@ -608,10 +608,30 @@ Route::middleware([
             abort_if($product->movements()->exists(),422,'Product cannot be deleted because stock movements exist. Mark it inactive instead.');
             $product->delete(); return back()->with('inventory_message','Product deleted.');
         })->name('stock-inventory.products.delete');
-        Route::post('/stock-inventory/products', function(\Illuminate\Http\Request $r){$d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku','name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','quantity'=>'required|integer|min:0','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryProduct::create($d); return back()->with('inventory_message','Product added.');})->name('stock-inventory.products.store');
+        Route::post('/stock-inventory/products', function(\Illuminate\Http\Request $r){
+            $d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku','name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','quantity'=>'required|integer|min:0','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']);
+            \Illuminate\Support\Facades\DB::transaction(function() use($d){
+                $opening=(int)$d['quantity'];
+                $product=\App\Models\StockInventoryProduct::create($d);
+                if($opening>0){
+                    \App\Models\StockInventoryMovement::create(['product_id'=>$product->id,'movement_type'=>'stock-in','quantity'=>$opening,'reference'=>'Opening Balance','source'=>'Initial stock entry','notes'=>'Opening quantity recorded when product was created.']);
+                }
+            });
+            return back()->with('inventory_message','Product added.');
+        })->name('stock-inventory.products.store');
         Route::post('/stock-inventory/movements', function(\Illuminate\Http\Request $r){$d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','movement_type'=>'required|in:stock-in,issue,sale,return,adjustment','quantity'=>'required|integer|min:1','reference'=>'nullable|string|max:120','source'=>'nullable|string|max:120','destination'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); return \Illuminate\Support\Facades\DB::transaction(function() use($d){$p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail(); abort_if($p->status!=='active',422,'Inactive products cannot receive new stock movements.'); $delta=in_array($d['movement_type'],['stock-in','return','adjustment'],true)?$d['quantity']:-$d['quantity']; abort_if($delta<0 && $p->quantity < abs($delta),422,'Insufficient stock.'); $p->update(['quantity'=>$p->quantity+$delta]); \App\Models\StockInventoryMovement::create($d); return back()->with('inventory_message','Stock movement recorded successfully.');});})->name('stock-inventory.movements.store');
         Route::get('/stock-inventory/movements', function(){ $movements=\App\Models\StockInventoryMovement::with('product')->latest()->paginate(30); return view('xlink.stock-inventory',['tab'=>'movements','movements'=>$movements,'products'=>\App\Models\StockInventoryProduct::where('status','active')->orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.movements');
-        Route::get('/stock-inventory/purchases', function(){ $purchases=\App\Models\StockInventoryPurchase::with('supplier','items.product')->latest()->paginate(20); return view('xlink.stock-inventory',['tab'=>'purchases','purchases'=>$purchases,'suppliers'=>\App\Models\StockInventorySupplier::where('status','active')->orderBy('name')->get(),'products'=>\App\Models\StockInventoryProduct::where('status','active')->orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.purchases');
+        Route::get('/stock-inventory/purchases', function(){
+            $suppliers=\App\Models\StockInventorySupplier::withSum('purchases as purchase_total','total_amount')
+                ->withSum('payments as paid_total','amount')->where('status','active')->orderBy('name')->get();
+            $purchases=\App\Models\StockInventoryPurchase::with('supplier','items.product')->latest()->paginate(20);
+            return view('xlink.stock-inventory',['tab'=>'purchases','purchases'=>$purchases,'suppliers'=>$suppliers,'products'=>\App\Models\StockInventoryProduct::where('status','active')->orderBy('name')->get(),'stats'=>[]]);
+        })->name('stock-inventory.purchases');
+        Route::post('/stock-inventory/suppliers/{supplier}/payments', function(\Illuminate\Http\Request $r, \App\Models\StockInventorySupplier $supplier){
+            $d=$r->validate(['payment_date'=>'required|date','amount'=>'required|numeric|min:0.01','method'=>'required|in:cash,bank,bkash,nagad,rocket,other','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']);
+            \App\Models\StockInventorySupplierPayment::create($d+['supplier_id'=>$supplier->id,'recorded_by'=>auth()->id()]);
+            return back()->with('inventory_message','Supplier payment recorded.');
+        })->name('stock-inventory.suppliers.payments.store');
         Route::post('/stock-inventory/suppliers', function(\Illuminate\Http\Request $r){$d=$r->validate(['name'=>'required|string|max:160','phone'=>'nullable|string|max:40','email'=>'nullable|email|max:190','address'=>'nullable|string|max:1000','notes'=>'nullable|string|max:1000']); \App\Models\StockInventorySupplier::create($d); return back()->with('inventory_message','Supplier added.');})->name('stock-inventory.suppliers.store');
         Route::post('/stock-inventory/purchases', function(\Illuminate\Http\Request $r){$d=$r->validate(['supplier_id'=>'nullable|exists:stock_inventory_suppliers,id','invoice_no'=>'nullable|string|max:120','purchase_date'=>'required|date','product_id'=>'required|exists:stock_inventory_products,id','quantity'=>'required|integer|min:1','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); return \Illuminate\Support\Facades\DB::transaction(function() use($d){$p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail(); abort_if($p->status!=='active',422,'Inactive products cannot receive purchases.'); $line=(float)$d['quantity']*(float)$d['unit_cost']; $purchase=\App\Models\StockInventoryPurchase::create(['supplier_id'=>$d['supplier_id']??null,'invoice_no'=>$d['invoice_no']??null,'purchase_date'=>$d['purchase_date'],'total_amount'=>$line,'notes'=>$d['notes']??null]); \App\Models\StockInventoryPurchaseItem::create(['purchase_id'=>$purchase->id,'product_id'=>$p->id,'quantity'=>$d['quantity'],'unit_cost'=>$d['unit_cost'],'line_total'=>$line]); $p->update(['quantity'=>$p->quantity+$d['quantity'],'unit_cost'=>$d['unit_cost']]); \App\Models\StockInventoryMovement::create(['product_id'=>$p->id,'movement_type'=>'stock-in','quantity'=>$d['quantity'],'reference'=>$d['invoice_no']??'Purchase #'.$purchase->id,'source'=>'Supplier purchase','destination'=>'Stock','notes'=>$d['notes']??null]); return back()->with('inventory_message','Purchase received and stock updated.');});})->name('stock-inventory.purchases.store');
         Route::get('/stock-inventory/assets', function(\Illuminate\Http\Request $r){
@@ -646,16 +666,20 @@ Route::middleware([
         })->name('stock-inventory.damaged');
         Route::post('/stock-inventory/damaged', function(\Illuminate\Http\Request $r){
             $d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','quantity'=>'required|integer|min:1','asset_serial'=>'nullable|string|max:160','asset_mac'=>'nullable|string|max:80','record_type'=>'required|in:damaged,lost','incident_date'=>'required|date','reason'=>'nullable|string|max:190','status'=>'required|in:open,recovered,resolved,disposed','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']);
-            if($d['record_type']==='lost' && $d['status']==='open'){
-                \Illuminate\Support\Facades\DB::transaction(function() use($d){
-                    $p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail();
-                    abort_if($p->quantity < $d['quantity'],422,'Insufficient stock for this lost quantity.');
-                    \App\Models\StockInventoryDamageRecord::create($d);
-                    $p->update(['quantity'=>$p->quantity-$d['quantity']]);
-                    \App\Models\StockInventoryMovement::create(['product_id'=>$p->id,'movement_type'=>'issue','quantity'=>$d['quantity'],'reference'=>$d['reference']??'Lost asset','source'=>'Lost/Damaged register','destination'=>'Loss','notes'=>$d['notes']??null]);
-                });
-            } else { \App\Models\StockInventoryDamageRecord::create($d); }
-            return back()->with('inventory_message',$d['record_type']==='lost' && $d['status']==='open' ? 'Lost record added and stock ledger updated.' : 'Lost/damaged record added. Stock quantity was not changed.');
+            return \Illuminate\Support\Facades\DB::transaction(function() use($d){
+                $product=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail();
+                abort_if($product->status!=='active',422,'Inactive products cannot be adjusted.');
+                abort_if($product->quantity < (int)$d['quantity'],422,'Insufficient stock for this lost/damaged record.');
+                $record=\App\Models\StockInventoryDamageRecord::create($d);
+                $reference=$d['reference']??('Damage/Loss #'.$record->id);
+                $product->decrement('quantity',(int)$d['quantity']);
+                \App\Models\StockInventoryMovement::create(['product_id'=>$product->id,'movement_type'=>'issue','quantity'=>(int)$d['quantity'],'reference'=>$reference,'source'=>'Stock inventory','destination'=>$d['record_type'],'notes'=>ucfirst($d['record_type']).' stock deduction: '.($d['reason']??'No reason provided').' (record #'.$record->id.')']);
+                if($d['status']==='recovered'){
+                    $product->increment('quantity',(int)$d['quantity']);
+                    \App\Models\StockInventoryMovement::create(['product_id'=>$product->id,'movement_type'=>'return','quantity'=>(int)$d['quantity'],'reference'=>$reference,'source'=>'Recovered stock','destination'=>'Stock inventory','notes'=>'Recovered stock returned to inventory (record #'.$record->id.')']);
+                }
+                return back()->with('inventory_message','Lost/damaged record saved and stock ledger reconciled.');
+            });
         })->name('stock-inventory.damaged.store');
         Route::get('/stock-inventory/export/movements.csv', function (\Illuminate\Http\Request $r) {
             $from=$r->input('from',now()->startOfMonth()->toDateString()); $to=$r->input('to',now()->toDateString());
@@ -672,15 +696,32 @@ Route::middleware([
             return view('xlink.stock-inventory-print',['from'=>$from,'to'=>$to,'movements'=>$mov,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'assets'=>\App\Models\StockInventoryAsset::orderBy('asset_type')->get(),'warranties'=>\App\Models\StockInventoryWarranty::with('product')->orderBy('warranty_end')->get(),'damageRecords'=>\App\Models\StockInventoryDamageRecord::with('product')->latest('incident_date')->get()]);
         })->name('stock-inventory.reports.print');
         Route::get('/stock-inventory/reports', function (\Illuminate\Http\Request $r) {
-            $from=$r->input('from', now()->startOfMonth()->toDateString()); $to=$r->input('to', now()->toDateString());
+            $from=$r->input('from',now()->startOfMonth()->toDateString());
+            $to=$r->input('to',now()->toDateString());
+            $validator=\Illuminate\Support\Facades\Validator::make(['from'=>$from,'to'=>$to],['from'=>'required|date','to'=>'required|date|after_or_equal:from']);
+            abort_if($validator->fails(),422,'Invalid report date range.');
             $mov=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
             $movementSummary=$mov->groupBy('movement_type')->map(fn($rows)=>['count'=>$rows->count(),'qty'=>$rows->sum('quantity')]);
             $productUsage=$mov->groupBy('product_id')->map(fn($rows)=>$rows->sum('quantity'))->sortDesc()->take(10);
             $products=\App\Models\StockInventoryProduct::whereIn('id',$productUsage->keys())->get()->keyBy('id');
+            $signed=fn($m)=>in_array($m->movement_type,['issue','sale'],true)?-(int)$m->quantity:(int)$m->quantity;
+            $allProducts=\App\Models\StockInventoryProduct::orderBy('name')->get();
+            $laterMovements=\App\Models\StockInventoryMovement::where('created_at','>=',$from.' 00:00:00')->get()->groupBy('product_id');
+            $periodMovements=$mov->groupBy('product_id');
+            $reconciliation=$allProducts->map(function($product) use($laterMovements,$periodMovements,$signed){
+                $currentAndLater=($laterMovements[$product->id]??collect())->sum(fn($m)=>$signed($m));
+                $period=($periodMovements[$product->id]??collect())->sum(fn($m)=>$signed($m));
+                $opening=(int)$product->quantity-(int)$currentAndLater;
+                $movements=$periodMovements[$product->id]??collect();
+                return ['product'=>$product,'opening'=>$opening,
+                    'stock_in'=>$movements->filter(fn($m)=>in_array($m->movement_type,['stock-in','return','adjustment'],true))->sum('quantity'),
+                    'out'=>$movements->filter(fn($m)=>in_array($m->movement_type,['issue','sale'],true))->sum('quantity'),
+                    'period_net'=>$period,'closing'=>$opening+$period];
+            });
             $assetSummary=\App\Models\StockInventoryAsset::selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total','status');
             $warrantySummary=\App\Models\StockInventoryWarranty::selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total','status');
             $damageSummary=\App\Models\StockInventoryDamageRecord::selectRaw('record_type, status, SUM(quantity) qty')->groupBy('record_type','status')->get();
-            return view('xlink.stock-inventory',['tab'=>'reports','title'=>'Inventory Reports','from'=>$from,'to'=>$to,'movementSummary'=>$movementSummary,'productUsage'=>$productUsage,'usageProducts'=>$products,'assetSummary'=>$assetSummary,'warrantySummary'=>$warrantySummary,'damageSummary'=>$damageSummary,'stats'=>[]]);
+            return view('xlink.stock-inventory',['tab'=>'reports','title'=>'Inventory Reports','from'=>$from,'to'=>$to,'movementSummary'=>$movementSummary,'productUsage'=>$productUsage,'usageProducts'=>$products,'reconciliation'=>$reconciliation,'assetSummary'=>$assetSummary,'warrantySummary'=>$warrantySummary,'damageSummary'=>$damageSummary,'stats'=>[]]);
         })->name('stock-inventory.reports');
         Route::get('/stock-inventory/settings', function(){
             $expired=\App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->where('warranty_end','<',now()->toDateString())->update(['status'=>'expired']);
