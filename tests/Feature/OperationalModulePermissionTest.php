@@ -98,7 +98,7 @@ class OperationalModulePermissionTest extends TestCase
         $this->loginAsRole('Manager');
 
         $this->get('/network-inventory/olt-management')->assertForbidden();
-        $this->post('/network-inventory/olt/sync-onu-mappings')->assertForbidden();
+        $this->post(route('network-inventory.olt.sync'))->assertForbidden();
         $this->get('/payment-collection-edit')->assertForbidden();
         $this->post('/monthly-bill-form')->assertForbidden();
 
