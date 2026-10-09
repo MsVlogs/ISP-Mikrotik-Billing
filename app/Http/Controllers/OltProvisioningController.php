@@ -7,9 +7,10 @@ use App\Services\Olt\VsolModelDetector;
 use Illuminate\Http\Request;
 use Throwable;
 class OltProvisioningController extends Controller {
- public function index(NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); $profiles=config('olt_vsol.profiles',[]); $audits=OltProvisioningAudit::where('olt_device_id',$device->id)->latest()->paginate(25); $selected=data_get($this->adapter($device),'vsol_model_profile'); return view('xlink.olt-provisioning',compact('device','profiles','audits','selected')); }
+ public function index(NetworkInventoryDevice $device){ abort_unless(hasAccess(['Super Admin'], ['network-inventory','mikrotik-setup']),403,'Unauthorized OLT access.'); abort_unless($device->type==='olt',404); $profiles=config('olt_vsol.profiles',[]); $audits=OltProvisioningAudit::where('olt_device_id',$device->id)->latest()->paginate(25); $selected=data_get($this->adapter($device),'vsol_model_profile'); return view('xlink.olt-provisioning',compact('device','profiles','audits','selected')); }
  public function discover(Request $request, NetworkInventoryDevice $device)
  {
+  abort_unless(hasAccess(['Super Admin'], ['mikrotik-setup']),403,'Only Super Admin can change OLT discovery configuration.');
   abort_unless($device->type==='olt',404);
   $audit=OltProvisioningAudit::create(['olt_device_id'=>$device->id,'user_id'=>auth()->id(),'action'=>'discover_model','target'=>'read-only','model_profile'=>'discovery','transport'=>'ssh','request_payload'=>['command'=>'show version'],'status'=>'pending','source_ip'=>$request->ip()]);
   $start=microtime(true);
@@ -41,6 +42,7 @@ class OltProvisioningController extends Controller {
  }
 
  public function execute(Request $request, NetworkInventoryDevice $device){
+  abort_unless(hasAccess(['Super Admin'], ['mikrotik-setup']),403,'Only Super Admin can execute OLT provisioning commands.');
   abort_unless($device->type==='olt',404); $profiles=config('olt_vsol.profiles',[]); $profileKey=(string)$request->input('profile'); abort_unless(isset($profiles[$profileKey]),422,'Unknown VSOL model profile.'); $profile=$profiles[$profileKey];
   $action=(string)$request->input('action'); $rules=['profile'=>'required|string','action'=>'required|in:authorize_mac,remove_mac,configure_pppoe,configure_static_ip,disable_onu,enable_onu'];
   if(in_array($action,['authorize_mac','remove_mac'],true))$rules+=['pon'=>'required|regex:/^\d+\/\d+$/','mac'=>'required|regex:/^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$/i'];
