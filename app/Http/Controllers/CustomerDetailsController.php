@@ -20,7 +20,17 @@ class CustomerDetailsController extends Controller
         $customer = CustomersInfo::withTrashed()
             ->with(['pppUser', 'package', 'billing', 'official', 'customerAddress'])
             ->where('customer_unique_id', $uniqueId)
-            ->firstOrFail();
+            ->first();
+
+        // Resolve a deleted customer's old CID only when no current CID matches.
+        if (! $customer) {
+            $customer = CustomersInfo::withTrashed()
+                ->with(['pppUser', 'package', 'billing', 'official', 'customerAddress'])
+                ->where('deleted_original_customer_unique_id', $uniqueId)
+                ->firstOrFail();
+        }
+
+        $customerStorageKey = (string) $customer->customer_unique_id;
 
         $mapping = Schema::hasTable('olt_onu_customer_mappings')
             ? OltOnuCustomerMapping::with('olt')
@@ -29,8 +39,8 @@ class CustomerDetailsController extends Controller
             : null;
 
         $activities = class_exists(Activity::class)
-            ? Activity::with('causer')->where(function ($q) use ($uniqueId, $customer) {
-                $q->where('properties->customer_unique_id', $uniqueId)
+            ? Activity::with('causer')->where(function ($q) use ($customerStorageKey, $customer) {
+                $q->where('properties->customer_unique_id', $customerStorageKey)
                   ->orWhere('properties->customer_id', $customer->id);
             })->latest()->limit(8)->get()
             : collect();

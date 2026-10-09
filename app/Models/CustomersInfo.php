@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CustomersInfo extends Model
 {
@@ -43,8 +45,103 @@ class CustomersInfo extends Model
             if ($customer->pppUser()->exists()) {
                 throw new \Exception('Cannot delete customer because they are associated with an active PPPoE user. Please remove the PPPoE user first.');
             }
+
+            if (! $customer->isForceDeleting() && ! $customer->trashed()) {
+                $customer->archiveCidForReuse();
+            }
         });
     }
+    /**
+     * Release the human-readable CID without detaching the deleted customer's
+     * billing and service history. Related tables are moved to an internal key
+     * that stays linked to this specific customer record.
+     */
+    private function archiveCidForReuse(): void
+    {
+        DB::transaction(function (): void {
+            if (! Schema::hasColumn('customers_infos', 'deleted_original_customer_unique_id')) {
+                throw new \RuntimeException(
+                    'Customer CID archive migration is required before this customer can be deleted safely.'
+                );
+            }
+
+            $originalCid = trim((string) $this->getAttribute('customer_unique_id'));
+            if ($originalCid === '' || str_starts_with($originalCid, '__ARCHIVED_CUSTOMER_')) {
+                return;
+            }
+
+            $archiveKey = '__ARCHIVED_CUSTOMER_'.$this->getKey();
+            $keyInUse = static::withTrashed()
+                ->where('customer_unique_id', $archiveKey)
+                ->where('id', '<>', $this->getKey())
+                ->exists();
+
+            if ($keyInUse) {
+                throw new \RuntimeException('Unable to release Customer CID because the internal archive key is already in use.');
+            }
+
+            $this->setAttribute('deleted_original_customer_unique_id', $originalCid);
+            $this->setAttribute('customer_unique_id', $archiveKey);
+            $this->saveQuietly();
+
+            self::archiveCidReferences($originalCid, $archiveKey);
+        });
+    }
+
+    private static function archiveCidReferences(string $originalCid, string $archiveKey): void
+    {
+        $references = [
+            'billing_infos' => 'customer_bill_unique_id',
+            'collection_summaries' => 'customer_collection_unique_id',
+            'customer_connection_snapshots' => 'customer_unique_id',
+            'customer_wifi_router_logins' => 'customer_unique_id',
+            'customers_addresses' => 'customer_address_unique_id',
+            'kyc_requests' => 'customer_unique_id',
+            'mikrotik_pending_actions' => 'customer_unique_id',
+            'network_alarm_events' => 'customer_unique_id',
+            'official_infos' => 'customer_office_unique_id',
+            'onu_mac_ledgers' => 'customer_unique_id',
+            'payment_summaries' => 'customer_payment_unique_id',
+            'support_tickets' => 'customer_unique_id',
+        ];
+
+        foreach ($references as $table => $column) {
+            if (Schema::hasTable($table) && Schema::hasColumn($table, $column)) {
+                DB::table($table)->where($column, $originalCid)->update([$column => $archiveKey]);
+            }
+        }
+
+        if (Schema::hasTable('activity_log') && Schema::hasColumn('activity_log', 'properties')) {
+            $activities = DB::table('activity_log')
+                ->where('properties->customer_unique_id', $originalCid)
+                ->get(['id', 'properties']);
+
+            foreach ($activities as $activity) {
+                $properties = is_array($activity->properties)
+                    ? $activity->properties
+                    : json_decode((string) $activity->properties, true);
+
+                if (! is_array($properties)) {
+                    continue;
+                }
+
+                $properties['customer_unique_id'] = $archiveKey;
+                DB::table('activity_log')->where('id', $activity->id)->update([
+                    'properties' => json_encode($properties, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ]);
+            }
+        }
+    }
+
+    public function displayCustomerUniqueId(): string
+    {
+        if ($this->trashed() && filled($this->deleted_original_customer_unique_id)) {
+            return (string) $this->deleted_original_customer_unique_id;
+        }
+
+        return (string) $this->customer_unique_id;
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
