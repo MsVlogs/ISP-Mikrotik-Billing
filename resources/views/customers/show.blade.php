@@ -10,11 +10,12 @@
         $statusClass = match ($status) { 'active'=>'bg-success','pending'=>'bg-warning text-dark','free'=>'bg-info text-dark',default=>'bg-danger' };
         $billing=$customer->billing; $ppp=$customer->pppUser;
         $address=$customer->customerAddress->map(fn($a)=>implode(' ',array_filter([$a->input_type_dropdown,$a->input_type_test,$a->input_type_textarea])))->filter()->implode(', ');
+        $displayCustomerId = $customer->displayCustomerUniqueId();
         $editId=encrypt($customer->customer_unique_id);
     @endphp
     <div class="container-fluid pb-4">
         <div class="customer-hero mb-3">
-            <div><div class="small opacity-75">#{{ $customer->customer_unique_id }}</div>
+            <div><div class="small opacity-75">#{{ $displayCustomerId }}</div>
                 <h1 class="h3 fw-bold mb-1">{{ $customer->customer_name }}</h1>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge bg-light text-dark">{{ $status }}</span>
@@ -27,14 +28,16 @@
             </div>
         </div>
         <div class="actions-card mb-3"><div class="section-label">Actions</div><div class="d-flex flex-wrap gap-2">
-            <a class="action-btn" href="{{ route('customers.edit',$editId) }}"><i class="bi bi-pencil-square"></i>Edit</a>
-            <a class="action-btn" href="{{ route('ai-engineer') }}?customer={{ urlencode($customer->customer_unique_id) }}"><i class="bi bi-cpu"></i>AI Diagnose</a>
+            @unless($customer->trashed())
+                <a class="action-btn" href="{{ route('customers.edit',$editId) }}"><i class="bi bi-pencil-square"></i>Edit</a>
+                <a class="action-btn" href="{{ route('ai-engineer') }}?customer={{ urlencode($customer->customer_unique_id) }}"><i class="bi bi-cpu"></i>AI Diagnose</a>
+            @endunless
             <button class="action-btn" type="button" onclick="window.print()"><i class="bi bi-printer-fill"></i>Print Profile</button>
-            <button class="action-btn" type="button" onclick="navigator.clipboard?.writeText(@js($customer->customer_unique_id))"><i class="bi bi-copy"></i>Copy ID</button>
+            <button class="action-btn" type="button" onclick="navigator.clipboard?.writeText(@js($displayCustomerId))"><i class="bi bi-copy"></i>Copy ID</button>
         </div></div>
         <div class="row g-3">
             <div class="col-xl-7"><div class="info-card h-100"><div class="card-title">Customer Information</div><div class="info-grid">
-                <div><span>Customer ID</span><strong>#{{ $customer->customer_unique_id }}</strong></div>
+                <div><span>Customer ID</span><strong>#{{ $displayCustomerId }}</strong></div>
                 <div><span>Status</span><strong><span class="badge {{ $statusClass }}">{{ ucfirst($status) }}</span></strong></div>
                 <div><span>Customer Name</span><strong>{{ $customer->customer_name ?: '—' }}</strong></div>
                 <div><span>Mobile Number</span><strong>{{ $customer->mobile ?: '—' }}</strong></div>
