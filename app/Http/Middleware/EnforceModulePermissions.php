@@ -100,6 +100,24 @@ class EnforceModulePermissions
             return 'mikrotik-setup';
         }
 
+        // Global communication, gateway and server-backup settings are owner-only.
+        if (in_array($path, ['site-settings', 'main-site-setup', 'system/db-backup/download'], true)
+            || str_starts_with($path, 'system/db-backup/download/')) {
+            return 'site-setup';
+        }
+        if ($path === 'support-center/settings') {
+            return 'site-setup';
+        }
+        if ($path === 'communication-center/settings') {
+            return 'site-setup';
+        }
+        if ($path === 'mobile-banking' || str_starts_with($path, 'mobile-banking/')) {
+            return 'site-setup';
+        }
+        if (in_array($path, ['communication-center', 'communication-center/chat', 'communication-center/whatsapp'], true)) {
+            return ['view-tickets', 'manage-tickets'];
+        }
+
         if ($path === 'payment-collection') {
             return 'payment-collection';
         }

@@ -134,6 +134,34 @@ class OperationalModulePermissionTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_manager_and_admin_cannot_change_global_communication_gateway_or_backup_settings(): void
+    {
+        foreach (['Manager', 'Admin'] as $roleName) {
+            $this->loginAsRole($roleName);
+            $this->get('/communication-center')->assertOk();
+            $this->get('/communication-center/settings')->assertForbidden();
+            $this->post('/communication-center/settings', [
+                'whatsapp' => '01999999999',
+                'notification_email' => 'attacker@example.com',
+                'notification_url' => 'https://example.com/notify',
+            ])->assertForbidden();
+            $this->get('/support-center/settings')->assertForbidden();
+            $this->post('/support-center/settings', ['site_name' => 'Unauthorized update'])->assertForbidden();
+            $this->get('/mobile-banking/settings')->assertForbidden();
+            $this->post('/mobile-banking/settings', ['gateway' => 'disabled'])->assertForbidden();
+            $this->get('/system/db-backup/download/does-not-exist.sql')->assertForbidden();
+            $this->get('/site-settings')->assertForbidden();
+        }
+    }
+
+    public function test_super_admin_retains_global_settings_access(): void
+    {
+        $this->loginAsRole('Super Admin');
+        $this->get('/communication-center/settings')->assertOk();
+        $this->get('/support-center/settings')->assertOk();
+        $this->get('/site-settings')->assertOk();
+    }
+
     public function test_admin_cannot_access_network_configuration_and_cannot_edit_roles(): void
     {
         $this->loginAsRole('Admin');
