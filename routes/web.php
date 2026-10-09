@@ -64,6 +64,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use App\Http\Middleware\EnsureBillingPort;
 use App\Http\Middleware\EnsurePortalPort;
+use App\Http\Middleware\EnforceModulePermissions;
 
 // Extract domain host from APP_URL for consistent subdomain routing
 $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: config('app.url');
@@ -116,6 +117,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
     'restrict.profile',
+    EnforceModulePermissions::class,
 ])->group(function () use ($baseDomain) {
 
     // billing domain
