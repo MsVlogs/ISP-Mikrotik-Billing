@@ -158,6 +158,8 @@ class CustomersController extends Controller
      */
     public function edit(string $id)
     {
+        abort_unless(hasAccess(['Super Admin'], ['edit-customer']), 403, 'You do not have permission to edit customers.');
+
         return view('edit-customer', [
             'customerId' => $id, // Send customerId to the Blade file
         ]);
@@ -165,6 +167,8 @@ class CustomersController extends Controller
 
     public function customerEnable(string $id)
     {
+        abort_unless(hasAccess(['Super Admin'], ['enable-customer', 'enable-pending-customer']), 403, 'You do not have permission to enable customers.');
+
         $unique_id = decrypt($id);
         $bill = BillingInfo::where('customer_bill_unique_id', $unique_id)->first();
 
@@ -282,6 +286,8 @@ class CustomersController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        abort_unless(hasAccess(['Super Admin'], ['update-bill']), 403, 'You do not have permission to update billing information.');
+
         // return response()->json(\decrypt($id));
         try {
             BillingInfo::where('customer_bill_unique_id', decrypt($id))->update([
@@ -307,6 +313,8 @@ class CustomersController extends Controller
      */
     public function destroy(string $id)
     {
+        abort_unless(hasAccess(['Super Admin'], ['delete-customer']), 403, 'You do not have permission to delete customers.');
+
         try {
             // Decrypt the ID
             $decryptedId = decrypt($id);
