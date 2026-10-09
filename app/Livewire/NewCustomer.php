@@ -644,8 +644,9 @@ class NewCustomer extends Component
             $customer->email = $this->email;
             $customer->identification_no = $this->identification_no;
             $customer->photo_url = $this->photo_url ? $path : null;
-            $customer->mobile = filled($this->mobile) ? '88'.$this->mobile : null;
-            $customer->alternative_mobile = filled($this->alternative_mobile) ? '88'.$this->alternative_mobile : null;
+            // Add Customer accepts the Bangladesh local number format.
+            $customer->mobile = filled($this->mobile) ? trim((string) $this->mobile) : null;
+            $customer->alternative_mobile = filled($this->alternative_mobile) ? trim((string) $this->alternative_mobile) : null;
             $customer->profession = $this->profession;
             $customer->ppp_user_id = $pppUser?->id;
             $customer->connection_date = $this->connection_date;
