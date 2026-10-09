@@ -31,14 +31,33 @@ class CustomerActionsController extends Controller
         return $customer;
     }
 
-    private function authorizeAction(): void
+    private function authorizeAction(string $action): void
     {
-        abort_unless(auth()->check() && (auth()->user()->hasRole('Super Admin') || hasAccess(['Super Admin'], ['edit-customer','update-bill','payment-collection','manage-tickets'])),403,'Unauthorized action.');
+        $permissions = match ($action) {
+            'owner' => ['manage-customer-assignment'],
+            'class', 'password' => ['push-customers'],
+            'billing-date', 'recharge', 'grace' => ['update-bill'],
+            'cash-credit' => ['payment-collection'],
+            'ledger' => ['payment-history', 'collection-list', 'amount-collection-report'],
+            'invoice', 'pos-print' => ['payment-collection-invoice'],
+            'sms' => ['create-sms'],
+            'online-graph', 'live-traffic' => ['network-inventory', 'mikrotik-setup'],
+            'ticket', 'ticket-history' => ['view-tickets', 'manage-tickets'],
+            'wifi-login' => ['mikrotik-setup'],
+            default => [],
+        };
+
+        $user = auth()->user();
+        abort_unless(
+            $user && ($user->hasRole('Super Admin') || ($permissions !== [] && $user->hasAnyPermission($permissions))),
+            403,
+            'You do not have permission to perform this customer action.'
+        );
     }
 
     public function show(string $id, string $action)
     {
-        $this->authorizeAction();
+        $this->authorizeAction($action);
         abort_unless(in_array($action,['owner','class','billing-date','password','ledger','cash-credit','recharge','grace','invoice','pos-print','sms','online-graph','ticket','ticket-history','wifi-login'],true),404);
         $customer=$this->customer($id);
         if ($action === 'invoice') return redirect()->route('customer.actions.invoice',['id'=>encrypt($customer->customer_unique_id)]);
@@ -58,7 +77,7 @@ class CustomerActionsController extends Controller
 
     public function liveTraffic(string $id)
     {
-        $this->authorizeAction();
+        $this->authorizeAction('live-traffic');
         $customer = $this->customer($id);
         $ppp = $customer->pppUser;
 
@@ -85,7 +104,13 @@ class CustomerActionsController extends Controller
 
     public function handle(Request $request, string $id, string $action)
     {
-        $this->authorizeAction();
+        $this->authorizeAction($action);
+        if ($action === 'owner' && $request->filled('billing_date')) {
+            $this->authorizeAction('billing-date');
+        }
+        if ($request->boolean('send_sms')) {
+            $this->authorizeAction('sms');
+        }
         $customer=$this->customer($id);
         $uid=$customer->customer_unique_id;
         $back=route('customer.actions',['id'=>encrypt($uid),'action'=>$action]);
@@ -159,6 +184,9 @@ class CustomerActionsController extends Controller
             }
         } elseif ($action==='cash-credit') {
             $data=$request->validate(['type'=>['required','in:cash_received,credit,return'],'amount'=>['required','numeric','min:0.01'],'payment_method'=>['required','in:cash,bkash,nagad,rocket,bank,other'],'receipt_no'=>['nullable','string','max:100'],'details'=>['nullable','string','max:1000'],'send_sms'=>['nullable','boolean']]);
+            if ($data['type'] === 'return') {
+                abort_unless(auth()->user()?->hasRole('Super Admin') || auth()->user()?->can('payment-delete'), 403, 'Only Admin or Super Admin can reverse a recorded payment.');
+            }
             DB::transaction(function() use($data,$customer,$uid) {
                 $bill=BillingInfo::where('customer_bill_unique_id',$uid)->lockForUpdate()->firstOrFail();
                 $amount=(float)$data['amount']; $paid=(float)$bill->paid_amount;
@@ -225,7 +253,8 @@ class CustomerActionsController extends Controller
 
     private function renderInvoice(string $id, bool $print)
     {
-        $this->authorizeAction(); $customer=$this->customer($id);
+        $this->authorizeAction($print ? 'pos-print' : 'invoice');
+        $customer=$this->customer($id);
         $collections=CollectionSummary::where('customer_collection_unique_id',$customer->customer_unique_id)->latest('collection_date')->limit(50)->get();
         return view('customers.action-invoice',compact('customer','collections','print'));
     }
