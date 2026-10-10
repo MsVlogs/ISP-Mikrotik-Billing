@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 
 # Reproduce the GitHub Actions validation locally, without touching .env or the
-# application's normal SQLite database. Run from any directory.
+# application's normal SQLite database. Run from any directory. Select PHP with
+# PHP_BIN=php8.3 (or another installed CLI executable) when needed.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
@@ -14,11 +15,32 @@ elif [[ -n "${1:-}" ]]; then
     exit 2
 fi
 
-for tool in php composer npm; do
+PHP_BIN="${PHP_BIN:-php}"
+PHP_BIN_PATH="$(command -v "$PHP_BIN")" || { echo "PHP executable not found: $PHP_BIN" >&2; exit 2; }
+PHP_BIN_PATH="$(readlink -f "$PHP_BIN_PATH")"
+for tool in composer npm; do
     command -v "$tool" >/dev/null 2>&1 || { echo "Required tool missing: $tool" >&2; exit 2; }
 done
 [[ -f .env.example ]] || { echo ".env.example not found" >&2; exit 2; }
 [[ -f composer.lock && -f package-lock.json ]] || { echo "Lock file missing" >&2; exit 2; }
+
+CI_ENV_FILE="$ROOT/.env.ci-local"
+CI_ENV_CREATED=0
+CI_TMP_DIR=""
+PHP_SHIM_DIR="$(mktemp -d "${TMPDIR:-/tmp}/isp-billing-php.XXXXXX")"
+cleanup() {
+    if [[ "$CI_ENV_CREATED" == 1 ]]; then rm -f "$CI_ENV_FILE"; fi
+    if [[ -n "$CI_TMP_DIR" ]]; then rm -rf "$CI_TMP_DIR"; fi
+    rm -rf "$PHP_SHIM_DIR"
+}
+trap cleanup EXIT INT TERM
+ln -s "$PHP_BIN_PATH" "$PHP_SHIM_DIR/php"
+export PATH="$PHP_SHIM_DIR:$PATH"
+
+if [[ -e "$CI_ENV_FILE" ]]; then
+    echo "Refusing to overwrite existing $CI_ENV_FILE; move it aside and retry." >&2
+    exit 2
+fi
 
 if [[ "$INSTALL" == 1 ]]; then
     echo "== Install locked PHP dependencies =="
@@ -30,19 +52,9 @@ else
     [[ -x node_modules/.bin/vite ]] || { echo "Node dependencies missing; run: $0 --install" >&2; exit 2; }
 fi
 
-CI_ENV_FILE="$ROOT/.env.ci-local"
-if [[ -e "$CI_ENV_FILE" ]]; then
-    echo "Refusing to overwrite existing $CI_ENV_FILE; move it aside and retry." >&2
-    exit 2
-fi
 CI_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/isp-billing-ci.XXXXXX")"
-cleanup() {
-    rm -f "$CI_ENV_FILE"
-    rm -rf "$CI_TMP_DIR"
-}
-trap cleanup EXIT INT TERM
-
 cp .env.example "$CI_ENV_FILE"
+CI_ENV_CREATED=1
 DB_FILE="$CI_TMP_DIR/database.sqlite"
 : > "$DB_FILE"
 export APP_ENV=testing
