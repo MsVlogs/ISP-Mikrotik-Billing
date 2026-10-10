@@ -26,6 +26,9 @@ class OperationalModulePermissionTest extends TestCase
         $this->loginAsRole('Manager');
 
         $this->get('/stock-inventory')->assertOk();
+        $this->get('/stock-inventory/products')->assertOk();
+        $this->get('/stock-inventory/reports')->assertOk();
+        $this->get('/stock-inventory/purchases')->assertForbidden();
 
         $this->post('/stock-inventory/products', [
             'sku' => 'RBAC-TEST-PRODUCT',
@@ -77,6 +80,8 @@ class OperationalModulePermissionTest extends TestCase
     public function test_admin_can_manage_stock_inventory(): void
     {
         $this->loginAsRole('Admin');
+
+        $this->get('/stock-inventory/purchases')->assertOk();
 
         $this->post('/stock-inventory/products', [
             'sku' => 'RBAC-ADMIN-PRODUCT',
@@ -151,6 +156,7 @@ class OperationalModulePermissionTest extends TestCase
             $this->post('/mobile-banking/settings', ['gateway' => 'disabled'])->assertForbidden();
             $this->get('/system/db-backup/download/does-not-exist.sql')->assertForbidden();
             $this->get('/site-settings')->assertForbidden();
+            $this->get('/sms')->assertForbidden();
         }
     }
 
@@ -160,6 +166,7 @@ class OperationalModulePermissionTest extends TestCase
         $this->get('/communication-center/settings')->assertOk();
         $this->get('/support-center/settings')->assertOk();
         $this->get('/site-settings')->assertOk();
+        $this->get('/sms')->assertOk();
     }
 
     public function test_admin_cannot_access_network_configuration_and_cannot_edit_roles(): void
