@@ -6,12 +6,11 @@
         "dev": "vite"
     },
     "devDependencies": {
-        "@fullhuman/postcss-purgecss": "^7.0.2",
         "@tailwindcss/forms": "^0.5.7",
+        "@tailwindcss/postcss": "^4.3.3",
         "@tailwindcss/typography": "^0.5.10",
-        "@tailwindcss/vite": "^4.2.2",
+        "@tailwindcss/vite": "^4.3.3",
         "apexcharts": "^5.10.5",
-        "autoprefixer": "^10.4.16",
         "axios": "^1.8.2",
         "bootstrap-icons": "^1.13.1",
         "concurrently": "^9.0.1",
@@ -21,7 +20,7 @@
         "postcss": "^8.4.32",
         "qrcode": "^1.5.4",
         "sass": "^1.87.0",
-        "tailwindcss": "^3.4.19",
+        "tailwindcss": "^4.3.3",
         "vite": "^6.4.2"
     },
     "dependencies": {
@@ -57,5 +56,8 @@
         "sweetalert2": "^11.6.13",
         "swiper": "^12.2.0",
         "tom-select": "^2.4.3"
+    },
+    "overrides": {
+        "postcss-selector-parser": "^7.1.6"
     }
 }

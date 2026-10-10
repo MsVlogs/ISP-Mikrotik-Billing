@@ -91,7 +91,7 @@ class CustomerActionTest extends TestCase
         $this->assertSoftDeleted('customers_infos', ['id' => $customer->id]);
         $this->assertDatabaseMissing('p_p_p_secrets', ['id' => $ppp->id]);
         $this->assertDatabaseHas('mikrotik_pending_actions', [
-            'customer_unique_id' => 'ACTION-DELETE',
+            'customer_unique_id' => '__ARCHIVED_CUSTOMER_'.$customer->id,
             'router_name' => 'delete-router',
             'username' => 'ppp-ACTION-DELETE',
             'action' => 'remove',

@@ -72,6 +72,14 @@ class AiEngineerControllerTest extends TestCase
             'olt_onu' => ['mapped' => 0], 'support' => ['tickets' => 0],
             'openai_configured' => false, 'read_only' => true, 'generated_at' => now()->toIso8601String(),
         ]);
+        $service->shouldReceive('dailySummary')->once()->andReturn([
+            'status' => [], 'network' => [], 'incidents' => [], 'customers' => [],
+            'routers' => [], 'olt_onu' => [], 'trend' => [],
+            'generated_at' => now()->toIso8601String(), 'read_only' => true,
+        ]);
+        $service->shouldReceive('unmappedOnus')->once()->with(12)->andReturn([]);
+        $service->shouldReceive('upstreamCorrelation')->once()->with(100)->andReturn(['groups' => []]);
+        $service->shouldReceive('matchingCandidates')->once()->with(100)->andReturn(['matches' => []]);
         $this->app->instance(AiEngineerDiagnosticService::class, $service);
 
         $this->get('/ai-engineer')->assertOk()->assertSee('AI Engineer');
