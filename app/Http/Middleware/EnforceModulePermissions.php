@@ -54,7 +54,8 @@ class EnforceModulePermissions
                     || str_starts_with($path, 'stock-inventory/export/')) {
                     return 'stock-inventory-report';
                 }
-                if ($path === 'stock-inventory/settings') {
+                // Purchase records expose supplier and unit-cost data; limit them to inventory managers.
+                if (in_array($path, ['stock-inventory/settings', 'stock-inventory/purchases'], true)) {
                     return 'stock-inventory-manage';
                 }
                 return 'stock-inventory-view';
@@ -101,7 +102,7 @@ class EnforceModulePermissions
         }
 
         // Global communication, gateway and server-backup settings are owner-only.
-        if (in_array($path, ['site-settings', 'main-site-setup', 'system/db-backup/download'], true)
+        if (in_array($path, ['site-settings', 'main-site-setup', 'sms', 'system/db-backup/download'], true)
             || str_starts_with($path, 'system/db-backup/download/')) {
             return 'site-setup';
         }
