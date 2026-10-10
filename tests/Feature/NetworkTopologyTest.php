@@ -58,7 +58,9 @@ class NetworkTopologyTest extends TestCase
             'router_name' => 'Access Router', 'ip_address' => '192.0.2.3',
             'username' => 'test', 'password' => 'test', 'action' => 'connected',
         ]);
+        $mapId = \App\Models\NetworkTopologyMap::query()->where('is_default', true)->value('id');
         $node = NetworkTopologyNode::create([
+            'map_id' => $mapId,
             'type' => 'splitter', 'name' => 'SPL-POP-01', 'is_published' => false,
         ]);
 

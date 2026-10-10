@@ -272,7 +272,7 @@ class ResellerTest extends TestCase
 
         $this->assertDatabaseHas('customers_infos', [
             'customer_name' => 'Reseller Customer',
-            'mobile' => '8801711111111',
+            'mobile' => '01711111111',
             'reseller_id' => $reseller->id,
             'status' => 'pending',
             'package_id' => $package->id,
