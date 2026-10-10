@@ -45,8 +45,10 @@ fi
 if [[ "$INSTALL" == 1 ]]; then
     echo "== Install locked PHP dependencies =="
     composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
-    echo "== Install locked Node dependencies =="
-    npm ci
+    echo "== Install locked Node dependencies without automatic lifecycle scripts =="
+    npm ci --ignore-scripts
+    echo "== Rebuild required native/binary tooling explicitly =="
+    npm rebuild esbuild @parcel/watcher
 else
     [[ -f vendor/autoload.php ]] || { echo "vendor dependencies missing; run: $0 --install" >&2; exit 2; }
     [[ -x node_modules/.bin/vite ]] || { echo "Node dependencies missing; run: $0 --install" >&2; exit 2; }
