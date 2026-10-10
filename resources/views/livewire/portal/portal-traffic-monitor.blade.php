@@ -1,69 +1,69 @@
 <div class="cp-zoom-in">
-    <div class="cp-grid cp-grid-cols-1 cp-gap-4">
+    <div class="cp:grid cp:grid-cols-1 cp:gap-4">
         <!-- Dashboard Scorecards -->
-        <div class="cp-grid cp-grid-cols-1 md:cp-grid-cols-2 cp-gap-4 cp-mb-4">
+        <div class="cp:grid cp:grid-cols-1 cp:md:grid-cols-2 cp:gap-4 cp:mb-4">
             <div
-                class="cp-bg-white dark:cp-bg-gray-800 cp-p-6 cp-rounded-2xl cp-shadow-sm cp-border cp-border-gray-100 dark:cp-border-gray-700 cp-flex cp-items-center cp-gap-6">
-                <div class="cp-p-4 cp-rounded-full cp-bg-green/10 cp-text-green cp-ring-8 cp-ring-green/5">
-                    <svg class="cp-w-10 cp-h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                class="cp:bg-white cp:dark:bg-gray-800 cp:p-6 cp:rounded-2xl cp:shadow-sm cp:border cp:border-gray-100 cp:dark:border-gray-700 cp:flex cp:items-center cp:gap-6">
+                <div class="cp:p-4 cp:rounded-full cp-bg-green/10 cp-text-green cp:ring-8 cp-ring-green/5">
+                    <svg class="cp:w-10 cp:h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <div>
-                    <p class="cp-text-xs cp-uppercase cp-tracking-wider cp-font-semibold cp-text-gray-400 cp-mb-1">
+                    <p class="cp:text-xs cp:uppercase cp:tracking-wider cp:font-semibold cp:text-gray-400 cp:mb-1">
                         {{ __('Download Speed') }}</p>
-                    <h3 class="cp-text-3xl cp-font-extrabold cp-text-gray-900 dark:cp-text-white" id="rx-label">0.00
+                    <h3 class="cp:text-3xl cp:font-extrabold cp:text-gray-900 cp:dark:text-white" id="rx-label">0.00
                         Mbps</h3>
                 </div>
             </div>
             <div
-                class="cp-bg-white dark:cp-bg-gray-800 cp-p-6 cp-rounded-2xl cp-shadow-sm cp-border cp-border-gray-100 dark:cp-border-gray-700 cp-flex cp-items-center cp-gap-6">
-                <div class="cp-p-4 cp-rounded-full cp-bg-red/10 cp-text-red cp-ring-8 cp-ring-red/5">
-                    <svg class="cp-w-10 cp-h-10" fill="none" stroke="currentColor" stroke-width="1.5"
+                class="cp:bg-white cp:dark:bg-gray-800 cp:p-6 cp:rounded-2xl cp:shadow-sm cp:border cp:border-gray-100 cp:dark:border-gray-700 cp:flex cp:items-center cp:gap-6">
+                <div class="cp:p-4 cp:rounded-full cp-bg-red/10 cp-text-red cp:ring-8 cp-ring-red/5">
+                    <svg class="cp:w-10 cp:h-10" fill="none" stroke="currentColor" stroke-width="1.5"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <div>
-                    <p class="cp-text-xs cp-uppercase cp-tracking-wider cp-font-semibold cp-text-gray-400 cp-mb-1">
+                    <p class="cp:text-xs cp:uppercase cp:tracking-wider cp:font-semibold cp:text-gray-400 cp:mb-1">
                         {{ __('Upload Speed') }}</p>
-                    <h3 class="cp-text-3xl cp-font-extrabold cp-text-gray-900 dark:cp-text-white" id="tx-label">0.00
+                    <h3 class="cp:text-3xl cp:font-extrabold cp:text-gray-900 cp:dark:text-white" id="tx-label">0.00
                         Mbps</h3>
                 </div>
             </div>
         </div>
 
-        <div class="cp-w-full">
+        <div class="cp:w-full">
             <div
-                class="cp-bg-white dark:cp-bg-gray-800 cp-rounded-xl cp-shadow-sm cp-border cp-border-gray-100 dark:cp-border-gray-700 cp-h-100">
+                class="cp:bg-white cp:dark:bg-gray-800 cp:rounded-xl cp:shadow-sm cp:border cp:border-gray-100 cp:dark:border-gray-700 cp:h-100">
                 <div
-                    class="cp-p-4 cp-border-b cp-border-gray-100 dark:cp-border-gray-700 cp-flex cp-justify-between cp-items-center">
-                    <span class="cp-font-bold cp-text-gray-900 dark:cp-text-white cp-flex cp-items-center cp-gap-3">
-                        <div class="cp-bg-gray-100 dark:cp-bg-gray-700 cp-p-2 cp-rounded-lg">
-                            <svg class="cp-w-8 cp-h-8 cp-text-indigo-500 cp-animate-pulse" fill="none"
+                    class="cp:p-4 cp:border-b cp:border-gray-100 cp:dark:border-gray-700 cp:flex cp:justify-between cp:items-center">
+                    <span class="cp:font-bold cp:text-gray-900 cp:dark:text-white cp:flex cp:items-center cp:gap-3">
+                        <div class="cp:bg-gray-100 cp:dark:bg-gray-700 cp:p-2 cp:rounded-lg">
+                            <svg class="cp:w-8 cp:h-8 cp:text-indigo-500 cp:animate-pulse" fill="none"
                                 stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
-                        <span class="cp-text-lg">{{ __('Real-time Performance') }}</span>
+                        <span class="cp:text-lg">{{ __('Real-time Performance') }}</span>
                     </span>
-                    <div class="cp-flex cp-items-center cp-gap-2">
-                        <div class="cp-flex cp-h-2 cp-w-2 cp-relative">
+                    <div class="cp:flex cp:items-center cp:gap-2">
+                        <div class="cp:flex cp:h-2 cp:w-2 cp:relative">
                             <span
-                                class="cp-animate-ping cp-absolute cp-inline-flex cp-h-full cp-w-full cp-rounded-full cp-bg-green-400 cp-opacity-75"></span>
+                                class="cp:animate-ping cp:absolute cp:inline-flex cp:h-full cp:w-full cp:rounded-full cp:bg-green-400 cp:opacity-75"></span>
                             <span
-                                class="cp-relative cp-inline-flex cp-rounded-full cp-h-2 cp-w-2 cp-bg-green-500"></span>
+                                class="cp:relative cp:inline-flex cp:rounded-full cp:h-2 cp:w-2 cp:bg-green-500"></span>
                         </div>
-                        <span class="cp-text-xs cp-font-bold cp-text-green-500 cp-uppercase cp-tracking-tighter">{{ __('Live Monitor') }}</span>
+                        <span class="cp:text-xs cp:font-bold cp:text-green-500 cp:uppercase cp:tracking-tighter">{{ __('Live Monitor') }}</span>
                     </div>
                 </div>
-                <div class="cp-p-4 cp-pt-0">
+                <div class="cp:p-4 cp:pt-0">
                     @if (!$selectedRouter || !$selectedInterface)
-                        <div class="cp-flex cp-flex-col cp-items-center cp-justify-center cp-py-20 cp-text-gray-400">
-                            <svg class="cp-w-12 cp-h-12 cp-mb-3" fill="none" stroke="currentColor"
+                        <div class="cp:flex cp:flex-col cp:items-center cp:justify-center cp:py-20 cp:text-gray-400">
+                            <svg class="cp:w-12 cp:h-12 cp:mb-3" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -72,7 +72,7 @@
                         </div>
                     @else
                         <!-- Polling trigger - increased interval to 3s to reduce 500 errors -->
-                        <div wire:poll.3000ms="poll" class="cp-hidden"></div>
+                        <div wire:poll.3000ms="poll" class="cp:hidden"></div>
 
                         <div wire:ignore x-data="{
                             chart: null,

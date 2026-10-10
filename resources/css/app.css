@@ -5,9 +5,23 @@
    All custom CSS has been moved to resources/sass/ partials.
    ============================================================================= */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+  This application layers Tailwind utilities over Bootstrap and intentionally
+  disables Tailwind Preflight (the Tailwind v3 config used preflight=false).
+  Import theme and utilities separately to preserve that behavior in Tailwind v4.
+*/
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme) prefix(cp);
+@import 'tailwindcss/utilities.css' layer(utilities) prefix(cp);
+
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --font-sans:
+    Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
 
 .invalid-feedback {
    display: inline !important;

@@ -1,4 +1,4 @@
-<nav id="navbar" class="navigation d-lg-none fixed-bottom bg-body-tertiary shadow-sm cp-z-10">
+<nav id="navbar" class="navigation d-lg-none fixed-bottom bg-body-tertiary shadow-sm cp:z-10">
     <ul class="nav nav-tabs justify-content-center">
         @if (auth()->user()->roles()->exists() || auth()->user()->permissions()->exists())
             @if (auth()->user()->hasRole('Reseller'))
