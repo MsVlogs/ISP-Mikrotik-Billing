@@ -1,10 +1,10 @@
-<div class="cp-zoom-in">
+<div class="zoom-in">
     <div class="cp:grid cp:grid-cols-1 cp:gap-4">
         <!-- Dashboard Scorecards -->
         <div class="cp:grid cp:grid-cols-1 cp:md:grid-cols-2 cp:gap-4 cp:mb-4">
             <div
                 class="cp:bg-white cp:dark:bg-gray-800 cp:p-6 cp:rounded-2xl cp:shadow-sm cp:border cp:border-gray-100 cp:dark:border-gray-700 cp:flex cp:items-center cp:gap-6">
-                <div class="cp:p-4 cp:rounded-full cp-bg-green/10 cp-text-green cp:ring-8 cp-ring-green/5">
+                <div class="cp:p-4 cp:rounded-full cp:bg-green-500/10 cp:text-green-600 cp:ring-8 cp:ring-green-500/5">
                     <svg class="cp:w-10 cp:h-10" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -19,7 +19,7 @@
             </div>
             <div
                 class="cp:bg-white cp:dark:bg-gray-800 cp:p-6 cp:rounded-2xl cp:shadow-sm cp:border cp:border-gray-100 cp:dark:border-gray-700 cp:flex cp:items-center cp:gap-6">
-                <div class="cp:p-4 cp:rounded-full cp-bg-red/10 cp-text-red cp:ring-8 cp-ring-red/5">
+                <div class="cp:p-4 cp:rounded-full cp:bg-red-500/10 cp:text-red-600 cp:ring-8 cp:ring-red-500/5">
                     <svg class="cp:w-10 cp:h-10" fill="none" stroke="currentColor" stroke-width="1.5"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round"

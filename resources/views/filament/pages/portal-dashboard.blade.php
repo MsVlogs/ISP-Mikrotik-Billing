@@ -106,7 +106,7 @@
                     <h2 class="cp:text-2xl cp:font-black cp:tracking-tight">Welcome, {{ $customer->customer_name }}!</h2>
                     <p class="cp:text-white/80 cp:text-sm cp:mt-1">Manage your connection, view detailed billing records, and settle invoices online securely.</p>
                 </div>
-                <div class="cp:flex cp-wrap cp:items-center cp:gap-3">
+                <div class="cp:flex cp:flex-wrap cp:items-center cp:gap-3">
                     <span class="cp:px-4 cp:py-2 cp:bg-white/10 cp:rounded-2xl cp:text-sm cp:font-bold cp:backdrop-blur-md cp:border cp:border-white/10">
                         A/C: {{ $customer->customer_unique_id }}
                     </span>
@@ -332,7 +332,7 @@
                                     </thead>
                                     <tbody class="cp:text-sm cp:font-semibold cp:text-gray-900 cp:dark:text-white">
                                         @foreach($recentPayments as $payment)
-                                            <tr class="cp:border-b cp-border-gray-55 cp:dark:border-white/5 cp:last:border-none cp:hover:bg-gray-50/50 cp:dark:hover:bg-white/5 cp:transition-colors">
+                                            <tr class="cp:border-b cp:border-gray-50 cp:dark:border-white/5 cp:last:border-none cp:hover:bg-gray-50/50 cp:dark:hover:bg-white/5 cp:transition-colors">
                                                 <td class="cp:py-3.5">{{ \Carbon\Carbon::parse($payment->collection_date)->format('d M, Y') }}</td>
                                                 <td class="cp:py-3.5 cp:font-mono cp:text-xs">{{ $payment->invoice_no ?? 'N/A' }}</td>
                                                 <td class="cp:py-3.5">
@@ -534,7 +534,7 @@
                         {{-- Comment Box --}}
                         <div>
                             <label class="cp:block cp:text-xs cp:font-bold cp:text-gray-400 cp:dark:text-slate-400 cp:mb-1">Your Comment</label>
-                            <textarea wire:model="reviewComment" rows="4" required placeholder="Write your review here..." class="cp:w-full cp:px-4 cp:py-3 cp:text-sm cp-bg-gray-55 cp:dark:bg-slate-950 cp:border cp:border-gray-200 cp:dark:border-white/10 cp:rounded-2xl cp:focus:outline-hidden cp:focus:ring-2 cp:focus:ring-indigo-500/20 cp:focus:border-indigo-500 cp:dark:text-white"></textarea>
+                            <textarea wire:model="reviewComment" rows="4" required placeholder="Write your review here..." class="cp:w-full cp:px-4 cp:py-3 cp:text-sm cp:bg-gray-50 cp:dark:bg-slate-950 cp:border cp:border-gray-200 cp:dark:border-white/10 cp:rounded-2xl cp:focus:outline-hidden cp:focus:ring-2 cp:focus:ring-indigo-500/20 cp:focus:border-indigo-500 cp:dark:text-white"></textarea>
                             @error('reviewComment')
                                 <span class="cp:text-rose-500 cp:text-xs cp:block cp:mt-1">{{ $message }}</span>
                             @enderror

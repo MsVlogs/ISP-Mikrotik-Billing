@@ -39,8 +39,7 @@
             {{-- 3-Column Summary Cards --}}
             <div class="cp:grid cp:grid-cols-1 cp:md:grid-cols-3 cp:gap-4">
 
-                <div class="cp-rounded-3xl cp-p-5 cp-text-white cp-shadow-lg cp-flex cp-flex-col cp-gap-1
-                    {{ $dueAmount > 0 ? 'cp:bg-linear-to-br cp:from-rose-500 cp:to-red-600 cp:shadow-rose-500/20' : 'cp:bg-linear-to-br cp:from-slate-500 cp:to-slate-600' }}">
+                <div class="cp:rounded-3xl cp:p-5 cp:text-white cp:shadow-lg cp:flex cp:flex-col cp:gap-1 {{ $dueAmount > 0 ? 'cp:bg-linear-to-br cp:from-rose-500 cp:to-red-600 cp:shadow-rose-500/20' : 'cp:bg-linear-to-br cp:from-slate-500 cp:to-slate-600' }}">
                     <span class="cp:text-white/75 cp:text-xs cp:font-semibold cp:uppercase cp:tracking-wider">Outstanding Due</span>
                     <span class="cp:text-3xl cp:font-black">৳{{ number_format($dueAmount, 2) }}</span>
                     @if($dueAmount > 0)
@@ -100,8 +99,7 @@
                         @foreach($rows as $row)
                             <div class="cp:flex cp:items-center cp:justify-between cp:px-6 cp:py-3">
                                 <span class="cp:text-sm cp:text-gray-600 cp:dark:text-slate-400">{{ $row['label'] }}</span>
-                                <span class="cp-text-sm cp-font-bold
-                                    {{ $row['type'] === 'credit' ? 'cp:text-emerald-500' : ($row['type'] === 'due' ? 'cp:text-rose-500' : 'cp:text-gray-900 cp:dark:text-white') }}">
+                                <span class="cp:text-sm cp:font-bold {{ $row['type'] === 'credit' ? 'cp:text-emerald-500' : ($row['type'] === 'due' ? 'cp:text-rose-500' : 'cp:text-gray-900 cp:dark:text-white') }}">
                                     {{ $row['type'] === 'credit' ? '-' : '+' }} ৳{{ number_format($row['value'], 2) }}
                                 </span>
                             </div>

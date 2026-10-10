@@ -86,7 +86,7 @@
 
                 @if($tickets->isEmpty())
                     <div class="cp:p-12 cp:text-center cp:flex cp:flex-col cp:items-center cp:justify-center">
-                        <div class="cp:w-16 cp-cp-h-16 cp:mb-4 cp:p-4 cp:bg-gray-50 cp:dark:bg-slate-800 cp:rounded-full cp:text-gray-400 cp:dark:text-slate-500">
+                        <div class="cp:w-16 cp:h-16 cp:mb-4 cp:p-4 cp:bg-gray-50 cp:dark:bg-slate-800 cp:rounded-full cp:text-gray-400 cp:dark:text-slate-500">
                             <svg class="cp:w-8 cp:h-8 cp:mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/>
                             </svg>
@@ -104,17 +104,10 @@
                                 <div class="cp:space-y-1.5">
                                     <div class="cp:flex cp:items-center cp:gap-2.5 cp:flex-wrap">
                                         <span class="cp:text-xs cp:font-bold cp:text-indigo-500 cp:dark:text-indigo-400">{{ $ticket->ticket_no }}</span>
-                                        <span class="cp-inline-flex cp-items-center cp-px-2 cp-py-0.5 cp-rounded-md cp-text-[10px] cp-font-bold cp-uppercase cp-tracking-wider
-                                            {{ $ticket->status === 'open' ? 'cp:bg-amber-500/10 cp:text-amber-500' : '' }}
-                                            {{ $ticket->status === 'in_progress' ? 'cp:bg-blue-500/10 cp:text-blue-500' : '' }}
-                                            {{ $ticket->status === 'resolved' ? 'cp:bg-emerald-500/10 cp:text-emerald-500' : '' }}
-                                            {{ $ticket->status === 'closed' ? 'cp:bg-gray-500/10 cp:text-gray-500' : '' }}">
+                                        <span class="cp:inline-flex cp:items-center cp:px-2 cp:py-0.5 cp:rounded-md cp:text-[10px] cp:font-bold cp:uppercase cp:tracking-wider {{ $ticket->status === 'open' ? 'cp:bg-amber-500/10 cp:text-amber-500' : '' }} {{ $ticket->status === 'in_progress' ? 'cp:bg-blue-500/10 cp:text-blue-500' : '' }} {{ $ticket->status === 'resolved' ? 'cp:bg-emerald-500/10 cp:text-emerald-500' : '' }} {{ $ticket->status === 'closed' ? 'cp:bg-gray-500/10 cp:text-gray-500' : '' }}">
                                             {{ str_replace('_', ' ', $ticket->status) }}
                                         </span>
-                                        <span class="cp-inline-flex cp-items-center cp-px-2 cp-py-0.5 cp-rounded-md cp-text-[10px] cp-font-bold cp-uppercase cp-tracking-wider
-                                            {{ $ticket->priority === 'high' ? 'cp:bg-rose-500/10 cp:text-rose-500' : '' }}
-                                            {{ $ticket->priority === 'medium' ? 'cp:bg-amber-500/10 cp:text-amber-500' : '' }}
-                                            {{ $ticket->priority === 'low' ? 'cp:bg-emerald-500/10 cp:text-emerald-500' : '' }}">
+                                        <span class="cp:inline-flex cp:items-center cp:px-2 cp:py-0.5 cp:rounded-md cp:text-[10px] cp:font-bold cp:uppercase cp:tracking-wider {{ $ticket->priority === 'high' ? 'cp:bg-rose-500/10 cp:text-rose-500' : '' }} {{ $ticket->priority === 'medium' ? 'cp:bg-amber-500/10 cp:text-amber-500' : '' }} {{ $ticket->priority === 'low' ? 'cp:bg-emerald-500/10 cp:text-emerald-500' : '' }}">
                                             {{ $ticket->priority }} Priority
                                         </span>
                                     </div>
@@ -135,7 +128,7 @@
                                             </svg>
                                         </button>
                                         <button wire:click="closeTicket({{ $ticket->id }})"
-                                            class="cp:p-2 cp:bg-rose-50 cp:dark:bg-rose-950/30 cp:hover:bg-rose-100 cp:dark:hover:bg-rose-950/50 cp:text-rose-600 dark:cp-text-rose-450 cp:text-xs cp:font-bold cp:rounded-xl cp:transition-all"
+                                            class="cp:p-2 cp:bg-rose-50 cp:dark:bg-rose-950/30 cp:hover:bg-rose-100 cp:dark:hover:bg-rose-950/50 cp:text-rose-600 cp:dark:text-rose-400 cp:text-xs cp:font-bold cp:rounded-xl cp:transition-all"
                                             title="Close Ticket">
                                             <svg class="cp:w-4 cp:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -226,18 +219,14 @@
 
         {{-- Details View --}}
         @if($viewingTicketId && ($ticket = $this->getViewingTicket()))
-            <div class="cp:max-w-3xl cp-cp-mx-auto cp:bg-white cp:dark:bg-slate-900/60 cp:border cp:border-gray-100 cp:dark:border-white/5 cp:rounded-3xl cp:shadow-xl cp:p-6">
+            <div class="cp:max-w-3xl cp:mx-auto cp:bg-white cp:dark:bg-slate-900/60 cp:border cp:border-gray-100 cp:dark:border-white/5 cp:rounded-3xl cp:shadow-xl cp:p-6">
                 
                 {{-- Header --}}
                 <div class="cp:flex cp:flex-col cp:sm:flex-row cp:justify-between cp:items-start cp:sm:items-center cp:gap-4 cp:mb-6 cp:pb-4 cp:border-b cp:border-gray-100 cp:dark:border-white/5">
                     <div>
                         <div class="cp:flex cp:items-center cp:gap-2.5 cp:mb-1">
                             <span class="cp:text-xs cp:font-bold cp:text-indigo-500 cp:dark:text-indigo-400">{{ $ticket->ticket_no }}</span>
-                            <span class="cp-inline-flex cp-items-center cp-px-2 cp-py-0.5 cp-rounded-md cp-text-[10px] cp-font-bold cp-uppercase cp-tracking-wider
-                                {{ $ticket->status === 'open' ? 'cp:bg-amber-500/10 cp:text-amber-500' : '' }}
-                                {{ $ticket->status === 'in_progress' ? 'cp:bg-blue-500/10 cp:text-blue-500' : '' }}
-                                {{ $ticket->status === 'resolved' ? 'cp:bg-emerald-500/10 cp:text-emerald-500' : '' }}
-                                {{ $ticket->status === 'closed' ? 'cp:bg-gray-500/10 cp:text-gray-500' : '' }}">
+                            <span class="cp:inline-flex cp:items-center cp:px-2 cp:py-0.5 cp:rounded-md cp:text-[10px] cp:font-bold cp:uppercase cp:tracking-wider {{ $ticket->status === 'open' ? 'cp:bg-amber-500/10 cp:text-amber-500' : '' }} {{ $ticket->status === 'in_progress' ? 'cp:bg-blue-500/10 cp:text-blue-500' : '' }} {{ $ticket->status === 'resolved' ? 'cp:bg-emerald-500/10 cp:text-emerald-500' : '' }} {{ $ticket->status === 'closed' ? 'cp:bg-gray-500/10 cp:text-gray-500' : '' }}">
                                 {{ str_replace('_', ' ', $ticket->status) }}
                             </span>
                         </div>
@@ -252,7 +241,7 @@
                                 Edit
                             </button>
                             <button wire:click="closeTicket({{ $ticket->id }})"
-                                class="cp:flex cp:items-center cp:gap-1.5 cp:px-4 cp:py-2 cp:bg-rose-50 cp:dark:bg-rose-950/30 cp:hover:bg-rose-100 cp:dark:hover:bg-rose-950/50 cp:text-rose-600 dark:cp-text-rose-450 cp:text-xs cp:font-bold cp:rounded-xl cp:transition-colors">
+                                class="cp:flex cp:items-center cp:gap-1.5 cp:px-4 cp:py-2 cp:bg-rose-50 cp:dark:bg-rose-950/30 cp:hover:bg-rose-100 cp:dark:hover:bg-rose-950/50 cp:text-rose-600 cp:dark:text-rose-400 cp:text-xs cp:font-bold cp:rounded-xl cp:transition-colors">
                                 <svg class="cp:w-4 cp:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                 Close Ticket
                             </button>

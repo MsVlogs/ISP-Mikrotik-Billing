@@ -16,23 +16,23 @@
         x-show="open" 
         @click="open = false" 
         class="cp:fixed cp:inset-0 cp:bg-black/60 cp:backdrop-blur-sm cp:z-50 cp:transition-opacity"
-        x-transition:enter="cp-ease-out cp:duration-300"
-        x-transition:enter-start="cp-opacity-0"
-        x-transition:enter-end="cp-opacity-100"
-        x-transition:leave="cp-ease-in cp:duration-200"
-        x-transition:leave-start="cp-opacity-100"
-        x-transition:leave-end="cp-opacity-0"></div>
+        x-transition:enter="cp:ease-out cp:duration-300"
+        x-transition:enter-start="cp:opacity-0"
+        x-transition:enter-end="cp:opacity-100"
+        x-transition:leave="cp:ease-in cp:duration-200"
+        x-transition:leave-start="cp:opacity-100"
+        x-transition:leave-end="cp:opacity-0"></div>
 
     <!-- Side Drawer Panel -->
     <div 
         x-show="open" 
         class="cp:fixed cp:top-0 cp:right-0 cp:h-full cp:w-96 cp:max-w-full cp:bg-slate-950/95 cp:backdrop-blur-lg cp:border-l cp:border-white/10 cp:shadow-2xl cp:z-50 cp:overflow-y-auto cp:transition-transform cp:p-6 cp:text-slate-100"
-        x-transition:enter="cp-transform cp:transition cp:ease-in-out cp:duration-300"
-        x-transition:enter-start="cp-translate-x-full"
-        x-transition:enter-end="cp-translate-x-0"
-        x-transition:leave="cp-transform cp:transition cp:ease-in-out cp:duration-300"
-        x-transition:leave-start="cp-translate-x-0"
-        x-transition:leave-end="cp-translate-x-full">
+        x-transition:enter="cp:transform cp:transition cp:ease-in-out cp:duration-300"
+        x-transition:enter-start="cp:translate-x-full"
+        x-transition:enter-end="cp:translate-x-0"
+        x-transition:leave="cp:transform cp:transition cp:ease-in-out cp:duration-300"
+        x-transition:leave-start="cp:translate-x-0"
+        x-transition:leave-end="cp:translate-x-full">
         
         <!-- Header -->
         <div class="cp:flex cp:items-center cp:justify-between cp:pb-4 cp:border-b cp:border-white/10">
