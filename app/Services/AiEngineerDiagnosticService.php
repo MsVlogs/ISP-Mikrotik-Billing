@@ -105,7 +105,7 @@ class AiEngineerDiagnosticService
                 $findings[]='এই ব্যবহারকারীর কোনো সক্রিয় MikroTik PPPoE সেশন পাওয়া যায়নি।';
                 if (strtolower((string)$ppp->status) === 'active') {
                     $severity=$severity==='critical'?'critical':'warning';
-                    $causes[]='PPP secret is active in billing data, but no লাইভ PPPoE session was found on the assigned router.';
+                    $causes[]='PPP secret is active in billing data, but no live PPPoE session was found on the assigned router.';
                     $checks[]='রাউটার লগ, PPPoE অনুমোদন ত্রুটি এবং গ্রাহকের CPE-তে পৌঁছানো যাচ্ছে কি না পরীক্ষা করুন।';
                 }
             }

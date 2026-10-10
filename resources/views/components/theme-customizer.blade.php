@@ -2,10 +2,10 @@
     <!-- Floating Action Button -->
     <button 
         @click="open = !open" 
-        class="cp-fixed cp-bottom-6 cp-right-6 cp-w-14 cp-h-14 cp-bg-gradient-to-r cp-from-indigo-500 cp-to-emerald-500 cp-text-white cp-rounded-full cp-flex cp-items-center cp-justify-center cp-shadow-2xl cp-transition-transform cp-duration-200 cp-z-50 hover:cp-scale-110 focus:cp-outline-none"
+        class="cp:fixed cp:bottom-6 cp:right-6 cp:w-14 cp:h-14 cp:bg-linear-to-r cp:from-indigo-500 cp:to-emerald-500 cp:text-white cp:rounded-full cp:flex cp:items-center cp:justify-center cp:shadow-2xl cp:transition-transform cp:duration-200 cp:z-50 cp:hover:scale-110 cp:focus:outline-hidden"
         title="Customize Theme"
         id="theme-customizer-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" class="cp-h-6 cp-w-6 cp-animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="cp:h-6 cp:w-6 cp-animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -15,50 +15,50 @@
     <div 
         x-show="open" 
         @click="open = false" 
-        class="cp-fixed cp-inset-0 cp-bg-black/60 cp-backdrop-blur-sm cp-z-50 cp-transition-opacity"
-        x-transition:enter="cp-ease-out cp-duration-300"
-        x-transition:enter-start="cp-opacity-0"
-        x-transition:enter-end="cp-opacity-100"
-        x-transition:leave="cp-ease-in cp-duration-200"
-        x-transition:leave-start="cp-opacity-100"
-        x-transition:leave-end="cp-opacity-0"></div>
+        class="cp:fixed cp:inset-0 cp:bg-black/60 cp:backdrop-blur-sm cp:z-50 cp:transition-opacity"
+        x-transition:enter="cp:ease-out cp:duration-300"
+        x-transition:enter-start="cp:opacity-0"
+        x-transition:enter-end="cp:opacity-100"
+        x-transition:leave="cp:ease-in cp:duration-200"
+        x-transition:leave-start="cp:opacity-100"
+        x-transition:leave-end="cp:opacity-0"></div>
 
     <!-- Side Drawer Panel -->
     <div 
         x-show="open" 
-        class="cp-fixed cp-top-0 cp-right-0 cp-h-full cp-w-96 cp-max-w-full cp-bg-slate-950/95 cp-backdrop-blur-lg cp-border-l cp-border-white/10 cp-shadow-2xl cp-z-50 cp-overflow-y-auto cp-transition-transform cp-p-6 cp-text-slate-100"
-        x-transition:enter="cp-transform cp-transition cp-ease-in-out cp-duration-300"
-        x-transition:enter-start="cp-translate-x-full"
-        x-transition:enter-end="cp-translate-x-0"
-        x-transition:leave="cp-transform cp-transition cp-ease-in-out cp-duration-300"
-        x-transition:leave-start="cp-translate-x-0"
-        x-transition:leave-end="cp-translate-x-full">
+        class="cp:fixed cp:top-0 cp:right-0 cp:h-full cp:w-96 cp:max-w-full cp:bg-slate-950/95 cp:backdrop-blur-lg cp:border-l cp:border-white/10 cp:shadow-2xl cp:z-50 cp:overflow-y-auto cp:transition-transform cp:p-6 cp:text-slate-100"
+        x-transition:enter="cp:transform cp:transition cp:ease-in-out cp:duration-300"
+        x-transition:enter-start="cp:translate-x-full"
+        x-transition:enter-end="cp:translate-x-0"
+        x-transition:leave="cp:transform cp:transition cp:ease-in-out cp:duration-300"
+        x-transition:leave-start="cp:translate-x-0"
+        x-transition:leave-end="cp:translate-x-full">
         
         <!-- Header -->
-        <div class="cp-flex cp-items-center cp-justify-between cp-pb-4 cp-border-b cp-border-white/10">
-            <div class="cp-flex cp-items-center cp-gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="cp-h-6 cp-w-6 cp-text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="cp:flex cp:items-center cp:justify-between cp:pb-4 cp:border-b cp:border-white/10">
+            <div class="cp:flex cp:items-center cp:gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="cp:h-6 cp:w-6 cp:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                 </svg>
-                <h3 class="cp-text-lg cp-font-black cp-tracking-tight">Customizer Theme</h3>
+                <h3 class="cp:text-lg cp:font-black cp:tracking-tight">Customizer Theme</h3>
             </div>
-            <button @click="open = false" class="cp-text-slate-400 hover:cp-text-white cp-p-1 cp-rounded-lg hover:cp-bg-white/5">
-                <svg class="cp-w-6 cp-h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            <button @click="open = false" class="cp:text-slate-400 cp:hover:text-white cp:p-1 cp:rounded-lg cp:hover:bg-white/5">
+                <svg class="cp:w-6 cp:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
 
         <!-- Customizer Body -->
-        <div class="cp-mt-6 cp-space-y-6 cp-text-left">
+        <div class="cp:mt-6 cp:space-y-6 cp:text-left">
             
             <!-- 1. UI Style Presets -->
             <div>
-                <label class="cp-block cp-text-xs cp-font-bold cp-uppercase cp-tracking-wider cp-text-slate-400 cp-mb-3">Built-in Presets</label>
-                <div class="cp-grid cp-grid-cols-2 cp-gap-2">
+                <label class="cp:block cp:text-xs cp:font-bold cp:uppercase cp:tracking-wider cp:text-slate-400 cp:mb-3">Built-in Presets</label>
+                <div class="cp:grid cp:grid-cols-2 cp:gap-2">
                     <template x-for="(name, key) in presets" :key="key">
                         <button 
                             @click="selectPreset(key)" 
-                            :class="state.theme_preset === key ? 'cp-border-emerald-500 cp-bg-emerald-500/10 cp-text-emerald-400' : 'cp-border-white/5 cp-bg-white/5 hover:cp-bg-white/10 cp-text-slate-300'"
-                            class="cp-py-2 cp-px-3 cp-text-xs cp-font-semibold cp-rounded-xl cp-border cp-transition-all cp-duration-150">
+                            :class="state.theme_preset === key ? 'cp:border-emerald-500 cp:bg-emerald-500/10 cp:text-emerald-400' : 'cp:border-white/5 cp:bg-white/5 cp:hover:bg-white/10 cp:text-slate-300'"
+                            class="cp:py-2 cp:px-3 cp:text-xs cp:font-semibold cp:rounded-xl cp:border cp:transition-all cp:duration-150">
                             <span x-text="name"></span>
                         </button>
                     </template>
@@ -67,13 +67,13 @@
 
             <!-- 2. Theme templates selection -->
             <div>
-                <label class="cp-block cp-text-xs cp-font-bold cp-uppercase cp-tracking-wider cp-text-slate-400 cp-mb-3">Theme Template</label>
-                <div class="cp-grid cp-grid-cols-2 cp-gap-2">
+                <label class="cp:block cp:text-xs cp:font-bold cp:uppercase cp:tracking-wider cp:text-slate-400 cp:mb-3">Theme Template</label>
+                <div class="cp:grid cp:grid-cols-2 cp:gap-2">
                     <template x-for="(name, key) in themes" :key="key">
                         <button 
                             @click="state.theme_name = key; updateTheme()" 
-                            :class="state.theme_name === key ? 'cp-border-emerald-500 cp-bg-emerald-500/10 cp-text-emerald-400' : 'cp-border-white/5 cp-bg-white/5 hover:cp-bg-white/10 cp-text-slate-300'"
-                            class="cp-py-2 cp-px-3 cp-text-xs cp-font-semibold cp-rounded-xl cp-border cp-transition-all cp-duration-150">
+                            :class="state.theme_name === key ? 'cp:border-emerald-500 cp:bg-emerald-500/10 cp:text-emerald-400' : 'cp:border-white/5 cp:bg-white/5 cp:hover:bg-white/10 cp:text-slate-300'"
+                            class="cp:py-2 cp:px-3 cp:text-xs cp:font-semibold cp:rounded-xl cp:border cp:transition-all cp:duration-150">
                             <span x-text="name"></span>
                         </button>
                     </template>
@@ -82,13 +82,13 @@
 
             <!-- 3. Theme Mode selection -->
             <div>
-                <label class="cp-block cp-text-xs cp-font-bold cp-uppercase cp-tracking-wider cp-text-slate-400 cp-mb-3">Theme Mode</label>
-                <div class="cp-grid cp-grid-cols-3 cp-gap-1.5">
+                <label class="cp:block cp:text-xs cp:font-bold cp:uppercase cp:tracking-wider cp:text-slate-400 cp:mb-3">Theme Mode</label>
+                <div class="cp:grid cp:grid-cols-3 cp:gap-1.5">
                     <template x-for="(name, key) in modes" :key="key">
                         <button 
                             @click="state.theme_mode = key; updateTheme()" 
-                            :class="state.theme_mode === key ? 'cp-border-emerald-500 cp-bg-emerald-500/10 cp-text-emerald-400' : 'cp-border-white/5 cp-bg-white/5 hover:cp-bg-white/10 cp-text-slate-300'"
-                            class="cp-py-1.5 cp-px-2 cp-text-[10px] cp-font-bold cp-rounded-lg cp-border cp-transition-all cp-duration-150 cp-text-center cp-truncate">
+                            :class="state.theme_mode === key ? 'cp:border-emerald-500 cp:bg-emerald-500/10 cp:text-emerald-400' : 'cp:border-white/5 cp:bg-white/5 cp:hover:bg-white/10 cp:text-slate-300'"
+                            class="cp:py-1.5 cp:px-2 cp:text-[10px] cp:font-bold cp:rounded-lg cp:border cp:transition-all cp:duration-150 cp:text-center cp:truncate">
                             <span x-text="name"></span>
                         </button>
                     </template>
@@ -97,28 +97,28 @@
 
             <!-- 4. Manual Color customization -->
             <div>
-                <label class="cp-block cp-text-xs cp-font-bold cp-uppercase cp-tracking-wider cp-text-slate-400 cp-mb-2">Color Personalization</label>
-                <div class="cp-space-y-3 cp-p-3 cp-bg-white/5 cp-rounded-2xl cp-border cp-border-white/5">
-                    <div class="cp-flex cp-items-center cp-justify-between">
-                        <span class="cp-text-xs cp-font-medium cp-text-slate-300">Primary Color</span>
-                        <input type="color" x-model="state.theme_primary_color" @input="updateTheme()" class="cp-w-8 cp-h-8 cp-rounded-lg cp-border-0 cp-cursor-pointer bg-transparent">
+                <label class="cp:block cp:text-xs cp:font-bold cp:uppercase cp:tracking-wider cp:text-slate-400 cp:mb-2">Color Personalization</label>
+                <div class="cp:space-y-3 cp:p-3 cp:bg-white/5 cp:rounded-2xl cp:border cp:border-white/5">
+                    <div class="cp:flex cp:items-center cp:justify-between">
+                        <span class="cp:text-xs cp:font-medium cp:text-slate-300">Primary Color</span>
+                        <input type="color" x-model="state.theme_primary_color" @input="updateTheme()" class="cp:w-8 cp:h-8 cp:rounded-lg cp:border-0 cp:cursor-pointer bg-transparent">
                     </div>
-                    <div class="cp-flex cp-items-center cp-justify-between">
-                        <span class="cp-text-xs cp-font-medium cp-text-slate-300">Accent Color</span>
-                        <input type="color" x-model="state.theme_accent_color" @input="updateTheme()" class="cp-w-8 cp-h-8 cp-rounded-lg cp-border-0 cp-cursor-pointer bg-transparent">
+                    <div class="cp:flex cp:items-center cp:justify-between">
+                        <span class="cp:text-xs cp:font-medium cp:text-slate-300">Accent Color</span>
+                        <input type="color" x-model="state.theme_accent_color" @input="updateTheme()" class="cp:w-8 cp:h-8 cp:rounded-lg cp:border-0 cp:cursor-pointer bg-transparent">
                     </div>
                 </div>
             </div>
 
             <!-- 5. UI Customizations -->
             <div>
-                <label class="cp-block cp-text-xs cp-font-bold cp-uppercase cp-tracking-wider cp-text-slate-400 cp-mb-2">UI Styling & Layout</label>
-                <div class="cp-space-y-3 cp-p-3 cp-bg-white/5 cp-rounded-2xl cp-border cp-border-white/5">
+                <label class="cp:block cp:text-xs cp:font-bold cp:uppercase cp:tracking-wider cp:text-slate-400 cp:mb-2">UI Styling & Layout</label>
+                <div class="cp:space-y-3 cp:p-3 cp:bg-white/5 cp:rounded-2xl cp:border cp:border-white/5">
                     
                     <!-- Border radius -->
                     <div>
-                        <span class="cp-text-xs cp-font-medium cp-text-slate-400 cp-block cp-mb-1">Border Radius</span>
-                        <select x-model="state.theme_border_radius" @change="updateTheme()" class="cp-w-full cp-bg-slate-900 cp-border cp-border-white/10 cp-rounded-lg cp-py-1.5 cp-px-2 cp-text-xs cp-text-slate-200">
+                        <span class="cp:text-xs cp:font-medium cp:text-slate-400 cp:block cp:mb-1">Border Radius</span>
+                        <select x-model="state.theme_border_radius" @change="updateTheme()" class="cp:w-full cp:bg-slate-900 cp:border cp:border-white/10 cp:rounded-lg cp:py-1.5 cp:px-2 cp:text-xs cp:text-slate-200">
                             <option value="0px">Sharp (0px)</option>
                             <option value="4px">Subtle (4px)</option>
                             <option value="8px">Standard (8px)</option>
@@ -131,8 +131,8 @@
 
                     <!-- Fonts family -->
                     <div>
-                        <span class="cp-text-xs cp-font-medium cp-text-slate-400 cp-block cp-mb-1">Typography</span>
-                        <select x-model="state.theme_font_family" @change="updateTheme()" class="cp-w-full cp-bg-slate-900 cp-border cp-border-white/10 cp-rounded-lg cp-py-1.5 cp-px-2 cp-text-xs cp-text-slate-200">
+                        <span class="cp:text-xs cp:font-medium cp:text-slate-400 cp:block cp:mb-1">Typography</span>
+                        <select x-model="state.theme_font_family" @change="updateTheme()" class="cp:w-full cp:bg-slate-900 cp:border cp:border-white/10 cp:rounded-lg cp:py-1.5 cp:px-2 cp:text-xs cp:text-slate-200">
                             <option value="Inter">Inter (Sans)</option>
                             <option value="Outfit">Outfit (Clean Geometry)</option>
                             <option value="Plus Jakarta Sans">Plus Jakarta (Modern)</option>
@@ -145,8 +145,8 @@
 
                     <!-- Card Style -->
                     <div>
-                        <span class="cp-text-xs cp-font-medium cp-text-slate-400 cp-block cp-mb-1">Card Style</span>
-                        <select x-model="state.theme_card_style" @change="updateTheme()" class="cp-w-full cp-bg-slate-900 cp-border cp-border-white/10 cp-rounded-lg cp-py-1.5 cp-px-2 cp-text-xs cp-text-slate-200">
+                        <span class="cp:text-xs cp:font-medium cp:text-slate-400 cp:block cp:mb-1">Card Style</span>
+                        <select x-model="state.theme_card_style" @change="updateTheme()" class="cp:w-full cp:bg-slate-900 cp:border cp:border-white/10 cp:rounded-lg cp:py-1.5 cp:px-2 cp:text-xs cp:text-slate-200">
                             <option value="flat">Flat / Solid</option>
                             <option value="glass">Glassmorphism</option>
                             <option value="minimal">Minimal Outline</option>
@@ -159,8 +159,8 @@
 
                     <!-- Widget style -->
                     <div>
-                        <span class="cp-text-xs cp-font-medium cp-text-slate-400 cp-block cp-mb-1">Widget Customization</span>
-                        <select x-model="state.theme_widget_style" @change="updateTheme()" class="cp-w-full cp-bg-slate-900 cp-border cp-border-white/10 cp-rounded-lg cp-py-1.5 cp-px-2 cp-text-xs cp-text-slate-200">
+                        <span class="cp:text-xs cp:font-medium cp:text-slate-400 cp:block cp:mb-1">Widget Customization</span>
+                        <select x-model="state.theme_widget_style" @change="updateTheme()" class="cp:w-full cp:bg-slate-900 cp:border cp:border-white/10 cp:rounded-lg cp:py-1.5 cp:px-2 cp:text-xs cp:text-slate-200">
                             <option value="compact">Compact style</option>
                             <option value="minimal">Minimal style</option>
                             <option value="glass">Modern Glass style</option>
@@ -173,38 +173,38 @@
 
             <!-- 6. Micro interactions & Details -->
             <div>
-                <label class="cp-block cp-text-xs cp-font-bold cp-uppercase cp-tracking-wider cp-text-slate-400 cp-mb-2">Advanced Personalization</label>
-                <div class="cp-space-y-4 cp-p-3 cp-bg-white/5 cp-rounded-2xl cp-border cp-border-white/5">
+                <label class="cp:block cp:text-xs cp:font-bold cp:uppercase cp:tracking-wider cp:text-slate-400 cp:mb-2">Advanced Personalization</label>
+                <div class="cp:space-y-4 cp:p-3 cp:bg-white/5 cp:rounded-2xl cp:border cp:border-white/5">
                     <!-- Transparency -->
                     <div>
-                        <div class="cp-flex cp-justify-between cp-items-center cp-mb-1">
-                            <span class="cp-text-xs cp-font-medium cp-text-slate-400">Transparency</span>
-                            <span class="cp-text-[10px] cp-text-slate-400" x-text="`${Math.round(state.theme_transparency * 100)}%`"></span>
+                        <div class="cp:flex cp:justify-between cp:items-center cp:mb-1">
+                            <span class="cp:text-xs cp:font-medium cp:text-slate-400">Transparency</span>
+                            <span class="cp:text-[10px] cp:text-slate-400" x-text="`${Math.round(state.theme_transparency * 100)}%`"></span>
                         </div>
-                        <input type="range" min="0" max="1" step="0.05" x-model="state.theme_transparency" @input="updateTheme()" class="cp-w-full cp-accent-emerald-500">
+                        <input type="range" min="0" max="1" step="0.05" x-model="state.theme_transparency" @input="updateTheme()" class="cp:w-full cp:accent-emerald-500">
                     </div>
 
                     <!-- Animations -->
                     <div>
-                        <div class="cp-flex cp-justify-between cp-items-center cp-mb-1">
-                            <span class="cp-text-xs cp-font-medium cp-text-slate-400">Animation speed</span>
-                            <span class="cp-text-[10px] cp-text-slate-400" x-text="`${state.theme_animations}x`"></span>
+                        <div class="cp:flex cp:justify-between cp:items-center cp:mb-1">
+                            <span class="cp:text-xs cp:font-medium cp:text-slate-400">Animation speed</span>
+                            <span class="cp:text-[10px] cp:text-slate-400" x-text="`${state.theme_animations}x`"></span>
                         </div>
-                        <input type="range" min="0.1" max="2" step="0.1" x-model="state.theme_animations" @input="updateTheme()" class="cp-w-full cp-accent-emerald-500">
+                        <input type="range" min="0.1" max="2" step="0.1" x-model="state.theme_animations" @input="updateTheme()" class="cp:w-full cp:accent-emerald-500">
                     </div>
                 </div>
             </div>
 
             <!-- Restore Default Buttons -->
-            <div class="cp-pt-4 cp-flex cp-gap-3">
+            <div class="cp:pt-4 cp:flex cp:gap-3">
                 <button 
                     @click="resetDefaults()" 
-                    class="cp-flex-1 cp-py-3 cp-bg-white/5 hover:cp-bg-white/10 cp-border cp-border-white/10 cp-text-slate-200 cp-font-semibold cp-rounded-xl cp-text-xs cp-transition-colors cp-duration-150">
+                    class="cp:flex-1 cp:py-3 cp:bg-white/5 cp:hover:bg-white/10 cp:border cp:border-white/10 cp:text-slate-200 cp:font-semibold cp:rounded-xl cp:text-xs cp:transition-colors cp:duration-150">
                     Restore Defaults
                 </button>
                 <button 
                     @click="open = false" 
-                    class="cp-flex-1 cp-py-3 cp-bg-gradient-to-r cp-from-indigo-600 cp-to-emerald-600 hover:cp-from-indigo-500 hover:cp-to-emerald-500 cp-text-white cp-font-bold cp-rounded-xl cp-text-xs cp-transition-colors cp-duration-150">
+                    class="cp:flex-1 cp:py-3 cp:bg-linear-to-r cp:from-indigo-600 cp:to-emerald-600 cp:hover:from-indigo-500 cp:hover:to-emerald-500 cp:text-white cp:font-bold cp:rounded-xl cp:text-xs cp:transition-colors cp:duration-150">
                     Apply Changes
                 </button>
             </div>

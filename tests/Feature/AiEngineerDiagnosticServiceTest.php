@@ -68,7 +68,7 @@ class AiEngineerDiagnosticServiceTest extends TestCase
 
         $result = (new AiEngineerDiagnosticService($this->mikrotik))->diagnoseCustomer($customer->customer_unique_id);
 
-        $this->assertSame('stale', $result['service_path']['router']['check_freshness']);
+        $this->assertSame('পুরোনো', $result['service_path']['router']['check_freshness']);
         $this->assertGreaterThan(900, $result['service_path']['router']['check_age_seconds']);
     }
 
