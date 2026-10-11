@@ -31,6 +31,10 @@ class BroadbandController extends Controller
                   ->orWhere('address', 'like', $like)
                   ->orWhere('identification_no', 'like', $like)
                   ->orWhere('profession', 'like', $like)
+                  ->orWhere('zone_name', 'like', $like)
+                  ->orWhere('server_label', 'like', $like)
+                  ->orWhere('left_equipment', 'like', $like)
+                  ->orWhere('left_reason', 'like', $like)
                   ->orWhereHas('customerAddress', function ($address) use ($like) {
                       $address->where('label_name', 'like', $like)
                           ->orWhere('input_type_text', 'like', $like)
@@ -56,15 +60,66 @@ class BroadbandController extends Controller
     {
         $status = $request->status;
         $query = $this->baseQuery($request);
-        if ($status === 'online') $query->where('status', 'active')->whereHas('pppUser', fn ($q) => $q->where('status', 'active'));
-        if ($status === 'inactive') $query->whereIn('status', ['inactive', 'disable']);
+        $leftStats = null;
+
+        if ($status === 'online') {
+            $query->where('status', 'active')->whereHas('pppUser', fn ($q) => $q->where('status', 'active'));
+        }
+
+        if ($status === 'inactive') {
+            $query->whereIn('status', ['inactive', 'disable']);
+
+            $recoveryStatuses = ['pending', 'partial', 'recovered', 'not_required', 'issue'];
+            if (in_array($request->input('recovery_status'), $recoveryStatuses, true)) {
+                $query->where('recovery_status', $request->input('recovery_status'));
+            }
+
+            if ($request->filled('zone_name')) {
+                $query->where('zone_name', 'like', '%'.trim($request->input('zone_name')).'%');
+            }
+
+            if ($request->filled('left_from')) {
+                $query->whereDate('left_date', '>=', $request->input('left_from'));
+            }
+            if ($request->filled('left_to')) {
+                $query->whereDate('left_date', '<=', $request->input('left_to'));
+            }
+
+            $allLeft = CustomersInfo::query()->whereIn('status', ['inactive', 'disable']);
+            $leftStats = [
+                'total' => (clone $allLeft)->count(),
+                'pending_recovery' => (clone $allLeft)->where(function ($q) {
+                    $q->whereNull('recovery_status')->orWhereIn('recovery_status', ['pending', 'partial']);
+                })->count(),
+                'recovered' => (clone $allLeft)->where('recovery_status', 'recovered')->count(),
+                'issues' => (clone $allLeft)->where('recovery_status', 'issue')->count(),
+            ];
+        }
+
         if ($status === 'unverified') $query->where(function ($q) { $q->whereNull('mobile')->orWhereNull('identification_no'); });
         if ($status === 'due') $query->whereHas('billing', fn ($q) => $q->where('due_amount', '>', 0));
-        if ($request->from) $query->whereDate('created_at', '>=', $request->from);
-        if ($request->to) $query->whereDate('created_at', '<=', $request->to);
+
+        if ($status === 'inactive') {
+            // Left-customer date filters use the recorded departure date, not the
+            // account creation date. Other list modes keep their created_at filters.
+            if ($request->filled('from')) $query->whereDate('left_date', '>=', $request->input('from'));
+            if ($request->filled('to')) $query->whereDate('left_date', '<=', $request->input('to'));
+        } else {
+            if ($request->from) $query->whereDate('created_at', '>=', $request->from);
+            if ($request->to) $query->whereDate('created_at', '<=', $request->to);
+        }
+
         $rows = min(max((int) $request->input('rows', 50), 10), 500);
         $customers = $query->latest('id')->paginate($rows)->withQueryString();
-        return view('xlink.broadband.customer-list', ['customers' => $customers, 'mode' => $status ?: 'all', 'routers' => RouterList::orderBy('router_name')->get(), 'resellers' => Reseller::with('user')->get(), 'packages' => PackageList::orderBy('package')->get()]);
+
+        return view('xlink.broadband.customer-list', [
+            'customers' => $customers,
+            'mode' => $status ?: 'all',
+            'routers' => RouterList::orderBy('router_name')->get(),
+            'resellers' => Reseller::with('user')->get(),
+            'packages' => PackageList::orderBy('package')->get(),
+            'leftStats' => $leftStats,
+        ]);
     }
 
     public function search(Request $request)
@@ -215,19 +270,47 @@ class BroadbandController extends Controller
         try {
             $uniqueId = decrypt($id);
             $customer = CustomersInfo::where('customer_unique_id', $uniqueId)->with('pppUser')->firstOrFail();
+            $pppUser = $customer->pppUser;
+            $pendingAction = null;
 
-            if ($customer->pppUser && $customer->pppUser->router_name) {
-                app(MikrotikController::class)->disablePPPSecret(
-                    $uniqueId,
-                    $customer->pppUser->router_name,
-                    $customer->pppUser->username
-                );
+            if ($pppUser && filled($pppUser->router_name) && filled($pppUser->username)) {
+                $routerName = (string) $pppUser->router_name;
+                $routerConnected = RouterList::where('router_name', $routerName)
+                    ->where('action', 'connected')
+                    ->exists();
+
+                if ($routerConnected) {
+                    try {
+                        app(MikrotikController::class)->disablePPPSecret($uniqueId, $routerName, $pppUser->username);
+                    } catch (\Throwable $routerError) {
+                        report($routerError);
+                        $routerConnected = false;
+                    }
+                }
+
+                if (! $routerConnected) {
+                    $pendingAction = [
+                        'customer_unique_id' => $uniqueId,
+                        'router_name' => $routerName,
+                        'username' => $pppUser->username,
+                        'action' => 'disable',
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
             }
 
-            \DB::transaction(function () use ($customer, $request) {
+            $pendingId = \DB::transaction(function () use ($customer, $request, $pendingAction) {
+                $pendingId = $pendingAction
+                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
+                    : null;
+
                 $customer->status = 'disable';
                 $customer->left_date = now();
-                $customer->left_reason = filled($request->input('left_reason')) ? trim($request->input('left_reason')) : $customer->left_reason;
+                $customer->left_reason = filled($request->input('left_reason'))
+                    ? trim($request->input('left_reason'))
+                    : $customer->left_reason;
                 $customer->server_label = $customer->server_label ?: ($customer->pppUser?->router_name ?: 'X-Link Internet');
                 $customer->recovery_status = $customer->recovery_status ?: 'pending';
                 $customer->save();
@@ -235,9 +318,22 @@ class BroadbandController extends Controller
                 if ($customer->pppUser) {
                     PPPSecrets::whereKey($customer->ppp_user_id)->update(['status' => 'disable']);
                 }
+
+                return $pendingId;
             });
 
-            return back()->with('broadband_message', 'Customer disabled successfully.');
+            if ($pendingId) {
+                \Log::warning('Broadband customer disabled locally; remote action queued for unavailable router', [
+                    'customer_id' => $uniqueId,
+                    'router_name' => $pendingAction['router_name'],
+                    'username' => $pendingAction['username'],
+                    'pending_action_id' => $pendingId,
+                ]);
+            }
+
+            return back()->with('broadband_message', $pendingId
+                ? 'Customer disabled locally. Router action queued until the router is available.'
+                : 'Customer disabled successfully.');
         } catch (\Throwable $e) {
             report($e);
             return back()->withErrors(['customer' => 'Failed to disable customer. Please try again.']);
@@ -281,27 +377,70 @@ class BroadbandController extends Controller
             }
 
             $pppUser = $customer->pppUser;
-            if ($pppUser && $pppUser->router_name) {
-                app(MikrotikController::class)->removePPPSecret(
-                    $uniqueId,
-                    $pppUser->router_name,
-                    $pppUser->username
-                );
+            $pendingAction = null;
+
+            if ($pppUser && filled($pppUser->router_name) && filled($pppUser->username)) {
+                $routerName = (string) $pppUser->router_name;
+                $routerConnected = RouterList::where('router_name', $routerName)
+                    ->where('action', 'connected')
+                    ->exists();
+
+                if ($routerConnected) {
+                    try {
+                        app(MikrotikController::class)->removePPPSecret($uniqueId, $routerName, $pppUser->username);
+                    } catch (\Throwable $routerError) {
+                        report($routerError);
+                        $routerConnected = false;
+                    }
+                }
+
+                if (! $routerConnected) {
+                    $pendingAction = [
+                        'customer_unique_id' => $uniqueId,
+                        'router_name' => $routerName,
+                        'username' => $pppUser->username,
+                        'action' => 'remove',
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
             }
 
-            \DB::transaction(function () use ($customer, $pppUser) {
+            $pendingId = \DB::transaction(function () use ($customer, $pppUser, $pendingAction) {
+                $pendingId = $pendingAction
+                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
+                    : null;
+
                 if ($pppUser) {
                     $pppUser->delete();
                 }
                 $customer->delete();
+
+                return $pendingId;
             });
 
-            return redirect()->route('broadband-customers')->with('broadband_message', 'Customer deleted successfully.');
+            if ($pendingId) {
+                \Log::warning('Broadband customer deleted locally; remote removal queued for unavailable router', [
+                    'customer_id' => $uniqueId,
+                    'router_name' => $pendingAction['router_name'],
+                    'username' => $pendingAction['username'],
+                    'pending_action_id' => $pendingId,
+                ]);
+            }
+
+            return redirect()->route('broadband-customers')->with(
+                'broadband_message',
+                $pendingId
+                    ? 'Customer deleted locally. Router removal queued until the router is available.'
+                    : 'Customer deleted successfully.'
+            );
         } catch (\Throwable $e) {
             report($e);
-            return back()->withErrors(['customer' => 'Operation failed. Please try again.']);
+            return back()->withErrors(['customer' => 'Failed to delete customer. Please try again.']);
         }
     }
+
 
     public function packages(Request $request)
     {
@@ -311,13 +450,21 @@ class BroadbandController extends Controller
 
     public function import()
     {
-        return view('xlink.broadband.import', ['routers' => RouterList::orderBy('router_name')->get(), 'packages' => PackageList::orderBy('package')->get()]);
+        return view('xlink.broadband.import', [
+            'routers' => RouterList::orderBy('router_name')->get(),
+            'packages' => PackageList::orderBy('package')->get(),
+        ]);
     }
 
     public function storePackage(Request $request)
     {
-        $data = $request->validate(['package' => 'required|string|max:120', 'price' => 'required|numeric|min:0']);
+        $data = $request->validate([
+            'package' => 'required|string|max:120',
+            'price' => 'required|numeric|min:0',
+        ]);
         PackageList::create($data + ['status' => 'active']);
+
         return back()->with('broadband_message', 'Package created successfully.');
     }
+
 }

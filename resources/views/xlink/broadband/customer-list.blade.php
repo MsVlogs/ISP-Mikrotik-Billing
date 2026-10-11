@@ -41,12 +41,37 @@
         </div>
     </div>
 
+    @if($mode === 'inactive' && is_array($leftStats))
+        <div class="row g-2 mb-3" aria-label="Left customer summary">
+            <div class="col-6 col-xl-3">
+                <div class="card shadow-sm border-0 h-100"><div class="card-body py-3">
+                    <div class="small text-muted">Total Left Customers</div><div class="fs-4 fw-bold">{{ number_format($leftStats['total'] ?? 0) }}</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-xl-3">
+                <div class="card shadow-sm border-0 h-100"><div class="card-body py-3">
+                    <div class="small text-muted">Pending / Partial Recovery</div><div class="fs-4 fw-bold text-warning">{{ number_format($leftStats['pending_recovery'] ?? 0) }}</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-xl-3">
+                <div class="card shadow-sm border-0 h-100"><div class="card-body py-3">
+                    <div class="small text-muted">Recovered</div><div class="fs-4 fw-bold text-success">{{ number_format($leftStats['recovered'] ?? 0) }}</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-xl-3">
+                <div class="card shadow-sm border-0 h-100"><div class="card-body py-3">
+                    <div class="small text-muted">Recovery Issues</div><div class="fs-4 fw-bold text-danger">{{ number_format($leftStats['issues'] ?? 0) }}</div>
+                </div></div>
+            </div>
+        </div>
+    @endif
+
     <div class="card shadow-sm border-0 mb-3 filter-card">
         <div class="card-body">
             <form method="GET" class="row g-2">
-                <div class="col-12 col-lg-5">
+                <div class="col-12 col-lg-4">
                     <label class="form-label mb-1">Search customer</label>
-                    <input class="form-control" name="q" value="{{ request('q') }}" placeholder="CID, name, mobile, username, IP, NID, address, MAC/caller ID, router or package">
+                    <input class="form-control" name="q" value="{{ request('q') }}" placeholder="CID, name, mobile, username, IP, NID, address, router or package">
                 </div>
                 <div class="col-6 col-lg-2">
                     <label class="form-label mb-1">Router</label>
@@ -57,6 +82,29 @@
                         @endforeach
                     </select>
                 </div>
+                @if($mode === 'inactive')
+                    <div class="col-6 col-lg-2">
+                        <label class="form-label mb-1">Recovery status</label>
+                        <select class="form-select" name="recovery_status">
+                            <option value="">All recovery statuses</option>
+                            @foreach(['pending'=>'Pending','partial'=>'Partially recovered','recovered'=>'Recovered','not_required'=>'Not required','issue'=>'Recovery issue'] as $value=>$label)
+                                <option value="{{ $value }}" @selected(request('recovery_status') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <label class="form-label mb-1">Zone / Area</label>
+                        <input class="form-control" name="zone_name" value="{{ request('zone_name') }}" placeholder="Zone">
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <label class="form-label mb-1">Left from</label>
+                        <input class="form-control" type="date" name="left_from" value="{{ request('left_from') }}">
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <label class="form-label mb-1">Left to</label>
+                        <input class="form-control" type="date" name="left_to" value="{{ request('left_to') }}">
+                    </div>
+                @endif
                 <div class="col-6 col-lg-2">
                     <label class="form-label mb-1">Rows</label>
                     <select class="form-select" name="rows">
@@ -75,7 +123,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-            <strong>Customer List</strong>
+            <strong>{{ $mode === 'inactive' ? 'Left Customer Register' : 'Customer List' }}</strong>
             <span class="text-muted small">{{ number_format($customers->total()) }} records</span>
         </div>
         <div class="table-responsive">
