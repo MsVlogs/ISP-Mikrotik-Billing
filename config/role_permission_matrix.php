@@ -25,6 +25,7 @@ return [
             'Package/product/content পরিচালনা এবং non-Super-Admin user account পরিচালনা',
             'Support ticket ও customer communication পরিচালনা',
             'Stock product, supplier, purchase, asset, warranty, damage ও stock ledger পরিচালনা',
+            'Reseller accounts, expense ledger, audit logs, review moderation, vouchers ও purchase requests পরিচালনা',
         ],
         'restrictions' => [
             'Role/permission matrix edit করা বা কাউকে Super Admin করা যাবে না।',
@@ -38,6 +39,7 @@ return [
             'content_and_support' => ['create-web-content', 'edit-web-content', 'delete-web-content', 'create-sms', 'edit-sms', 'delete-sms', 'complain-list', 'view-tickets', 'manage-tickets', 'bandwidth-support'],
             'address_and_reseller_operations' => ['address-order', 'reseller-cashflow', 'reseller-ledger', 'manage-customer-assignment', 'push-customers'],
             'stock_inventory' => ['stock-inventory-view', 'stock-inventory-report', 'stock-inventory-movement', 'stock-inventory-manage', 'stock-inventory-delete'],
+            'admin_tools' => ['manage-resellers', 'manage-expenses', 'view-audit-logs', 'manage-reviews', 'view-vouchers', 'manage-purchase-requests', 'view-profit-summary'],
         ],
         'all' => false,
     ],
