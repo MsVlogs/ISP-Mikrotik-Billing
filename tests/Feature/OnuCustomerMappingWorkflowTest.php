@@ -6,6 +6,7 @@ use App\Models\CustomersInfo;
 use App\Models\NetworkInventoryDevice;
 use App\Models\OltOnuCustomerMapping;
 use App\Models\PPPSecrets;
+use App\Models\RouterList;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -38,6 +39,14 @@ class OnuCustomerMappingWorkflowTest extends TestCase
 
     private function ppp(string $routerName, string $username): PPPSecrets
     {
+        RouterList::create([
+            'router_name' => $routerName,
+            'ip_address' => '127.0.0.1',
+            'username' => 'onu-test-user',
+            'password' => 'onu-test-password',
+            'action' => 'disconnected',
+        ]);
+
         return PPPSecrets::create([
             'router_name' => $routerName,
             'username' => $username,
