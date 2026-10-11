@@ -27,7 +27,37 @@ class SyncOltOnuMappings extends Command
             $rows = is_array($result['onus'] ?? null) ? $result['onus'] : [];
             if (!$rows) { $this->info("OLT {$olt->id}: no normalized ONU rows returned; no mapping writes performed."); continue; }
 
-            $count = 0; $skipped = 0; $issues = [];
+            $count = 0; $skipped = 0; $autoMapped = 0; $issues = [];
+
+            // Stable mapping identity: MAC/serial first, ONU index only as a fallback.
+            // BDCOM/EPON discovery order can change between SNMP polls, so using only
+            // onu_id can attach an old customer to a different physical ONU.
+            $existingMappings = OltOnuCustomerMapping::where('olt_device_id', $olt->id)->get();
+            $byId = $existingMappings->keyBy(fn ($m) => (string) $m->onu_id);
+            $byMac = $existingMappings->filter(fn ($m) => trim((string) $m->onu_mac) !== '')
+                ->groupBy(fn ($m) => $this->normalizeMac($m->onu_mac));
+            $bySerial = $existingMappings->filter(fn ($m) => trim((string) $m->onu_serial) !== '')
+                ->groupBy(fn ($m) => strtolower(trim((string) $m->onu_serial)));
+
+            // Build unique read-only identifiers once so every ONU can be matched
+            // without an N+1 customer query loop. Only an unambiguous exact match is applied.
+            $customers = CustomersInfo::with('pppUser')->get();
+            $byPppUsername = [];
+            $byCallerMac = [];
+            $byRemoteIp = [];
+            foreach ($customers as $customer) {
+                $ppp = $customer->pppUser;
+                if (! $ppp) continue;
+                $usernameKey = strtolower(trim((string) $ppp->username));
+                if ($usernameKey !== '') $byPppUsername[$usernameKey][] = $customer;
+                foreach ([$ppp->caller_id, $ppp->last_caller_id] as $mac) {
+                    $macKey = $this->normalizeMac($mac);
+                    if ($macKey !== '') $byCallerMac[$macKey][] = $customer;
+                }
+                $ipKey = trim((string) $ppp->ppp_remote_ip);
+                if ($ipKey !== '') $byRemoteIp[$ipKey][] = $customer;
+            }
+
             foreach ($rows as $row) {
                 if (!is_array($row)) continue;
                 $onuId = $row['onu_id'] ?? $row['onuId'] ?? $row['id'] ?? $row['snmp_index'] ?? null;
@@ -35,14 +65,81 @@ class SyncOltOnuMappings extends Command
                 $onuId = trim((string) $onuId);
 
                 $onuMac = $row['onu_mac'] ?? $row['mac'] ?? $row['onuMac'] ?? null;
+                $onuSerial = $row['onu_serial'] ?? $row['serial'] ?? $row['onuSerial'] ?? null;
                 $pppId = null; $customerId = null;
-                $existingMapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)
-                    ->where('onu_id', $onuId)->first();
-                if ($existingMapping) {
+
+                $macKey = $this->normalizeMac($onuMac);
+                $serialKey = strtolower(trim((string) $onuSerial));
+                $stableMatches = $macKey !== '' ? ($byMac->get($macKey, collect())) : collect();
+                if ($stableMatches->count() === 0 && $serialKey !== '') {
+                    $stableMatches = $bySerial->get($serialKey, collect());
+                }
+                $existingMapping = $stableMatches->count() === 1 ? $stableMatches->first() : null;
+                $sameIdMapping = $byId->get($onuId);
+                $identityConflict = false;
+
+                // If there is no stable match, an existing ONU ID can be reused only
+                // when its stored stable identity is empty or agrees with this ONU.
+                // A changed MAC/serial at the same index must not inherit the old customer.
+                if (! $existingMapping && $sameIdMapping) {
+                    $oldMac = $this->normalizeMac($sameIdMapping->onu_mac);
+                    $oldSerial = strtolower(trim((string) $sameIdMapping->onu_serial));
+                    $identityConflict = ($macKey !== '' && $oldMac !== '' && $macKey !== $oldMac)
+                        || ($serialKey !== '' && $oldSerial !== '' && $serialKey !== $oldSerial);
+                    if (! $identityConflict) $existingMapping = $sameIdMapping;
+                }
+
+                $allowAutoMatch = ! $identityConflict && (! $existingMapping || ! $existingMapping->customer_id);
+
+                if ($existingMapping && $existingMapping->customer_id && ! $identityConflict) {
                     // Synchronisation refreshes telemetry only. Existing operator mappings
                     // are preserved; new customer assignments require explicit review/save.
                     $pppId = $existingMapping->ppp_user_id;
                     $customerId = $existingMapping->customer_id;
+                } elseif ($identityConflict) {
+                    $issues[] = "ONU {$onuId}: stable identity changed; previous customer mapping was not reused and requires review.";
+                    if ($sameIdMapping) {
+                        // In a real sync, clear only the stale customer assignment. A dry-run
+                        // reports the conflict but never mutates the database.
+                        if (! $this->option('dry-run')) {
+                            $sameIdMapping->customer_id = null;
+                            $sameIdMapping->ppp_user_id = null;
+                            $sameIdMapping->notes = trim(((string) $sameIdMapping->notes)." Stable ONU identity changed; manual review required.");
+                            $sameIdMapping->save();
+                        }
+                        $existingMapping = $sameIdMapping;
+                        $allowAutoMatch = true;
+                    }
+                }
+
+                if ($allowAutoMatch && ! $customerId) {
+                    // Apply only an unambiguous exact match. This covers new ONU rows,
+                    // existing-unmapped rows, and rows whose old index identity changed.
+                    // Priority: PPPoE username, ONU MAC == PPP caller/last-caller,
+                    // then ONU IP == PPP remote IP.
+                    $candidates = [];
+                    $onuUsername = strtolower(trim((string) ($row['pppoe_username'] ?? $row['ppp_username'] ?? '')));
+                    if ($onuUsername !== '' && count($byPppUsername[$onuUsername] ?? []) === 1) {
+                        $candidates = $byPppUsername[$onuUsername];
+                    }
+
+                    if (count($candidates) !== 1) {
+                        $macKey = $this->normalizeMac($onuMac);
+                        $macCandidates = $macKey !== '' ? ($byCallerMac[$macKey] ?? []) : [];
+                        if (count($macCandidates) === 1) $candidates = $macCandidates;
+                    }
+
+                    if (count($candidates) !== 1) {
+                        $ipKey = trim((string) ($row['onu_ip'] ?? $row['ip'] ?? ''));
+                        $ipCandidates = $ipKey !== '' ? ($byRemoteIp[$ipKey] ?? []) : [];
+                        if (count($ipCandidates) === 1) $candidates = $ipCandidates;
+                    }
+
+                    if (count($candidates) === 1) {
+                        $customerId = $candidates[0]->id;
+                        $pppId = $candidates[0]->ppp_user_id;
+                        $autoMapped++;
+                    }
                 }
 
                 $status = $this->normalizeStatus($row);
@@ -69,26 +166,48 @@ class SyncOltOnuMappings extends Command
                     continue;
                 }
 
-                OltOnuCustomerMapping::updateOrCreate(
-                    ['olt_device_id' => $olt->id, 'onu_id' => (string) $onuId],
-                    [
-                        'customer_id' => $customerId ?? $existingMapping?->customer_id,
-                        'ppp_user_id' => $pppId ?? $existingMapping?->ppp_user_id,
-                        'onu_serial' => $row['onu_serial'] ?? $row['serial'] ?? $row['onuSerial'] ?? null,
-                        'onu_mac' => $onuMac,
-                        'pon_port' => $row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? null,
-                        'onu_type' => $row['onu_type'] ?? $row['type'] ?? null,
-                        'status' => $status,
-                        'rx_power' => $row['rx_power'] ?? $row['opticalRx'] ?? null,
-                        'tx_power' => $row['tx_power'] ?? $row['opticalTx'] ?? null,
-                        'onu_ip' => $row['onu_ip'] ?? $row['ip'] ?? $row['onuIp'] ?? null,
-                        'last_seen_at' => $lastSeen,
-                        'notes' => $existingMapping ? $existingMapping->notes : ($row['detail'] ?? 'Discovered by read-only ONU synchronisation; customer mapping requires explicit review.'),
-                    ]
-                );
+                $mappingData = [
+                    'customer_id' => $customerId ?? $existingMapping?->customer_id,
+                    'ppp_user_id' => $pppId ?? $existingMapping?->ppp_user_id,
+                    'onu_serial' => trim((string) $onuSerial) !== '' ? $onuSerial : $existingMapping?->onu_serial,
+                    'onu_mac' => $this->normalizeMac($onuMac) !== '' ? $onuMac : $existingMapping?->onu_mac,
+                    'pon_port' => trim((string) ($row['pon_port'] ?? $row['ponPort'] ?? $row['pon'] ?? '')) !== ''
+                        ? ($row['pon_port'] ?? $row['ponPort'] ?? $row['pon'])
+                        : $existingMapping?->pon_port,
+                    'distance_m' => $row['distance'] ?? $row['distance_m'] ?? $existingMapping?->distance_m,
+                    'temperature' => $row['temperature'] ?? $row['temp'] ?? $existingMapping?->temperature,
+                    'supply_voltage' => $row['supply_voltage'] ?? $row['voltage'] ?? $existingMapping?->supply_voltage,
+                    'tx_bias_current' => $row['tx_bias_current'] ?? $row['tx_bias'] ?? $row['bias_current'] ?? $existingMapping?->tx_bias_current,
+                    'onu_type' => $row['onu_type'] ?? $row['type'] ?? $existingMapping?->onu_type,
+                    'status' => $status,
+                    'rx_power' => $row['rx_power'] ?? $row['opticalRx'] ?? $existingMapping?->rx_power,
+                    'tx_power' => $row['tx_power'] ?? $row['opticalTx'] ?? $existingMapping?->tx_power,
+                    'opm_source' => $row['opm_source'] ?? $existingMapping?->opm_source,
+                    'onu_ip' => $row['onu_ip'] ?? $row['ip'] ?? $row['onuIp'] ?? null,
+                    'last_seen_at' => $lastSeen,
+                    'notes' => $existingMapping ? $existingMapping->notes : ($row['detail'] ?? 'Discovered by read-only ONU synchronisation; customer mapping requires explicit review.'),
+                ];
+
+                if ($existingMapping) {
+                    // Keep the stable mapping row. Update the index only when the
+                    // current index is not already occupied by another mapping.
+                    $idConflict = (string) $existingMapping->onu_id !== $onuId
+                        && OltOnuCustomerMapping::where('olt_device_id', $olt->id)
+                            ->where('onu_id', $onuId)
+                            ->where('id', '<>', $existingMapping->id)
+                            ->exists();
+                    if (! $idConflict) $existingMapping->onu_id = $onuId;
+                    $existingMapping->fill($mappingData);
+                    $existingMapping->save();
+                } else {
+                    OltOnuCustomerMapping::create($mappingData + [
+                        'olt_device_id' => $olt->id,
+                        'onu_id' => (string) $onuId,
+                    ]);
+                }
                 $count++;
             }
-            $this->info("OLT {$olt->id}: normalized {$count} ONU rows synced; skipped {$skipped} invalid rows.");
+            $this->info("OLT {$olt->id}: normalized {$count} ONU rows synced; auto-mapped {$autoMapped} unambiguous customer matches; skipped {$skipped} invalid rows.");
             foreach (array_slice($issues, 0, 10) as $issue) $this->warn($issue);
             if (count($issues) > 10) $this->warn('Additional mapping validation issues: '.(count($issues)-10));
         }

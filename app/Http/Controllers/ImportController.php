@@ -168,7 +168,11 @@ class ImportController extends Controller
                     ]);
 
                     OfficialInfo::create([
-                        'customer_office_unique_id' => $newId
+                        'customer_office_unique_id' => $newId,
+                        'billing_type' => 'prepaid',
+                        'connection_type' => 'fiber',
+                        'connectivity_type' => 'shared',
+                        'client_type' => 'home',
                     ]);
 
                     $uploadedRows++;

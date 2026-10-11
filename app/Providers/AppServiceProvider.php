@@ -58,6 +58,34 @@ class AppServiceProvider extends ServiceProvider
         }
 
 
+        // Apply explicitly enabled company SMTP settings to all mail sends, including queue workers.
+        // The SMTP password is encrypted at rest; failures fall back to the existing .env mail config.
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('company_mail_settings')) {
+                $mailSettings = \Illuminate\Support\Facades\DB::table('company_mail_settings')->orderBy('id')->first();
+                if ($mailSettings && (bool) $mailSettings->enabled && $mailSettings->mailer === 'smtp') {
+                    $password = null;
+                    if (! empty($mailSettings->password_encrypted)) {
+                        try { $password = \Illuminate\Support\Facades\Crypt::decryptString($mailSettings->password_encrypted); }
+                        catch (\Throwable $e) { $password = null; }
+                    }
+                    config([
+                        'mail.default' => 'smtp',
+                        'mail.mailers.smtp.transport' => 'smtp',
+                        'mail.mailers.smtp.scheme' => $mailSettings->encryption === 'ssl' ? 'smtps' : ($mailSettings->encryption === 'tls' ? 'smtp' : null),
+                        'mail.mailers.smtp.host' => $mailSettings->host,
+                        'mail.mailers.smtp.port' => (int) $mailSettings->port,
+                        'mail.mailers.smtp.username' => $mailSettings->username,
+                        'mail.mailers.smtp.password' => $password,
+                        'mail.from.address' => $mailSettings->from_address,
+                        'mail.from.name' => $mailSettings->from_name,
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Keep application boot safe during migrations and when the settings table is unavailable.
+        }
+
         // Set dynamic application locale from database settings
         try {
             if (class_exists(\App\Models\MainSiteData::class) && \Illuminate\Support\Facades\Schema::hasTable('main_site_data')) {
@@ -76,6 +104,25 @@ class AppServiceProvider extends ServiceProvider
         } catch (\Throwable $e) {
             // Avoid issues during setup or migrations
         }
+
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Mail\Events\MessageSending::class, function ($event) {
+            try {
+                if (! \Illuminate\Support\Facades\Schema::hasTable('company_mail_settings')) return;
+                $signature = trim((string) \Illuminate\Support\Facades\DB::table('company_mail_settings')->orderBy('id')->value('signature'));
+                if ($signature === '' || ! $event->message instanceof \Symfony\Component\Mime\Email) return;
+                $message = $event->message;
+                $text = $message->getTextBody();
+                if (is_string($text) && trim($text) !== '' && ! str_contains($text, $signature)) {
+                    $message->text(rtrim($text)."\n\n".$signature);
+                }
+                $html = $message->getHtmlBody();
+                if (is_string($html) && trim($html) !== '' && ! str_contains(strip_tags($html), $signature)) {
+                    $message->html($html.'<hr><p>'.nl2br(e($signature)).'</p>');
+                }
+            } catch (\Throwable $e) {
+                // A signature setting must never block an outbound message.
+            }
+        });
 
         Gate::before(function ($user, $ability) {
             if (method_exists($user, 'hasRole')) {

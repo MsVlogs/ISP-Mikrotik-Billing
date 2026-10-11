@@ -136,6 +136,15 @@ class CustomerList extends Component
                 $data->whereNotIn('status', $statusFilter);
                 break;
 
+            case 'missing_location':
+                $data->whereNotIn('status', $statusFilter)
+                    ->whereDoesntHave('customerAddress', function ($q) {
+                        $q->where('label_name', 'Network Location')
+                            ->whereNotNull('latitude')
+                            ->whereNotNull('longitude');
+                    });
+                break;
+
             case 'without_collection':
                 $data->whereHas('billing', function ($q) {
                     $q->where('paid_amount', 0);

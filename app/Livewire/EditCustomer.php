@@ -137,6 +137,25 @@ class EditCustomer extends Component
             ->pluck('package');
     }
 
+    public function loadPackagePrice(): void
+    {
+        $packageName = trim((string) ($this->fields['pppUser']['package_name'] ?? ''));
+        if ($packageName === '') {
+            return;
+        }
+
+        $routerName = trim((string) ($this->fields['pppUser']['router_name'] ?? ''));
+        $query = PackageList::where('package', $packageName);
+        if ($routerName !== '') {
+            $query->where('router_name', $routerName);
+        }
+
+        $package = $query->first();
+        if ($package) {
+            $this->fields['billing']['monthly_rent'] = $package->price;
+        }
+    }
+
     public function loadInterfaceNames()
     {
         if ($this->fields['pppUser']['router_name'] ?? false) {
@@ -309,8 +328,8 @@ class EditCustomer extends Component
         $this->validate([
             'fields.customer.customer_name' => 'required|min:3|max:255',
             'fields.customer.email' => 'nullable|email',
-            'fields.customer.mobile' => 'nullable|string',
-            'fields.customer.alternative_mobile' => 'nullable|string',
+            'fields.customer.mobile' => ['nullable', 'string', new ValidPhoneDigits],
+            'fields.customer.alternative_mobile' => ['nullable', 'string', new ValidPhoneDigits],
             'fields.customer.identification_no' => 'nullable|string|max:255',
             'fields.customer.latitude' => 'nullable|numeric|between:-90,90',
             'fields.customer.longitude' => 'nullable|numeric|between:-180,180',
@@ -326,8 +345,8 @@ class EditCustomer extends Component
             $customer->update([
                 'customer_name' => $c['customer_name'] ?? '',
                 'email' => $c['email'] ?? null,
-                'mobile' => filled($c['mobile'] ?? null) ? (str_starts_with((string)$c['mobile'], '88') ? $c['mobile'] : '88'.$c['mobile']) : null,
-                'alternative_mobile' => filled($c['alternative_mobile'] ?? null) ? (str_starts_with((string)$c['alternative_mobile'], '88') ? $c['alternative_mobile'] : '88'.$c['alternative_mobile']) : null,
+                'mobile' => CustomersInfo::normalizeBangladeshMobile($c['mobile'] ?? null),
+                'alternative_mobile' => CustomersInfo::normalizeBangladeshMobile($c['alternative_mobile'] ?? null),
                 'identification_no' => $c['identification_no'] ?? null,
                 'profession' => $c['profession'] ?? null,
                 'connection_date' => $this->fields['pppUser']['connection_date'] ?? $customer->connection_date,

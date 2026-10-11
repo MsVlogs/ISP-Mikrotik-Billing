@@ -178,6 +178,7 @@
                 <ul class="nav collapse" id="broadbandMenu">
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('customer-add') }}"><span class="nav-link-text ps-1">{{ __('Add Customer') }}</span></a></li>
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('customers.index') }}"><span class="nav-link-text ps-1">{{ __('Customer List') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('customer-bulk-import') }}"><span class="nav-link-text ps-1">{{ __('Customer Bulk Import') }}</span></a></li>
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-customer-search') }}"><span class="nav-link-text ps-1">{{ __('Customer Search') }}</span></a></li>
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-online-customers') }}"><span class="nav-link-text ps-1">{{ __('Online Customers') }}</span></a></li>
                     <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('broadband-due-customers') }}"><span class="nav-link-text ps-1">{{ __('Due Customers') }}</span></a></li>
@@ -348,6 +349,8 @@
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory') }}"><span class="nav-link-text ps-1">{{ __('Dashboard') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.mikrotik') }}"><span class="nav-link-text ps-1">{{ __('MikroTik Management') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.olt') }}"><span class="nav-link-text ps-1">{{ __('OLT Management') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.onu-management') }}"><span class="nav-link-text ps-1">{{ __('ONU Management') }}</span></a>
+                    <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-monitoring') }}"><span class="nav-link-text ps-1">{{ __('Customer Network Monitoring') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.olt') }}#olt-provisioning"><span class="nav-link-text ps-1">{{ __('OLT / ONU Provisioning') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.switches') }}"><span class="nav-link-text ps-1">{{ __('Switch Management') }}</span></a>
                     <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('network-inventory.access-points') }}"><span class="nav-link-text ps-1">{{ __('Access Point Management') }}</span></a>
@@ -448,6 +451,7 @@
                     <div class="collapse ps-4" id="{{ $menuId }}">
                         <a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route($route) }}">{{ __('Overview') }}</a>
                         <a wire:navigate.hover class="nav-link" href="{{ route('site-settings') }}">{{ __('Site Settings') }}</a>
+                        <a wire:navigate.hover class="nav-link" href="{{ route('company-settings') }}">{{ __('Company Settings') }}</a>
                         <a wire:navigate.hover class="nav-link" href="{{ route('mikrotik-sync') }}">{{ __('MikroTik Setup') }}</a>
                         <a wire:navigate.hover class="nav-link" href="{{ route('sms-setup') }}">{{ __('SMS Setup') }}</a>
                         <a wire:navigate.hover class="nav-link" href="{{ route('main-site-setup') }}">{{ __('Main Site Setup') }}</a>
@@ -592,6 +596,12 @@
                     </div>
                 </a>
                 <ul class="nav collapse" id="smsSetupDropdown">
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('sms-service') }}"><span class="nav-link-text ps-1">{{ __('SMS Service Overview') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('sms-service.send') }}"><span class="nav-link-text ps-1">{{ __('Send SMS') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('sms-service.bulk') }}"><span class="nav-link-text ps-1">{{ __('Bulk Campaign') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('sms-service.templates') }}"><span class="nav-link-text ps-1">{{ __('SMS Templates') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('sms-service.gateway') }}"><span class="nav-link-text ps-1">{{ __('SMS Gateway') }}</span></a></li>
+                    <li class="nav-item"><a wire:navigate.hover class="nav-link" href="{{ route('sms-service.reports') }}"><span class="nav-link-text ps-1">{{ __('SMS Reports & Delivery History') }}</span></a></li>
                     <li class="nav-item">
                         <a wire:navigate.hover wire:current="active" class="nav-link"
                             href="{{ route('sms-setup') }}">

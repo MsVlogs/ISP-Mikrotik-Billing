@@ -45,7 +45,7 @@ html[data-theme="dark"] .login-visual{background:linear-gradient(160deg,#0b2a22,
 <x-validation-errors class="login-alert" />
 <form class="login-form" method="POST" action="{{ route('login') }}">
 @csrf
-<div class="login-field"><span>✉</span><input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="username" placeholder="E-mail / User Name"></div>
+<div class="login-field"><span>✉</span><input id="email" type="text" name="email" value="{{ old('email') }}" required autocomplete="username" placeholder="Email address or username"></div>
 <div class="login-field"><span>🔑</span><input id="password" type="password" name="password" placeholder="Password" required autocomplete="current-password"></div>
 <div class="login-row">
 <label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="remember_me" name="remember"> {{ __('Remember me') }}</label>

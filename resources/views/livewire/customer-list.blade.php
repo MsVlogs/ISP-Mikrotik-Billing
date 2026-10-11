@@ -614,6 +614,9 @@
                         if (dashboardStatus && ['all','active','pending','free','disable','inactive','recent'].includes(dashboardStatus)) {
                             d.filter = dashboardStatus === 'active' ? 'all_active' : dashboardStatus;
                         }
+                        if (new URLSearchParams(window.location.search).get('map_missing') === '1') {
+                            d.filter = 'missing_location';
+                        }
                         d.router_name = $('#router_filter').val();
                     }
                 },

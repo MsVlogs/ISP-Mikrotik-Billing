@@ -66,20 +66,16 @@ class AiEngineerControllerTest extends TestCase
     public function test_ai_engineer_page_renders_for_authenticated_user(): void
     {
         $service = Mockery::mock(AiEngineerDiagnosticService::class);
-        $service->shouldReceive('dailySummary')->once()->andReturn([
-            'generated_at' => now()->toIso8601String(),
-            'alerts' => [],
-            'highlights' => [],
-        ]);
-        $service->shouldReceive('unmappedOnus')->once()->andReturn([]);
-        $service->shouldReceive('upstreamCorrelation')->once()->with(100)->andReturn(['groups' => [], 'affected_customers' => 0, 'read_only' => true]);
-        $service->shouldReceive('matchingCandidates')->once()->with(100)->andReturn(['candidates' => [], 'total' => 0, 'read_only' => true]);
         $service->shouldReceive('overview')->once()->andReturn([
             'customers' => ['total' => 0, 'active' => 0, 'pending' => 0, 'disabled' => 0],
             'routers' => ['total' => 0, 'connected' => 0, 'disconnected' => 0],
             'olt_onu' => ['mapped' => 0], 'support' => ['tickets' => 0],
             'openai_configured' => false, 'read_only' => true, 'generated_at' => now()->toIso8601String(),
         ]);
+        $service->shouldReceive('dailySummary')->once()->andReturn(['generated_at'=>now()->toIso8601String(),'trend'=>[]]);
+        $service->shouldReceive('unmappedOnus')->once()->with(12)->andReturn([]);
+        $service->shouldReceive('upstreamCorrelation')->once()->with(100)->andReturn(['groups'=>[],'read_only'=>true]);
+        $service->shouldReceive('matchingCandidates')->once()->with(100)->andReturn(['matches'=>[],'read_only'=>true]);
         $this->app->instance(AiEngineerDiagnosticService::class, $service);
 
         $this->get('/ai-engineer')->assertOk()->assertSee('AI Engineer');

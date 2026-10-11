@@ -273,7 +273,8 @@ document.addEventListener('livewire:init', () => {
                     allowDropdown: false,
                     initialCountry: siteCountry,
                     onlyCountries: [siteCountry],
-                    separateDialCode: true,
+                    separateDialCode: false,
+                    nationalMode: true,
                     strictMode: true,
                     loadUtils: () => import("intl-tel-input/dist/js/utils.js")
                 });
@@ -465,21 +466,27 @@ document.addEventListener('livewire:init', () => {
 
                 const handleUpdate = () => {
                     if (isInternalUpdate) return;
-                    let fullNumber = iti.getNumber();
-                    // Strip the leading '+' prefix to match database representation (e.g. 8801840451881)
-                    if (fullNumber && fullNumber.startsWith('+')) {
-                        fullNumber = fullNumber.substring(1);
+
+                    // Customer phone fields use Bangladesh local format only.
+                    // The intl-tel-input widget may internally know the +880 number,
+                    // but Livewire/standard forms receive 01XXXXXXXXX instead.
+                    let localNumber = String(input.value || '').replace(/\D/g, '');
+                    if (localNumber.startsWith('00880')) {
+                        localNumber = '0' + localNumber.substring(5);
+                    } else if (localNumber.startsWith('8801')) {
+                        localNumber = '0' + localNumber.substring(3);
                     }
+
                     if (wireModel) {
-                        this.$wire.set(wireModel, fullNumber);
+                        this.$wire.set(wireModel, localNumber);
                     } else if (xModel) {
                         try {
-                            Alpine.evaluate(input, `${xModel} = '${fullNumber}'`);
+                            Alpine.evaluate(input, `${xModel} = '${localNumber}'`);
                         } catch (e) {
                             console.warn('Failed to set x-model value via Alpine.evaluate:', e);
                         }
                     } else if (hiddenInput) {
-                        hiddenInput.value = fullNumber;
+                        hiddenInput.value = localNumber;
                     }
 
                     validateNumber();

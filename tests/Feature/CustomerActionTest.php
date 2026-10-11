@@ -90,6 +90,8 @@ class CustomerActionTest extends TestCase
 
         $this->assertSoftDeleted('customers_infos', ['id' => $customer->id]);
         $this->assertDatabaseMissing('p_p_p_secrets', ['id' => $ppp->id]);
+        // Deleted customer references are deliberately archived so the human-readable
+        // CID can be reused without attaching old history to a new customer.
         $this->assertDatabaseHas('mikrotik_pending_actions', [
             'customer_unique_id' => '__ARCHIVED_CUSTOMER_1',
             'router_name' => 'delete-router',
