@@ -55,7 +55,7 @@ class EnforceModulePermissions
                     return 'stock-inventory-report';
                 }
                 // Purchase records expose supplier and unit-cost data; limit them to inventory managers.
-                if (in_array($path, ['stock-inventory/settings', 'stock-inventory/purchases'], true)) {
+                if (in_array($path, ['stock-inventory/settings', 'stock-inventory/purchases', 'stock-inventory/vendors', 'stock-inventory/vendor-payments'], true)) {
                     return 'stock-inventory-manage';
                 }
                 return 'stock-inventory-view';
@@ -99,6 +99,14 @@ class EnforceModulePermissions
         if ($path === 'mikrotik' || str_starts_with($path, 'mikrotik-setup')
             || str_starts_with($path, 'mikrotik-server') || $path === 'mikrotik-login-messages') {
             return 'mikrotik-setup';
+        }
+
+        if ($path === 'sms-service' || str_starts_with($path, 'sms-service/')) {
+            return 'site-setup';
+        }
+
+        if ($path === 'company-settings' || str_starts_with($path, 'company-settings/')) {
+            return 'site-setup';
         }
 
         // Global communication, gateway and server-backup settings are owner-only.
@@ -165,6 +173,9 @@ class EnforceModulePermissions
         }
         if ($path === 'monthly-bill-form') {
             return 'update-bill';
+        }
+        if ($path === 'customer-bulk-import' || str_starts_with($path, 'customer-bulk-import/')) {
+            return 'create-customer';
         }
         if ($path === 'import-form') {
             return 'create-customer';
