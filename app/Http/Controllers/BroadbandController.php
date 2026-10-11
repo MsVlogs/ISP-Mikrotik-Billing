@@ -301,10 +301,15 @@ class BroadbandController extends Controller
                 }
             }
 
-            $pendingId = \DB::transaction(function () use ($customer, $request, $pendingAction) {
-                $pendingId = $pendingAction
-                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
-                    : null;
+            $pendingId = \DB::transaction(function () use ($customer, $request, $pendingAction, $uniqueId) {
+                $pendingId = null;
+                $pendingQueue = app(\App\Services\MikrotikPendingActionQueue::class);
+                if ($customer->pppUser && filled($customer->pppUser->router_name) && filled($customer->pppUser->username)) {
+                    $pendingQueue->supersedePending($uniqueId, $customer->pppUser->router_name, $customer->pppUser->username, 'disable');
+                    if ($pendingAction) {
+                        $pendingId = $pendingQueue->queue($uniqueId, $customer->pppUser->router_name, $customer->pppUser->username, 'disable');
+                    }
+                }
 
                 $customer->status = 'disable';
                 $customer->left_date = now();
@@ -407,10 +412,15 @@ class BroadbandController extends Controller
                 }
             }
 
-            $pendingId = \DB::transaction(function () use ($customer, $pppUser, $pendingAction) {
-                $pendingId = $pendingAction
-                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
-                    : null;
+            $pendingId = \DB::transaction(function () use ($customer, $pppUser, $pendingAction, $uniqueId) {
+                $pendingId = null;
+                $pendingQueue = app(\App\Services\MikrotikPendingActionQueue::class);
+                if ($pppUser && filled($pppUser->router_name) && filled($pppUser->username)) {
+                    $pendingQueue->supersedePending($uniqueId, $pppUser->router_name, $pppUser->username, 'remove');
+                    if ($pendingAction) {
+                        $pendingId = $pendingQueue->queue($uniqueId, $pppUser->router_name, $pppUser->username, 'remove');
+                    }
+                }
 
                 if ($pppUser) {
                     $pppUser->delete();

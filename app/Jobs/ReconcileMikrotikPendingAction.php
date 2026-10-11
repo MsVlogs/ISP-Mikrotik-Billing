@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Http\Controllers\MikrotikController;
 use App\Models\RouterList;
+use App\Models\PPPSecrets;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,7 +33,9 @@ class ReconcileMikrotikPendingAction implements ShouldQueue, ShouldBeUnique
     public function handle(MikrotikController $mikrotik): void
     {
         $action = DB::table('mikrotik_pending_actions')->where('id', $this->pendingActionId)->first();
-        if (! $action || $action->status === 'completed') {
+        // A job may already be queued when a newer opposite action supersedes it.
+        // Never execute stale work after the row leaves the pending state.
+        if (! $action || $action->status !== 'pending') {
             return;
         }
 
@@ -49,6 +52,33 @@ class ReconcileMikrotikPendingAction implements ShouldQueue, ShouldBeUnique
         try {
             if ($action->action === 'disable') {
                 $mikrotik->disablePPPSecret($action->customer_unique_id ?: $action->id, $action->router_name, $action->username, false);
+            } elseif ($action->action === 'enable') {
+                $ppp = PPPSecrets::where('router_name', $action->router_name)
+                    ->where('username', $action->username)
+                    ->first();
+
+                // If the local PPP secret was removed while this action waited,
+                // this queued activation is obsolete and should not retry forever.
+                if (! $ppp) {
+                    DB::table('mikrotik_pending_actions')->where('id', $action->id)->update([
+                        'status' => 'completed',
+                        'last_error' => null,
+                        'processed_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    return;
+                }
+
+                $mikrotik->enablePPPSecret($action->customer_unique_id ?: $action->id, $action->router_name, $action->username);
+                if (filled($ppp->profile)) {
+                    $mikrotik->updatePPPSecret($action->router_name, $action->username, 'profile', $ppp->profile);
+                }
+                try {
+                    $mikrotik->singleWrite($action->router_name, '/ppp active remove [find name='.$mikrotik->mtQuote($action->username).']');
+                } catch (\Throwable $e) {
+                    Log::debug('Pending enable action session reset skipped: '.$e->getMessage());
+                }
+                PPPSecrets::whereKey($ppp->id)->update(['status' => 'active']);
             } elseif ($action->action === 'remove') {
                 $mikrotik->removePPPSecret($action->customer_unique_id ?: $action->id, $action->router_name, $action->username);
             } else {

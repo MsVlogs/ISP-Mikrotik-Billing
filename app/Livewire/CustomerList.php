@@ -504,6 +504,15 @@ class CustomerList extends Component
                     ]);
                 }
 
+                if ($customer->pppUser && filled($customer->pppUser->router_name) && filled($customer->pppUser->username)) {
+                    app(\App\Services\MikrotikPendingActionQueue::class)->supersedePending(
+                        $unique_id,
+                        $customer->pppUser->router_name,
+                        $customer->pppUser->username,
+                        'enable'
+                    );
+                }
+
                 $customer->status = 'active';
                 $customer->save();
 
@@ -530,37 +539,48 @@ class CustomerList extends Component
                 }
             });
 
-            $routerSyncFailed = false;
+            $routerSyncPending = false;
+            $ppp = $customer->pppUser;
 
-            if ($customer->pppUser && ! empty($customer->pppUser->router_name)) {
-                try {
-                    app(MikrotikController::class)->enablePPPSecret(
+            if ($ppp && filled($ppp->router_name) && filled($ppp->username)) {
+                $routerConnected = RouterList::where('router_name', $ppp->router_name)
+                    ->where('action', 'connected')
+                    ->exists();
+
+                if ($routerConnected) {
+                    try {
+                        $mikrotik = app(MikrotikController::class);
+                        $mikrotik->enablePPPSecret($unique_id, $ppp->router_name, $ppp->username);
+                        if (filled($ppp->profile)) {
+                            $mikrotik->updatePPPSecret($ppp->router_name, $ppp->username, 'profile', $ppp->profile);
+                        }
+                    } catch (\Throwable $e) {
+                        $routerSyncPending = true;
+                        \Log::warning('Customer activated locally; MikroTik activation queued after router failure', [
+                            'customer_unique_id' => $unique_id,
+                            'router' => $ppp->router_name,
+                            'username' => $ppp->username,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                } else {
+                    $routerSyncPending = true;
+                }
+
+                if ($routerSyncPending) {
+                    app(\App\Services\MikrotikPendingActionQueue::class)->queue(
                         $unique_id,
-                        $customer->pppUser->router_name,
-                        $customer->pppUser->username
+                        $ppp->router_name,
+                        $ppp->username,
+                        'enable'
                     );
-
-                    app(MikrotikController::class)->updatePPPSecret(
-                        $customer->pppUser->router_name,
-                        $customer->pppUser->username,
-                        'profile',
-                        $customer->pppUser->profile
-                    );
-                } catch (\Throwable $e) {
-                    $routerSyncFailed = true;
-                    \Log::error('Customer activated but MikroTik PPP sync failed', [
-                        'customer_unique_id' => $unique_id,
-                        'router' => $customer->pppUser->router_name,
-                        'username' => $customer->pppUser->username,
-                        'error' => $e->getMessage(),
-                    ]);
                 }
             }
 
-            if ($routerSyncFailed) {
-                flash()->addWarning('Customer activated, but MikroTik sync failed. Please sync the customer from the Push/Sync action.');
+            if ($routerSyncPending) {
+                flash()->addWarning('Customer enabled locally. MikroTik activation is queued until the router is available.');
             } else {
-                flash()->addSuccess($customer->pppUser
+                flash()->addSuccess($ppp
                     ? 'Customer enabled successfully and PPP secret activated.'
                     : 'Customer enabled successfully.');
             }
@@ -698,12 +718,19 @@ class CustomerList extends Component
                     ->exists();
 
                 if ($routerConnected) {
-                    app(MikrotikController::class)->disablePPPSecret(
-                        $uniqueId,
-                        $routerName,
-                        $customer->pppUser->username
-                    );
-                } else {
+                    try {
+                        app(MikrotikController::class)->disablePPPSecret(
+                            $uniqueId,
+                            $routerName,
+                            $customer->pppUser->username
+                        );
+                    } catch (\Throwable $routerError) {
+                        report($routerError);
+                        $routerConnected = false;
+                    }
+                }
+
+                if (! $routerConnected && filled($customer->pppUser->username)) {
                     $pendingAction = [
                         'customer_unique_id' => $uniqueId,
                         'router_name' => $routerName,
@@ -716,10 +743,15 @@ class CustomerList extends Component
                 }
             }
 
-            $pendingId = \DB::transaction(function () use ($customer, $pendingAction) {
-                $pendingId = $pendingAction
-                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
-                    : null;
+            $pendingId = \DB::transaction(function () use ($customer, $pendingAction, $uniqueId) {
+                $pendingId = null;
+                if ($customer->pppUser && filled($customer->pppUser->router_name) && filled($customer->pppUser->username)) {
+                    $pendingQueue = app(\App\Services\MikrotikPendingActionQueue::class);
+                    $pendingQueue->supersedePending($uniqueId, $customer->pppUser->router_name, $customer->pppUser->username, 'disable');
+                    if ($pendingAction) {
+                        $pendingId = $pendingQueue->queue($uniqueId, $customer->pppUser->router_name, $customer->pppUser->username, 'disable');
+                    }
+                }
 
                 $customer->status = 'disable';
                 $customer->save();
@@ -794,12 +826,19 @@ class CustomerList extends Component
                     ->exists();
 
                 if ($routerConnected) {
-                    app(MikrotikController::class)->removePPPSecret(
-                        $decryptedId,
-                        $routerName,
-                        $pppUser->username
-                    );
-                } else {
+                    try {
+                        app(MikrotikController::class)->removePPPSecret(
+                            $decryptedId,
+                            $routerName,
+                            $pppUser->username
+                        );
+                    } catch (\Throwable $routerError) {
+                        report($routerError);
+                        $routerConnected = false;
+                    }
+                }
+
+                if (! $routerConnected && filled($pppUser->username)) {
                     $pendingAction = [
                         'customer_unique_id' => $decryptedId,
                         'router_name' => $routerName,
@@ -812,10 +851,15 @@ class CustomerList extends Component
                 }
             }
 
-            $pendingId = \DB::transaction(function () use ($customerDelete, $pppUser, $pendingAction) {
-                $pendingId = $pendingAction
-                    ? \DB::table('mikrotik_pending_actions')->insertGetId($pendingAction)
-                    : null;
+            $pendingId = \DB::transaction(function () use ($customerDelete, $pppUser, $pendingAction, $decryptedId) {
+                $pendingId = null;
+                if ($pppUser && filled($pppUser->router_name) && filled($pppUser->username)) {
+                    $pendingQueue = app(\App\Services\MikrotikPendingActionQueue::class);
+                    $pendingQueue->supersedePending($decryptedId, $pppUser->router_name, $pppUser->username, 'remove');
+                    if ($pendingAction) {
+                        $pendingId = $pendingQueue->queue($decryptedId, $pppUser->router_name, $pppUser->username, 'remove');
+                    }
+                }
 
                 if ($pppUser) {
                     $pppUser->delete();

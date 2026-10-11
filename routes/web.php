@@ -618,7 +618,7 @@ Route::middleware([
             $customer=\App\Models\CustomersInfo::with('pppUser')->findOrFail($data['customer_id']);
             $reuseQuery=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id);
             if($mapping) $reuseQuery->where('id','<>',$mapping->id);
-            $sameCustomer=$reuseQuery->where('customer_id',$customer->id)->exists();
+            $sameCustomer=(clone $reuseQuery)->where('customer_id',$customer->id)->exists();
             $samePpp=$customer->ppp_user_id ? (clone $reuseQuery)->where('ppp_user_id',$customer->ppp_user_id)->exists() : false;
             if(($sameCustomer || $samePpp) && !$request->boolean('confirm_reuse')) {
                 $who=$sameCustomer && $samePpp ? 'Customer and PPPoE' : ($sameCustomer ? 'Customer' : 'PPPoE');
@@ -628,7 +628,11 @@ Route::middleware([
             $payload=['customer_id'=>$customer->id,'ppp_user_id'=>$customer->ppp_user_id,'onu_serial'=>$data['onu_serial']??$mapping?->onu_serial,'onu_mac'=>$data['onu_mac']??$mapping?->onu_mac,'pon_port'=>$data['pon_port']??$mapping?->pon_port,'status'=>$mapping?->status ?? 'unknown','last_seen_at'=>$mapping?->last_seen_at ?? now()];
             if($mapping){
                 $idConflict=(string)$mapping->onu_id!==(string)$data['onu_id'] && \App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->where('onu_id',$data['onu_id'])->where('id','<>',$mapping->id)->exists();
-                if(!$idConflict) $mapping->onu_id=$data['onu_id'];
+                if($idConflict) {
+                    return back()->with('inventory_message','The requested ONU ID already belongs to another ONU on this OLT. Refresh the ONU list and select the correct device.')
+                        ->with('onu_sync_success',false);
+                }
+                $mapping->onu_id=$data['onu_id'];
                 $mapping->fill($payload); $mapping->save();
             } else {
                 $mapping=\App\Models\OltOnuCustomerMapping::create($payload+['olt_device_id'=>$device->id,'onu_id'=>$data['onu_id']]);
