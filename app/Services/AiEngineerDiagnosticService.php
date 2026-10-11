@@ -263,7 +263,7 @@ class AiEngineerDiagnosticService
         $maps = OltOnuCustomerMapping::query()->whereNull('customer_id')->latest('id')->limit($limit)->get();
         $matches = [];
         foreach ($maps as $map) {
-            $best = null;
+            $candidates = [];
             $mapMac = $this->normalizeIdentifier($map->onu_mac);
             $mapIp = $this->normalizeIdentifier($map->onu_ip);
             $mapSerial = $this->normalizeIdentifier($map->onu_serial);
@@ -277,9 +277,17 @@ class AiEngineerDiagnosticService
                     if ($matched) { $score += $weight; $reasons[] = strtoupper($field).' exact match'; }
                 }
                 if ($ppp && $mapIp !== '' && $this->normalizeIdentifier($ppp->ppp_remote_ip ?? null) === $mapIp) { $score += 20; $reasons[] = 'PPPoE remote IP match'; }
-                if ($score > 0 && (!$best || $score > $best['score'])) $best = ['customer_id'=>$customer->customer_unique_id,'customer_name'=>$customer->customer_name,'score'=>min(100,$score),'reasons'=>$reasons];
+                if ($score > 0) $candidates[] = ['customer_id'=>$customer->customer_unique_id,'customer_name'=>$customer->customer_name,'customer_db_id'=>$customer->id,'score'=>min(100,$score),'reasons'=>$reasons];
             }
-            if ($best) $matches[] = ['mapping_id'=>$map->id,'olt_device_id'=>$map->olt_device_id,'pon'=>$map->pon_port,'onu_id'=>$map->onu_id,'onu_mac'=>$map->onu_mac,'candidate'=>$best,'read_only'=>true];
+
+            // Only expose a suggestion when the highest-scoring evidence is unique.
+            usort($candidates, fn($a,$b) => $b['score'] <=> $a['score']);
+            $best = $candidates[0] ?? null;
+            $secondScore = $candidates[1]['score'] ?? null;
+            $sameBestCount = $best ? count(array_filter($candidates, fn($c) => $c['score'] === $best['score'])) : 0;
+            if ($best && $sameBestCount === 1) {
+                $matches[] = ['mapping_id'=>$map->id,'olt_device_id'=>$map->olt_device_id,'pon'=>$map->pon_port,'onu_id'=>$map->onu_id,'onu_mac'=>$map->onu_mac,'candidate'=>$best,'read_only'=>true];
+            }
         }
         usort($matches, fn($a,$b)=>$b['candidate']['score'] <=> $a['candidate']['score']);
         return ['matches'=>array_slice($matches,0,50),'read_only'=>true];

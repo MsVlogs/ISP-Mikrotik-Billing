@@ -3,6 +3,18 @@
     isLarge: window.innerWidth >= 992
 }" x-init="window.addEventListener('resize', () => isLarge = window.innerWidth >= 992)">
 
+    @php
+        $serviceOptionMap = function ($category, $fallback) {
+            try {
+                $items = \App\Models\CompanyServiceOption::where('category', $category)->where('is_active', true)->orderBy('name')->pluck('name', 'code')->toArray();
+                return $items;
+            } catch (\Throwable $e) { return $fallback; }
+        };
+        $connectionTypeOptions = $serviceOptionMap('connection_type', ['fiber'=>__('Fiber'),'wired'=>__('Wired'),'wireless'=>__('Wireless')]);
+        $customerTypeOptions = $serviceOptionMap('customer_type', ['home'=>__('Home'),'commercial'=>__('Commercial'),'Corporate'=>__('Corporate'),'business'=>__('Business')]);
+        $bandwidthTypeOptions = $serviceOptionMap('bandwidth_type', ['shared'=>__('Shared'),'dedicated'=>__('Dedicated')]);
+    @endphp
+
     <x-slot name="header">
         <h2 class="h4 font-weight-bold text-dark mb-0">
             <i class="bi bi-person-plus me-2 text-success"></i>{{ __('New Customer Registration') }}
@@ -415,21 +427,21 @@
                             type="radio"
                             column="col-md-4 col-sm-4"
                             name="connection_type"
-                            :options="['fiber' => __('Fiber'), 'wired' => __('Wired'), 'wireless' => __('Wireless')]"
+                            :options="$connectionTypeOptions"
                         />
                         <x-mikrotik.form-group
                             label="{{ __('Type of Connectivity') }}"
                             type="radio"
                             column="col-md-4 col-sm-4"
                             name="connectivity_type"
-                            :options="['shared' => __('Shared'), 'dedicated' => __('Dedicated')]"
+                            :options="$bandwidthTypeOptions"
                         />
                         <x-mikrotik.form-group
                             label="{{ __('Type of Client') }}"
                             type="dropdownKey"
                             name="client_type"
                             placeholder="{{ __('Select Any One') }}"
-                            :options="['home' => __('Home'),'commercial' => __('Commercial'),'Corporate' => __('Corporate'), 'business' => __('Business')]"
+                            :options="$customerTypeOptions"
                         />
                         <x-mikrotik.form-group
                             label="{{ __('Description') }}"

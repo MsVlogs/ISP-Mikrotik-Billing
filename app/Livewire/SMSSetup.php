@@ -58,6 +58,9 @@ class SMSSetup extends Component
         // Map SMS template content for Livewire binding
         $this->smsTempList = SmsTemplate::pluck('template', 'id')->toArray();
         
+        // Reference-parity links can open either the template or bulk tab.
+        $this->activeTab = request()->query('tab') === 'bulk' ? 'bulk' : 'templates';
+
         // Default target date to today
         $this->targetDate = now()->format('Y-m-d');
     }

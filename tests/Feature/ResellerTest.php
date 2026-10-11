@@ -270,6 +270,8 @@ class ResellerTest extends TestCase
             ->assertHasNoErrors()
             ->assertRedirect(route('reseller.customers.index'));
 
+        // NewCustomer preserves the entered local-format number; country-code
+        // normalization is applied in the edit/import flows, not on this create path.
         $this->assertDatabaseHas('customers_infos', [
             'customer_name' => 'Reseller Customer',
             'mobile' => '01711111111',

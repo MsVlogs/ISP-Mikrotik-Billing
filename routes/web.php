@@ -71,7 +71,25 @@ $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?: config('app.url');
 
 // Main domain
 Route::domain($baseDomain)->group(function () {
-    Route::get('/', [MainSiteController::class, 'index'])->name('welcome');
+    Route::get('/', function () {
+        // Keep the public landing page on the default HTTP/HTTPS port, while
+        // sending the dedicated billing and customer-portal ports to their login screens.
+        $port = request()->getPort();
+        $forwardedPort = request()->header('X-Forwarded-Port');
+        if ($forwardedPort !== null && ctype_digit((string) $forwardedPort)) {
+            $port = (int) $forwardedPort;
+        }
+
+        if ($port === 8081) {
+            return redirect()->route('login');
+        }
+
+        if ($port === 8082) {
+            return redirect()->to('http://'.request()->getHost().':8082/portal/login');
+        }
+
+        return app(MainSiteController::class)->index();
+    })->name('welcome');
     Route::get('/all-packages', [MainSiteController::class, 'allPackages'])->name('all-packages');
     Route::get('/lang/{locale}', function ($locale) {
         if (in_array($locale, ['en', 'bn'])) {
@@ -229,6 +247,10 @@ Route::middleware([
         Route::get('/new-customers', fn () => redirect()->route('broadband-new-customers'))->name('new-customers');
         Route::get('/unverified-customers', fn () => redirect()->route('broadband-unverified-customers'))->name('unverified-customers');
         Route::get('/broadband-packages', fn () => redirect()->route('broadband-packages'))->name('broadband-packages-alias');
+        Route::get('/customer-bulk-import', [\App\Http\Controllers\CustomerBulkImportController::class, 'index'])->name('customer-bulk-import');
+        Route::post('/customer-bulk-import/preview', [\App\Http\Controllers\CustomerBulkImportController::class, 'preview'])->name('customer-bulk-import.preview');
+        Route::post('/customer-bulk-import/validate', [\App\Http\Controllers\CustomerBulkImportController::class, 'validateMapping'])->name('customer-bulk-import.validate');
+        Route::post('/customer-bulk-import/commit', [\App\Http\Controllers\CustomerBulkImportController::class, 'commit'])->name('customer-bulk-import.commit');
         Route::get('/customer-package-import', fn () => redirect()->route('broadband-customer-package-import'))->name('customer-package-import');
 
         // payment routes
@@ -478,6 +500,10 @@ Route::middleware([
                     $x->where('name','like',"%{$q}%")->orWhere('ip_address','like',"%{$q}%")->orWhere('vendor','like',"%{$q}%")->orWhere('model','like',"%{$q}%")->orWhere('location','like',"%{$q}%");
                 });
             }
+            $vendor = trim((string) request('vendor',''));
+            $ponType = trim((string) request('pon_type',''));
+            if ($vendor !== '') $query->where('vendor',$vendor);
+            if ($ponType !== '') $query->where('olt_type_id',$ponType);
             if (in_array(request('status'),['online','offline','unknown'],true)) $query->where('status',request('status'));
             $devices=$query->paginate(20)->withQueryString();
 
@@ -575,6 +601,103 @@ Route::middleware([
 
         Route::get('/network-inventory/access-point-management', fn () => redirect()->route('network-inventory.devices', ['type' => 'access-point']))
             ->name('network-inventory.access-points');
+
+        // Customer Network Monitoring — live stored OLT/ONU observations only.
+        Route::get('/network-monitoring', function () {
+            $query = \App\Models\OltOnuCustomerMapping::with(['customer','pppUser','olt'])->latest('id');
+            $q = trim((string) request('q',''));
+            $oltId = trim((string) request('olt',''));
+            $pon = trim((string) request('pon',''));
+            $status = trim((string) request('status',''));
+            $signal = trim((string) request('signal',''));
+            if ($q !== '') $query->where(function($w) use($q) {
+                $w->where('onu_id','like',"%{$q}%")->orWhere('onu_mac','like',"%{$q}%")
+                  ->orWhere('onu_serial','like',"%{$q}%")->orWhere('onu_ip','like',"%{$q}%")
+                  ->orWhereHas('customer',fn($c)=>$c->where('customer_unique_id','like',"%{$q}%")->orWhere('customer_name','like',"%{$q}%")->orWhere('mobile','like',"%{$q}%"))
+                  ->orWhereHas('pppUser',fn($u)=>$u->where('username','like',"%{$q}%"))
+                  ->orWhereHas('olt',fn($o)=>$o->where('name','like',"%{$q}%")->orWhere('ip_address','like',"%{$q}%"));
+            });
+            if ($oltId !== '' && ctype_digit($oltId)) $query->where('olt_device_id',(int)$oltId);
+            if ($pon !== '') $query->where('pon_port',$pon);
+            if (in_array($status,['online','offline','unknown'],true)) $query->where('status',$status);
+            if ($signal === 'great') $query->whereNotNull('rx_power')->where('rx_power','>=',-20);
+            elseif ($signal === 'good') $query->whereNotNull('rx_power')->whereBetween('rx_power',[-24,-20]);
+            elseif ($signal === 'poor') $query->whereNotNull('rx_power')->whereBetween('rx_power',[-27,-24]);
+            elseif ($signal === 'critical') $query->whereNotNull('rx_power')->where('rx_power','<',-27);
+            $mappings = $query->paginate((int)request('per_page',20) === 50 ? 50 : 20)->withQueryString();
+            $all = \App\Models\OltOnuCustomerMapping::query();
+            $stats = [
+                'total'=>(clone $all)->count(),
+                'online'=>(clone $all)->where('status','online')->count(),
+                'offline'=>(clone $all)->where('status','offline')->count(),
+                'critical'=>(clone $all)->whereNotNull('rx_power')->where('rx_power','<',-27)->count(),
+                'unmapped'=>(clone $all)->whereNull('customer_id')->count(),
+            ];
+            $olts = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name')->get(['id','name','ip_address']);
+            $ponPorts = \App\Models\OltOnuCustomerMapping::query()->whereNotNull('pon_port')->where('pon_port','<>','')->distinct()->orderBy('pon_port')->pluck('pon_port');
+            return view('xlink.network-monitoring',compact('mappings','stats','olts','ponPorts','q','oltId','pon','status','signal'));
+        })->name('network-monitoring');
+
+        Route::get('/network-monitoring/export.csv', function () {
+            $query = \App\Models\OltOnuCustomerMapping::with(['customer','pppUser','olt'])->latest('id');
+            $q = trim((string) request('q','')); $oltId=trim((string)request('olt','')); $pon=trim((string)request('pon',''));
+            $status=trim((string)request('status','')); $signal=trim((string)request('signal',''));
+            if($q!=='') $query->where(function($w)use($q){$w->where('onu_id','like',"%{$q}%")->orWhere('onu_mac','like',"%{$q}%")->orWhere('onu_serial','like',"%{$q}%")->orWhere('onu_ip','like',"%{$q}%")->orWhereHas('customer',fn($c)=>$c->where('customer_unique_id','like',"%{$q}%")->orWhere('customer_name','like',"%{$q}%")->orWhere('mobile','like',"%{$q}%"))->orWhereHas('pppUser',fn($u)=>$u->where('username','like',"%{$q}%"))->orWhereHas('olt',fn($o)=>$o->where('name','like',"%{$q}%"));});
+            if($oltId!==''&&ctype_digit($oltId))$query->where('olt_device_id',(int)$oltId);
+            if($pon!=='')$query->where('pon_port',$pon);
+            if(in_array($status,['online','offline','unknown'],true))$query->where('status',$status);
+            if($signal==='great')$query->whereNotNull('rx_power')->where('rx_power','>=',-20);
+            elseif($signal==='good')$query->whereNotNull('rx_power')->whereBetween('rx_power',[-24,-20]);
+            elseif($signal==='poor')$query->whereNotNull('rx_power')->whereBetween('rx_power',[-27,-24]);
+            elseif($signal==='critical')$query->whereNotNull('rx_power')->where('rx_power','<',-27);
+            $stream=fopen('php://temp','r+'); fputcsv($stream,['OLT','OLT IP','Customer ID','Customer Name','Mobile','PPPoE User','ONU IP','PON Port','ONU ID','ONU MAC','ONU Serial','Status','RX Power dBm','TX Power dBm','Distance m','Last Seen']);
+            foreach($query->get() as $m) fputcsv($stream,[$m->olt?->name,$m->olt?->ip_address,$m->customer?->customer_unique_id,$m->customer?->customer_name,$m->customer?->mobile,$m->pppUser?->username,$m->onu_ip,$m->pon_port,$m->onu_id,$m->onu_mac,$m->onu_serial,$m->status,$m->rx_power,$m->tx_power,$m->distance_m,$m->last_seen_at]);
+            rewind($stream); $csv=stream_get_contents($stream); fclose($stream);
+            return response($csv,200,['Content-Type'=>'text/csv; charset=UTF-8','Content-Disposition'=>'attachment; filename="xlink-network-monitoring.csv"']);
+        })->name('network-monitoring.export');
+
+        // FTTH ONU Management: database-backed subscriber/ONU ledger. This page
+        // never invents live telemetry and does not issue disruptive OLT commands.
+        Route::get('/network-inventory/onu-management', function () {
+            $query = \App\Models\OltOnuCustomerMapping::with(['customer','pppUser','olt'])->latest('id');
+            $q = trim((string) request('q', ''));
+            $oltId = trim((string) request('olt', ''));
+            $status = trim((string) request('status', ''));
+            $signal = trim((string) request('signal', ''));
+            if ($q !== '') $query->where(function ($w) use ($q) {
+                $w->where('onu_id','like',"%{$q}%")->orWhere('onu_serial','like',"%{$q}%")
+                  ->orWhere('onu_mac','like',"%{$q}%")->orWhere('pon_port','like',"%{$q}%")
+                  ->orWhere('onu_ip','like',"%{$q}%")
+                  ->orWhereHas('customer', fn($c) => $c->where('customer_unique_id','like',"%{$q}%")->orWhere('customer_name','like',"%{$q}%"))
+                  ->orWhereHas('pppUser', fn($p) => $p->where('username','like',"%{$q}%"))
+                  ->orWhereHas('olt', fn($o) => $o->where('name','like',"%{$q}%"));
+            });
+            if ($oltId !== '' && ctype_digit($oltId)) $query->where('olt_device_id',(int)$oltId);
+            if (in_array($status,['online','offline','unknown'],true)) $query->where('status',$status);
+            if ($signal === 'good') $query->whereNotNull('rx_power')->where('rx_power','>=',-20);
+            elseif ($signal === 'warning') $query->whereNotNull('rx_power')->whereBetween('rx_power',[-27,-20]);
+            elseif ($signal === 'critical') $query->whereNotNull('rx_power')->where('rx_power','<',-27);
+            $mappings = $query->paginate(25)->withQueryString();
+            $base = \App\Models\OltOnuCustomerMapping::query();
+            $stats = [
+                'total' => (clone $base)->count(),
+                'online' => (clone $base)->where('status','online')->count(),
+                'offline' => (clone $base)->where('status','offline')->count(),
+                'warning' => (clone $base)->whereNotNull('rx_power')->where('rx_power','<',-20)->count(),
+                'mapped' => (clone $base)->whereNotNull('customer_id')->count(),
+            ];
+            $olts = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name')->get(['id','name','vendor','location']);
+            return view('xlink.onu-management', compact('mappings','stats','olts','q','oltId','status','signal'));
+        })->name('network-inventory.onu-management');
+
+        Route::get('/network-inventory/onu-management/export.csv', function () {
+            $rows = \App\Models\OltOnuCustomerMapping::with(['customer','pppUser','olt'])->latest('id')->get();
+            $stream = fopen('php://temp','r+');
+            fputcsv($stream, ['OLT','Customer ID','Customer Name','PPPoE User','PON Port','ONU ID','ONU MAC','ONU Serial','Status','RX Power dBm','TX Power dBm','Distance m','Last Seen']);
+            foreach ($rows as $m) fputcsv($stream, [$m->olt?->name,$m->customer?->customer_unique_id,$m->customer?->customer_name,$m->pppUser?->username,$m->pon_port,$m->onu_id,$m->onu_mac,$m->onu_serial,$m->status,$m->rx_power,$m->tx_power,$m->distance_m,$m->last_seen_at]);
+            rewind($stream); $csv = stream_get_contents($stream); fclose($stream);
+            return response($csv,200,['Content-Type'=>'text/csv; charset=UTF-8','Content-Disposition'=>'attachment; filename="xlink-onu-management.csv"']);
+        })->name('network-inventory.onu-management.export');
 
         Route::get('/stock-inventory', function () {
             $q=\App\Models\StockInventoryProduct::query();
@@ -709,6 +832,83 @@ Route::middleware([
             $whatsapp = \App\Models\MainSiteData::where('type','site_whatsapp')->value('value');
             return view('xlink.communication-center', ['tab'=>'settings','whatsapp'=>$whatsapp]);
         })->name('communication-center.settings');
+        // SMS service pages: individual recipient audit records and safe, explicit dispatch.
+        Route::get('/sms-service', function () {
+            $base = \App\Models\SmsDispatchLog::query();
+            $stats = ['total'=>(clone $base)->count(),'sent'=>(clone $base)->where('status','sent')->count(),'failed'=>(clone $base)->where('status','failed')->count(),'templates'=>\App\Models\SmsTemplate::where('is_active',1)->count()];
+            $recent = \App\Models\SmsDispatchLog::latest('id')->limit(12)->get();
+            return view('xlink.sms-service',compact('stats','recent'));
+        })->name('sms-service');
+        Route::get('/sms-service/send', function () {
+            $customers = \App\Models\CustomersInfo::query()->whereNotNull('mobile')->where('mobile','<>','')->orderBy('customer_name')->limit(1000)->get(['id','customer_unique_id','customer_name','mobile']);
+            return view('xlink.sms-service-send',compact('customers'));
+        })->name('sms-service.send');
+        Route::post('/sms-service/send', function (\Illuminate\Http\Request $request) {
+            $data = $request->validate([
+                'recipient_type'=>'required|in:customer,custom',
+                'customer_id'=>'nullable|required_if:recipient_type,customer|exists:customers_infos,id',
+                'recipient'=>'nullable|required_if:recipient_type,custom|string|max:40',
+                'sms_type'=>'required|string|max:80',
+                'message'=>'required|string|min:1|max:1000',
+            ]);
+            $customer = !empty($data['customer_id']) ? \App\Models\CustomersInfo::with(['billing','package'])->findOrFail($data['customer_id']) : null;
+            $recipient = $customer ? (string)$customer->mobile : trim((string)($data['recipient']??''));
+            abort_if($recipient==='',422,'A recipient mobile number is required.');
+            $digits = preg_replace('/\D+/', '', $recipient);
+            abort_unless(preg_match('/^(?:01\d{9}|8801\d{9}|008801\d{9})$/',$digits)===1,422,'Enter a valid Bangladesh mobile number.');
+            $message = str_replace(
+                ['{customer_name}','{customer_id}','{due_amount}','{bill_amount}','{package_name}','{company_name}','{helpline}'],
+                [$customer?->customer_name ?? '',$customer?->customer_unique_id ?? '',(string)($customer?->billing?->due_amount ?? 0),(string)($customer?->billing?->total_amount ?? 0),$customer?->package?->name ?? '',siteUrlSettings('site_name') ?? config('app.name'),siteUrlSettings('site_phone') ?? ''],
+                $data['message']
+            );
+            $status='failed'; $responseText='SMS gateway exception.';
+            try {
+                $response = \Codepagol\SmsBridge\Facades\SmsBridge::to($recipient)->message($message)->send();
+                if ($response && $response->isSuccessful()) { $status='sent'; $responseText=(string)($response->getMessage() ?: 'Gateway accepted the message.'); }
+                else { $responseText=(string)($response ? $response->getMessage() : 'No response from SMS gateway.'); }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Manual SMS dispatch failed.', ['user_id'=>auth()->id(),'customer_id'=>$customer?->id,'exception_class'=>get_class($e)]);
+                $responseText='SMS gateway request failed. Check gateway settings and application logs.';
+            }
+            \App\Models\SmsDispatchLog::create([
+                'customer_id'=>$customer?->id,'user_id'=>auth()->id(),'recipient'=>$recipient,
+                'customer_code'=>$customer?->customer_unique_id,'customer_name'=>$customer?->customer_name,
+                'sms_type'=>$data['sms_type'],'sms_count'=>(function($text){$unicode=preg_match('/[^\x00-\x7F]/',$text)===1;$len=mb_strlen($text,'UTF-8');$single=$unicode?70:160;$multi=$unicode?67:153;return $len<=$single?1:max(1,(int)ceil($len/$multi));})($message),
+                'message'=>$message,'status'=>$status,'gateway_response'=>\Illuminate\Support\Str::limit($responseText,4000),
+                'sent_at'=>$status==='sent'?now():null,
+            ]);
+            return redirect()->route('sms-service.send')->with('sms_dispatch_success',$status==='sent')->with('sms_dispatch_message',$status==='sent'?'Gateway accepted the SMS. See delivery history for the recorded attempt.':'SMS failed or was not accepted by the gateway. The attempt was recorded.');
+        })->name('sms-service.send.store');
+        Route::get('/sms-service/reports', function () {
+            $query=\App\Models\SmsDispatchLog::query()->latest('id');
+            $q=trim((string)request('q','')); $status=trim((string)request('status','')); $smsType=trim((string)request('type',''));
+            $from=trim((string)request('from','')); $to=trim((string)request('to',''));
+            if($q!=='')$query->where(function($w)use($q){$w->where('recipient','like',"%{$q}%")->orWhere('customer_code','like',"%{$q}%")->orWhere('customer_name','like',"%{$q}%")->orWhere('message','like',"%{$q}%");});
+            if(in_array($status,['sent','failed','pending'],true))$query->where('status',$status);
+            if($smsType!=='')$query->where('sms_type',$smsType);
+            if($from!==''&&\Illuminate\Support\Facades\Validator::make(['from'=>$from],['from'=>'date'])->passes())$query->whereDate('created_at','>=',$from);
+            if($to!==''&&\Illuminate\Support\Facades\Validator::make(['to'=>$to],['to'=>'date'])->passes())$query->whereDate('created_at','<=',$to);
+            $stats=['total'=>(clone $query)->count(),'sent'=>(clone $query)->where('status','sent')->count(),'failed'=>(clone $query)->where('status','failed')->count()];
+            $types=\App\Models\SmsDispatchLog::query()->distinct()->orderBy('sms_type')->pluck('sms_type');
+            $logs=$query->paginate(30)->withQueryString();
+            return view('xlink.sms-service-reports',compact('logs','stats','types','q','status','smsType','from','to'));
+        })->name('sms-service.reports');
+        Route::get('/sms-service/reports/export.csv', function () {
+            $query=\App\Models\SmsDispatchLog::query()->latest('id');
+            $q=trim((string)request('q','')); $status=trim((string)request('status','')); $smsType=trim((string)request('type','')); $from=trim((string)request('from','')); $to=trim((string)request('to',''));
+            if($q!=='')$query->where(function($w)use($q){$w->where('recipient','like',"%{$q}%")->orWhere('customer_code','like',"%{$q}%")->orWhere('customer_name','like',"%{$q}%")->orWhere('message','like',"%{$q}%");});
+            if(in_array($status,['sent','failed','pending'],true))$query->where('status',$status); if($smsType!=='')$query->where('sms_type',$smsType);
+            if($from!==''&&\Illuminate\Support\Facades\Validator::make(['from'=>$from],['from'=>'date'])->passes())$query->whereDate('created_at','>=',$from);
+            if($to!==''&&\Illuminate\Support\Facades\Validator::make(['to'=>$to],['to'=>'date'])->passes())$query->whereDate('created_at','<=',$to);
+            $stream=fopen('php://temp','r+'); fputcsv($stream,['Log ID','Date','Customer ID','Customer Name','Type','Mobile','SMS Count','Message','Status','Gateway Response','Sent At']);
+            foreach($query->get() as $log)fputcsv($stream,[$log->id,$log->created_at,$log->customer_code,$log->customer_name,$log->sms_type,$log->recipient,$log->sms_count,$log->message,$log->status,$log->gateway_response,$log->sent_at]);
+            rewind($stream);$csv=stream_get_contents($stream);fclose($stream);
+            return response($csv,200,['Content-Type'=>'text/csv; charset=UTF-8','Content-Disposition'=>'attachment; filename="xlink-sms-delivery-history.csv"']);
+        })->name('sms-service.reports.export');
+        Route::get('/sms-service/templates', fn()=>redirect()->route('sms-setup'))->name('sms-service.templates');
+        Route::get('/sms-service/bulk', fn()=>redirect()->route('sms-setup',['tab'=>'bulk']))->name('sms-service.bulk');
+        Route::get('/sms-service/gateway', fn()=>redirect()->route('sms-bridge.index'))->name('sms-service.gateway');
+
         Route::get('/communication-center/sms', fn () => redirect()->route('sms-setup'))->name('communication-center.sms');
         Route::get('/communication-center/notifications', fn () => redirect()->route('notifications'))->name('communication-center.notifications');
         Route::post('/communication-center/settings', function (\Illuminate\Http\Request $r) {
@@ -765,7 +965,130 @@ Route::middleware([
         Route::put('/staff-conveyance/claim/{claim}', [\App\Http\Controllers\TeamAccessController::class, 'reviewClaim'])->name('staff-conveyance.claim.review');
         Route::get('/user-activity', fn () => redirect()->route('admin.activity-logs'))->name('user-activity');
         Route::get('/team-access/demo', [\App\Http\Controllers\TeamAccessController::class, 'demo'])->name('team-access.demo');
-                Route::get('/system-settings', function () {
+                // Company settings hub and the operational values already consumed by billing jobs.
+        Route::get('/company-settings', function () {
+            return view('xlink.company-settings');
+        })->name('company-settings');
+        Route::get('/company-settings/billing-operations', function () {
+            $settings = [
+                'disable_check_no'=>\App\Models\MainSiteData::getValue('disable_check_no',1),
+                'disable_check_days'=>\App\Models\MainSiteData::getValue('disable_check_days',1),
+                'expired_profile_name'=>\App\Models\MainSiteData::getValue('expired_profile_name','Expired'),
+                'site_invoice_prefix'=>\App\Models\MainSiteData::getValue('site_invoice_prefix','INV-'),
+                'site_currency'=>\App\Models\MainSiteData::getValue('site_currency','BDT'),
+            ];
+            return view('xlink.company-billing-operations',compact('settings'));
+        })->name('company-settings.billing-operations');
+        Route::post('/company-settings/billing-operations', function (\Illuminate\Http\Request $request) {
+            $data=$request->validate([
+                'disable_check_no'=>'required|integer|min:0|max:30',
+                'disable_check_days'=>'required|integer|min:0|max:90',
+                'expired_profile_name'=>'required|string|max:100',
+                'site_invoice_prefix'=>'required|string|max:30',
+                'site_currency'=>'required|string|max:10',
+            ]);
+            foreach($data as $key=>$value) \App\Models\MainSiteData::setValue($key,(string)$value);
+            \Illuminate\Support\Facades\Cache::forget('main_site_data_active');
+            return redirect()->route('company-settings.billing-operations')->with('company_settings_message','Billing operations settings saved. The existing scheduled billing/disconnect jobs read these operational values.');
+        })->name('company-settings.billing-operations.save');
+        Route::get('/company-settings/service-configuration', function () {
+            $category=trim((string)request('category','connection_type'));
+            $categories=['connection_type'=>'Connection Types','protocol'=>'Network Protocols','customer_type'=>'Customer Types','billing_status'=>'Billing Statuses','bandwidth_type'=>'Bandwidth Types'];
+            if(!array_key_exists($category,$categories))$category='connection_type';
+            $options=\App\Models\CompanyServiceOption::where('category',$category)->orderBy('name')->paginate(20)->withQueryString();
+            $counts=\App\Models\CompanyServiceOption::selectRaw('category,count(*) as total,sum(case when is_active = 1 then 1 else 0 end) as active_total')->groupBy('category')->get()->keyBy('category');
+            return view('xlink.company-service-configuration',compact('category','categories','options','counts'));
+        })->name('company-settings.service-configuration');
+        Route::post('/company-settings/service-configuration', function (\Illuminate\Http\Request $request) {
+            $data=$request->validate([
+                'category'=>'required|in:connection_type,protocol,customer_type,billing_status,bandwidth_type',
+                'code'=>'required|string|max:80|regex:/^[A-Za-z0-9_-]+$/',
+                'name'=>'required|string|max:120',
+                'description'=>'nullable|string|max:500',
+            ]);
+            $data['code']=trim($data['code']);
+            $data['name']=trim($data['name']);
+            \Illuminate\Support\Facades\Validator::make($data,[
+                'code'=>['required','string','max:80',\Illuminate\Validation\Rule::unique('company_service_options','code')->where(fn($q)=>$q->where('category',$data['category']))],
+            ])->validate();
+            \App\Models\CompanyServiceOption::create($data+['is_active'=>true,'is_system'=>false]);
+            return redirect()->route('company-settings.service-configuration',['category'=>$data['category']])->with('company_settings_message','Service option added.');
+        })->name('company-settings.service-configuration.store');
+        Route::put('/company-settings/service-configuration/{option}', function (\Illuminate\Http\Request $request, \App\Models\CompanyServiceOption $option) {
+            $data=$request->validate(['name'=>'required|string|max:120','description'=>'nullable|string|max:500']);
+            $option->update($data);
+            return back()->with('company_settings_message','Service option updated.');
+        })->name('company-settings.service-configuration.update');
+        Route::post('/company-settings/service-configuration/{option}/toggle', function (\App\Models\CompanyServiceOption $option) {
+            $option->update(['is_active'=>!$option->is_active]);
+            return back()->with('company_settings_message','Service option status updated.');
+        })->name('company-settings.service-configuration.toggle');
+        Route::delete('/company-settings/service-configuration/{option}', function (\App\Models\CompanyServiceOption $option) {
+            $used=false;
+            if($option->category==='connection_type')$used=\App\Models\OfficialInfo::where('connection_type',$option->code)->exists();
+            elseif($option->category==='customer_type')$used=\App\Models\OfficialInfo::where('client_type',$option->code)->exists();
+            elseif($option->category==='bandwidth_type')$used=\App\Models\OfficialInfo::where('connectivity_type',$option->code)->exists();
+            elseif($option->category==='billing_status')$used=\App\Models\CustomersInfo::where('status',$option->code)->exists();
+            abort_if($used,422,'This option is used by existing customer records. Disable it instead of deleting it.');
+            $option->delete();
+            return back()->with('company_settings_message','Service option deleted.');
+        })->name('company-settings.service-configuration.delete');
+
+        Route::get('/company-settings/email', function () {
+            $settings=\App\Models\CompanyMailSetting::first();
+            return view('xlink.company-email-settings',[
+                'settings'=>$settings,
+                'passwordConfigured'=>(bool)($settings?->password_encrypted),
+            ]);
+        })->name('company-settings.email');
+        Route::post('/company-settings/email', function (\Illuminate\Http\Request $request) {
+            $data=$request->validate([
+                'enabled'=>'nullable|boolean',
+                'host'=>'required_if:enabled,1|nullable|string|max:190',
+                'port'=>'required_if:enabled,1|nullable|integer|min:1|max:65535',
+                'encryption'=>'required|in:tls,ssl,none',
+                'username'=>'nullable|string|max:190',
+                'password'=>'nullable|string|max:1000',
+                'from_address'=>'required|email|max:190',
+                'from_name'=>'required|string|max:190',
+                'reply_to'=>'nullable|email|max:190',
+                'signature'=>'nullable|string|max:4000',
+            ]);
+            $settings=\App\Models\CompanyMailSetting::first() ?: new \App\Models\CompanyMailSetting();
+            $settings->enabled=(bool)($data['enabled']??false);
+            $settings->mailer='smtp';
+            $settings->host=$data['host']??null;
+            $settings->port=(int)($data['port']??587);
+            $settings->encryption=$data['encryption'];
+            $settings->username=$data['username']??null;
+            if(trim((string)($data['password']??''))!=='') $settings->password_encrypted=\Illuminate\Support\Facades\Crypt::encryptString($data['password']);
+            $settings->from_address=$data['from_address'];
+            $settings->from_name=$data['from_name'];
+            $settings->reply_to=$data['reply_to']??null;
+            $settings->signature=$data['signature']??null;
+            if($settings->enabled && empty($settings->password_encrypted) && !empty($settings->username)) {
+                return back()->withErrors(['password'=>'Enter the SMTP password/app secret before enabling SMTP.'])->withInput($request->except('password'));
+            }
+            $settings->save();
+            return redirect()->route('company-settings.email')->with('company_settings_message','Email settings saved. Custom SMTP is '.($settings->enabled?'enabled for subsequent application/queue processes.':'disabled; the existing .env mailer remains in use.'));
+        })->name('company-settings.email.save');
+        Route::post('/company-settings/email/test', function (\Illuminate\Http\Request $request) {
+            $data=$request->validate(['test_email'=>'required|email|max:190']);
+            $settings=\App\Models\CompanyMailSetting::first();
+            abort_unless($settings && $settings->enabled,422,'Enable and save SMTP settings before sending a test email.');
+            try {
+                \Illuminate\Support\Facades\Mail::raw(
+                    "This is a test email from ".($settings->from_name ?: config('app.name')).".\n\nSMTP transport test successful.",
+                    function($message)use($data,$settings){$message->to($data['test_email'])->subject('X-Link Billing SMTP Test'); if($settings->reply_to)$message->replyTo($settings->reply_to);}
+                );
+                return back()->with('email_test_success',true)->with('email_test_message','Test email was accepted by the configured mail transport.');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Company SMTP test failed.', ['exception_class'=>get_class($e)]);
+                return back()->with('email_test_success',false)->with('email_test_message','Test email failed. Verify SMTP host, port, encryption, credentials and outbound network access.');
+            }
+        })->name('company-settings.email.test');
+
+        Route::get('/system-settings', function () {
             $debug = config('app.debug') ? 'ON' : 'OFF';
             $backups = is_dir(base_path('backups')) ? count(glob(base_path('backups/*'))) : 0;
             return view('xlink.system-settings', [
