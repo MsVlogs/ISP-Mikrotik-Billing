@@ -12,6 +12,7 @@ use App\Livewire\Admin\AdminVoucherList;
 use App\Livewire\Admin\SystemLogViewer;
 use App\Http\Controllers\CollectionReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CustomerDetailsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\MainSiteController;
 use App\Http\Controllers\Payment\BkashPaymentController;
@@ -41,6 +42,10 @@ use App\Livewire\Mikrotik\RadiusSetup;
 use App\Livewire\Mikrotik\RouterLogViewer;
 use App\Livewire\Mikrotik\TrafficMonitor;
 use App\Livewire\NetworkMap;
+use App\Livewire\DeviceManager;
+use App\Livewire\NetworkEvents;
+use App\Livewire\NetworkTopology;
+use App\Livewire\OpticalAudit;
 use App\Livewire\HighUsageMonitor;
 use App\Livewire\DeviceWatcher;
 use App\Livewire\MikrotikLoginMessages;
@@ -126,10 +131,6 @@ Route::domain($baseDomain)->group(function () {
     });
 });
 
-Route::middleware(EnsureBillingPort::class)->group(function () {
-    Route::get('/', fn () => redirect()->route('login'));
-});
-
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -151,7 +152,14 @@ Route::middleware([
             abort(404, 'Backup file not found.');
         })->name('system.db-backup.download');
 
+        Route::redirect('/', '/dashboard');
+
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard-index', [DashboardController::class, 'index'])->name('dashboard.index');
+        Route::get('/roles', ManageRole::class)->name('roles.index');
+        Route::get('/users', ManageUser::class)->name('users.index');
+
+        // AI Engineer
         Route::get('/ai-engineer', [\App\Http\Controllers\AiEngineerController::class, 'index'])->name('ai-engineer');
         Route::post('/ai-engineer/diagnose', [\App\Http\Controllers\AiEngineerController::class, 'diagnose'])->name('ai-engineer.diagnose');
         Route::post('/ai-engineer/chat', [\App\Http\Controllers\AiEngineerController::class, 'chat'])->name('ai-engineer.chat');
@@ -161,14 +169,18 @@ Route::middleware([
             'collection-report' => CollectionReportController::class,
         ]);
         Route::get('customers/data', [CustomerList::class, 'getData'])->name('customers.data');
-        Route::get('customer/{id}', [\App\Http\Controllers\CustomerDetailsController::class, 'show'])->name('customer.details');
+        Route::get('customers/{id}/edit', [CustomerList::class, 'edit'])->name('customers.edit');
+        Route::get('customers/{id}/billing-data', [\App\Http\Controllers\CustomersController::class, 'show'])->name('customers.billing-data');
+        Route::post('customers/{id}/enable', [\App\Http\Controllers\CustomersController::class, 'customerEnable'])->name('customers.enable');
+        Route::patch('customers/{id}/billing', [\App\Http\Controllers\CustomersController::class, 'update'])->name('customers.update');
+        Route::delete('customers/{id}', [\App\Http\Controllers\CustomersController::class, 'destroy'])->name('customers.destroy');
         Route::get('customer/{id}/actions/{action}', [\App\Http\Controllers\CustomerActionsController::class, 'show'])->name('customer.actions');
         Route::post('customer/{id}/actions/{action}', [\App\Http\Controllers\CustomerActionsController::class, 'handle'])->name('customer.actions.handle');
         Route::get('customer/{id}/live-traffic', [\App\Http\Controllers\CustomerActionsController::class, 'liveTraffic'])->name('customer.live-traffic');
         Route::get('customer/{id}/invoice', [\App\Http\Controllers\CustomerActionsController::class, 'invoicePage'])->name('customer.actions.invoice');
         Route::get('customer/{id}/pos-print', [\App\Http\Controllers\CustomerActionsController::class, 'printPage'])->name('customer.actions.print');
-        Route::get('customers/{id}/edit', [CustomerList::class, 'edit'])->name('customers.edit');
-        Route::get('customers/{id}', [CustomerList::class, 'show'])->name('customers.show');
+        Route::get('customers/{id}', [CustomerDetailsController::class, 'show'])->name('customers.show');
+        Route::get('/customer-details/{id}', [CustomerDetailsController::class, 'show'])->name('customer.details');
         Route::get('customers', CustomerList::class)->name('customers.index');
 
         Route::get('/new/customers', CustomerList::class)->name('customers-new');
@@ -182,13 +194,13 @@ Route::middleware([
         Route::get('/mikrotik-server/bulk-import', CustomerList::class)->name('mikrotik-server-bulk-import');
 
         // Network Monitoring suite
-        Route::get('/network-map', NetworkMap::class)->name('network-map');
-        Route::get('/network-topology', \App\Livewire\NetworkTopology::class)->defaults('mode', 'designer')->name('network-topology.designer');
-        Route::get('/network-topology/live', \App\Livewire\NetworkTopology::class)->defaults('mode', 'live')->name('network-topology.live');
-        Route::get('/optical-audit', \App\Livewire\OpticalAudit::class)->name('optical-audit');
-        Route::get('/device-manager', \App\Livewire\DeviceManager::class)->name('device-manager');
+        Route::get('/device-manager', DeviceManager::class)->name('device-manager');
         Route::get('/device-manager/{kind}/{device}', \App\Livewire\DeviceDetail::class)->name('device-manager.detail');
-        Route::get('/network-events', \App\Livewire\NetworkEvents::class)->name('network-events');
+        Route::get('/network-events', NetworkEvents::class)->name('network-events');
+        Route::get('/network-map', NetworkMap::class)->name('network-map');
+        Route::get('/network-topology/designer', NetworkTopology::class)->name('network-topology.designer');
+        Route::get('/network-topology/live', NetworkTopology::class)->defaults('mode', 'live')->name('network-topology.live');
+        Route::get('/optical-audit', OpticalAudit::class)->name('optical-audit');
         Route::get('/traffic-monitor', TrafficMonitor::class)->name('traffic-monitor');
         Route::get('/high-usage-monitor', HighUsageMonitor::class)->name('high-usage-monitor');
         Route::get('/device-watcher', DeviceWatcher::class)->name('device-watcher');
@@ -237,6 +249,10 @@ Route::middleware([
             Route::get('/unverified-customers', [\App\Http\Controllers\BroadbandController::class, 'unverified'])->name('broadband-unverified-customers');
             Route::get('/packages', [\App\Http\Controllers\BroadbandController::class, 'packages'])->name('broadband-packages');
             Route::get('/customer-package-import', [\App\Http\Controllers\BroadbandController::class, 'import'])->name('broadband-customer-package-import');
+            Route::post('/customers/{id}/disable', [\App\Http\Controllers\BroadbandController::class, 'disableCustomer'])->name('broadband-customer-disable');
+            Route::get('/customers/{id}/ping', [\App\Http\Controllers\BroadbandController::class, 'customerPing'])->name('broadband-customer-ping');
+            Route::get('/customers/{id}/traffic', [\App\Http\Controllers\BroadbandController::class, 'customerTraffic'])->name('broadband-customer-traffic');
+            Route::delete('/customers/{id}', [\App\Http\Controllers\BroadbandController::class, 'destroyCustomer'])->name('broadband-customer-destroy');
         });
         // Compatibility aliases matching the reference navigation
         Route::get('/customer-add', fn () => redirect()->route('customer-add'))->name('customer-add-alias');
@@ -486,14 +502,12 @@ Route::middleware([
             return back()->with('inventory_message', 'Inventory record deleted.');
         })->name('network-inventory.devices.destroy');
 
-        Route::post('/network-inventory/olt/sync-onu-mappings', function (\Illuminate\Http\Request $request) {
-            $exitCode = \Illuminate\Support\Facades\Artisan::call('olt:sync-onu-mappings');
-            $output = trim(\Illuminate\Support\Facades\Artisan::output());
-            $message = $output !== '' ? $output : ($exitCode === 0 ? 'ONU synchronization completed.' : 'ONU synchronization failed.');
-            return back()->with('onu_sync_message', $message)->with('onu_sync_success', $exitCode === 0);
+        Route::post('/network-inventory/olt/sync', function () {
+            \Illuminate\Support\Facades\Artisan::call('olt:sync-onu-mappings');
+            return back()->with('onu_sync_message', trim(\Illuminate\Support\Facades\Artisan::output()) ?: 'ONU mapping synchronization completed.')->with('onu_sync_success', true);
         })->name('network-inventory.olt.sync');
 
-        Route::get('/network-inventory/olt-management', function (\App\Services\Olt\OltReadOnlyAdapterManager $manager) {
+        Route::get('/network-inventory/olt-management', function () {
             $query = \App\Models\NetworkInventoryDevice::type('olt')->orderBy('name');
             if ($q = trim((string) request('q',''))) {
                 $query->where(function($x) use ($q) {
@@ -506,34 +520,6 @@ Route::middleware([
             if ($ponType !== '') $query->where('olt_type_id',$ponType);
             if (in_array(request('status'),['online','offline','unknown'],true)) $query->where('status',request('status'));
             $devices=$query->paginate(20)->withQueryString();
-
-            // Refresh the OLT summary counters from read-only live ONU discovery.
-            // Keep the last known values if an OLT cannot be reached.
-            foreach ($devices as $device) {
-                try {
-                    $live = $manager->read($device);
-                    if (($live['status'] ?? '') !== 'ok') continue;
-
-                    $onus = collect($live['onus'] ?? []);
-                    $onlineOnus = $onus->filter(fn ($onu) => strtolower((string) ($onu['status'] ?? '')) === 'online')->count();
-                    $customerCount = \App\Models\OltOnuCustomerMapping::where('olt_device_id', $device->id)
-                        ->whereNotNull('customer_id')
-                        ->distinct()
-                        ->count('customer_id');
-
-                    $device->update([
-                        'onu_total' => $onus->count(),
-                        'onu_online' => $onlineOnus,
-                        'customer_count' => $customerCount,
-                    ]);
-                } catch (\Throwable $e) {
-                    \Log::warning('OLT list live ONU summary refresh failed', [
-                        'olt_id' => $device->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
             return view('xlink.olts',['devices'=>$devices]);
         })->name('network-inventory.olt');
 
@@ -542,58 +528,154 @@ Route::middleware([
         Route::post('/network-inventory/olt', function(\Illuminate\Http\Request $request){
             $data=$request->validate([
                 'name'=>['required','string','max:120'],'olt_type_id'=>['nullable','string','max:120'],'host'=>['nullable','string','max:255'],
-                'ip_address'=>['nullable','ip'],'port'=>['nullable','integer','min:1','max:65535'],'username'=>['nullable','string','max:120'],'password'=>['nullable','string','max:128'],
-                'ssh_port'=>['nullable','integer','min:1','max:65535'],'snmp_version'=>['nullable','in:1,2C,3'],'snmp_community'=>['nullable','string','max:255'],'ssh_enabled'=>['nullable','boolean'],'provisioning_enabled'=>['nullable','boolean'],
-                'model'=>['nullable','string','max:120'],'firmware'=>['nullable','string','max:120'],'serial_no'=>['nullable','string','max:160'],'vendor'=>['nullable','string',\Illuminate\Validation\Rule::in(array_keys(config('olt_vendors.vendors', [])))],
+                'ip_address'=>['nullable','ip'],'port'=>['nullable','integer','min:1','max:65535'],'username'=>['nullable','string','max:120'],'password'=>['nullable','string','max:255'],
+                'model'=>['nullable','string','max:120'],'firmware'=>['nullable','string','max:120'],'serial_no'=>['nullable','string','max:160'],'vendor'=>['nullable','string','max:80'],
                 'pon_ports'=>['nullable','integer','min:0'],'ge_ports'=>['nullable','integer','min:0'],'sfp_ports'=>['nullable','integer','min:0'],'sfp_plus_ports'=>['nullable','integer','min:0'],
                 'web_protocol'=>['nullable','in:http,https'],'web_port'=>['nullable','integer','min:1','max:65535'],'connect_timeout'=>['nullable','integer','min:1'],'cli_timeout'=>['nullable','integer','min:1'],'read_delay_ms'=>['nullable','integer','min:0'],
                 'diagnostic_command'=>['nullable','string','max:1000'],'adapter_config'=>['nullable','string','max:2000'],'latitude'=>['nullable','numeric','between:-90,90'],'longitude'=>['nullable','numeric','between:-180,180'],'location'=>['nullable','string','max:255'],
                 'onu_total'=>['nullable','integer','min:0'],'onu_online'=>['nullable','integer','min:0'],'rx_power'=>['nullable','numeric'],'customer_count'=>['nullable','integer','min:0'],'status'=>['required','in:online,offline,unknown'],'health_port'=>['nullable','integer','min:1','max:65535'],'notes'=>['nullable','string','max:2000'],'is_active'=>['nullable','boolean'],
             ]);
             $data['type']='olt'; $data['ip_address']=$data['ip_address']??($data['host']??null); $data['is_active']=(bool)($data['is_active']??false);
-            $data['ssh_enabled']=(bool)($data['ssh_enabled']??false); $data['provisioning_enabled']=(bool)($data['provisioning_enabled']??false);
-            $data['ssh_port']=(int)($data['ssh_port']??22);
-            $data['snmp_version']=$data['snmp_version']??'2C';
-            foreach (['username','password','snmp_community'] as $secretField) if (!empty($data[$secretField])) $data[$secretField]=\Illuminate\Support\Facades\Crypt::encryptString((string)$data[$secretField]); else unset($data[$secretField]);
             \App\Models\NetworkInventoryDevice::create($data); return redirect()->route('network-inventory.olt')->with('inventory_message','OLT created successfully.');
         })->name('network-inventory.olt.store');
         Route::get('/network-inventory/olt/{device}/edit', function(\App\Models\NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); return view('xlink.olt-form',['device'=>$device,'edit'=>true]); })->name('network-inventory.olt.edit');
         Route::put('/network-inventory/olt/{device}', function(\Illuminate\Http\Request $request, \App\Models\NetworkInventoryDevice $device){
-            abort_unless($device->type==='olt',404); $data=$request->validate(['name'=>['required','string','max:120'],'olt_type_id'=>['nullable','string','max:120'],'host'=>['nullable','string','max:255'],'ip_address'=>['nullable','ip'],'port'=>['nullable','integer','min:1','max:65535'],'username'=>['nullable','string','max:120'],'password'=>['nullable','string','max:128'],'ssh_port'=>['nullable','integer','min:1','max:65535'],'snmp_version'=>['nullable','in:1,2C,3'],'snmp_community'=>['nullable','string','max:255'],'ssh_enabled'=>['nullable','boolean'],'provisioning_enabled'=>['nullable','boolean'],'model'=>['nullable','string','max:120'],'firmware'=>['nullable','string','max:120'],'serial_no'=>['nullable','string','max:160'],'vendor'=>['nullable','string',\Illuminate\Validation\Rule::in(array_keys(config('olt_vendors.vendors', [])))],'pon_ports'=>['nullable','integer','min:0'],'ge_ports'=>['nullable','integer','min:0'],'sfp_ports'=>['nullable','integer','min:0'],'sfp_plus_ports'=>['nullable','integer','min:0'],'web_protocol'=>['nullable','in:http,https'],'web_port'=>['nullable','integer','min:1','max:65535'],'connect_timeout'=>['nullable','integer','min:1'],'cli_timeout'=>['nullable','integer','min:1'],'read_delay_ms'=>['nullable','integer','min:0'],'diagnostic_command'=>['nullable','string','max:1000'],'adapter_config'=>['nullable','string','max:2000'],'latitude'=>['nullable','numeric','between:-90,90'],'longitude'=>['nullable','numeric','between:-180,180'],'location'=>['nullable','string','max:255'],'onu_total'=>['nullable','integer','min:0'],'onu_online'=>['nullable','integer','min:0'],'rx_power'=>['nullable','numeric'],'customer_count'=>['nullable','integer','min:0'],'status'=>['required','in:online,offline,unknown'],'health_port'=>['nullable','integer','min:1','max:65535'],'notes'=>['nullable','string','max:2000'],'is_active'=>['nullable','boolean']]);
-            foreach (['username','password','snmp_community'] as $secretField) { if (empty($data[$secretField])) unset($data[$secretField]); else $data[$secretField]=\Illuminate\Support\Facades\Crypt::encryptString((string)$data[$secretField]); }
-            $data['ssh_enabled']=(bool)($data['ssh_enabled']??false); $data['provisioning_enabled']=(bool)($data['provisioning_enabled']??false);
-            $data['ssh_port']=(int)($data['ssh_port']??22);
-            $data['ip_address']=$data['ip_address']??($data['host']??$device->ip_address); $data['is_active']=(bool)($data['is_active']??false); $device->update($data); return redirect()->route('network-inventory.olt')->with('inventory_message','OLT updated successfully.');
+            abort_unless($device->type==='olt',404); $data=$request->validate(['name'=>['required','string','max:120'],'olt_type_id'=>['nullable','string','max:120'],'host'=>['nullable','string','max:255'],'ip_address'=>['nullable','ip'],'port'=>['nullable','integer','min:1','max:65535'],'username'=>['nullable','string','max:120'],'password'=>['nullable','string','max:255'],'model'=>['nullable','string','max:120'],'firmware'=>['nullable','string','max:120'],'serial_no'=>['nullable','string','max:160'],'vendor'=>['nullable','string','max:80'],'pon_ports'=>['nullable','integer','min:0'],'ge_ports'=>['nullable','integer','min:0'],'sfp_ports'=>['nullable','integer','min:0'],'sfp_plus_ports'=>['nullable','integer','min:0'],'web_protocol'=>['nullable','in:http,https'],'web_port'=>['nullable','integer','min:1','max:65535'],'connect_timeout'=>['nullable','integer','min:1'],'cli_timeout'=>['nullable','integer','min:1'],'read_delay_ms'=>['nullable','integer','min:0'],'diagnostic_command'=>['nullable','string','max:1000'],'adapter_config'=>['nullable','string','max:2000'],'latitude'=>['nullable','numeric','between:-90,90'],'longitude'=>['nullable','numeric','between:-180,180'],'location'=>['nullable','string','max:255'],'onu_total'=>['nullable','integer','min:0'],'onu_online'=>['nullable','integer','min:0'],'rx_power'=>['nullable','numeric'],'customer_count'=>['nullable','integer','min:0'],'status'=>['required','in:online,offline,unknown'],'health_port'=>['nullable','integer','min:1','max:65535'],'notes'=>['nullable','string','max:2000'],'is_active'=>['nullable','boolean']]);
+            if(empty($data['password'])) unset($data['password']); $data['ip_address']=$data['ip_address']??($data['host']??$device->ip_address); $data['is_active']=(bool)($data['is_active']??false); $device->update($data); return redirect()->route('network-inventory.olt')->with('inventory_message','OLT updated successfully.');
         })->name('network-inventory.olt.update');
-        Route::get('/network-inventory/olt/{device}/provisioning', [\App\Http\Controllers\OltProvisioningController::class, 'index'])->name('network-inventory.olt.provisioning');
-        Route::post('/network-inventory/olt/{device}/provision', [\App\Http\Controllers\OltProvisioningController::class, 'execute'])->name('network-inventory.olt.provision');
-        Route::post('/network-inventory/olt/{device}/discover', [\App\Http\Controllers\OltProvisioningController::class, 'discover'])->name('network-inventory.olt.discover');
-        Route::get('/network-inventory/olt/{device}/customers', function(\Illuminate\Http\Request $request, \App\Models\NetworkInventoryDevice $device, \App\Services\Olt\OltReadOnlyAdapterManager $manager){ abort_unless($device->type==='olt',404); $q=trim((string)$request->query('q','')); $status=$request->query('status'); $recommendedCustomerId=trim((string)$request->query('customer_id','')); $mappings=\App\Models\OltOnuCustomerMapping::with(['customer','pppUser'])->where('olt_device_id',$device->id)->when($q!=='' , function($query) use ($q){ $like='%'.$q.'%'; $query->where(function($w) use ($like){ $w->where('onu_id','like',$like)->orWhere('onu_serial','like',$like)->orWhere('onu_mac','like',$like)->orWhere('pon_port','like',$like)->orWhereHas('pppUser',fn($p)=>$p->where('username','like',$like))->orWhereHas('customer',fn($c)=>$c->where('customer_name','like',$like)->orWhere('customer_unique_id','like',$like)->orWhere('mobile','like',$like)); }); })->when(in_array($status,['online','offline','unknown'],true),fn($query)=>$query->where('status',$status))->orderBy('id')->get(); $live=['status'=>'unknown','onu_count'=>0,'onus'=>[],'error'=>null]; try { $live=$manager->read($device); } catch (\Throwable $e) { $live['error']=$e->getMessage(); } $mappingByOnu=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->get()->keyBy('onu_id'); if(($live['status'] ?? '')==='ok'){ foreach(($live['onus'] ?? []) as $liveOnu){ $liveOnuId=(string)($liveOnu['onu_id'] ?? ''); if($liveOnuId==='' || !$mappingByOnu->has($liveOnuId)) continue; $mappingByOnu->get($liveOnuId)->update(['onu_serial'=>$liveOnu['onu_serial'] ?? null,'onu_mac'=>$liveOnu['onu_mac'] ?? null,'pon_port'=>$liveOnu['pon_port'] ?? null,'onu_type'=>$liveOnu['onu_type'] ?? null,'status'=>$liveOnu['status'] ?? 'unknown','rx_power'=>$liveOnu['rx_power'] ?? null,'tx_power'=>$liveOnu['tx_power'] ?? null,'onu_ip'=>$liveOnu['onu_ip'] ?? null,'last_seen_at'=>now()]); } $mappings=\App\Models\OltOnuCustomerMapping::with(['customer','pppUser'])->where('olt_device_id',$device->id)->when($q!=='' , function($query) use ($q){ $like='%'.$q.'%'; $query->where(function($w) use ($like){ $w->where('onu_id','like',$like)->orWhere('onu_serial','like',$like)->orWhere('onu_mac','like',$like)->orWhere('pon_port','like',$like)->orWhereHas('pppUser',fn($p)=>$p->where('username','like',$like))->orWhereHas('customer',fn($c)=>$c->where('customer_name','like',$like)->orWhere('customer_unique_id','like',$like)->orWhere('mobile','like',$like)); }); })->when(in_array($status,['online','offline','unknown'],true),fn($query)=>$query->where('status',$status))->orderBy('id')->get(); $mappingByOnu=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->get()->keyBy('onu_id'); } $customers=\App\Models\CustomersInfo::with('pppUser')->where('status','active')->orderBy('customer_name')->get(); $matchingCandidates=[]; try { $candidateService=app(\App\Services\AiEngineerDiagnosticService::class); foreach(($candidateService->matchingCandidates(100)['matches'] ?? []) as $candidate){ $matchingCandidates[(string)($candidate['mapping_id'] ?? '')]=$candidate; } } catch (\Throwable $e) { report($e); } return view('xlink.olt-customers',compact('device','mappings','q','status','live','customers','mappingByOnu','matchingCandidates','recommendedCustomerId')); })->name('network-inventory.olt.customers');
-        Route::post('/network-inventory/olt/{device}/customers/mapping', function(\Illuminate\Http\Request $request, \App\Models\NetworkInventoryDevice $device, \App\Services\Olt\OltReadOnlyAdapterManager $manager){
+        Route::get('/network-inventory/olt/{device}/customers', function(\App\Models\NetworkInventoryDevice $device, \App\Services\Olt\OltReadOnlyAdapterManager $manager){
             abort_unless($device->type==='olt',404);
-            $data=$request->validate(['customer_id'=>['required','integer','exists:customers_infos,id'],'onu_id'=>['required','string','max:120'],'onu_mac'=>['nullable','string','max:80'],'pon_port'=>['nullable','string','max:80'],'confirm_overwrite'=>['nullable','boolean']]);
+            $q=trim((string)request('q',''));
+            $status=(string)request('status','');
+            $mappings=\App\Models\OltOnuCustomerMapping::with(['customer','pppUser'])->where('olt_device_id',$device->id)->latest('id')->get();
+            if($q!=='') $mappings=$mappings->filter(function($m) use($q){ $hay=implode(' ',[(string)$m->onu_id,(string)$m->onu_serial,(string)$m->onu_mac,(string)$m->pon_port,(string)optional($m->customer)->customer_unique_id,(string)optional($m->customer)->customer_name,(string)optional($m->pppUser)->username]); return stripos($hay,$q)!==false; })->values();
+            if(in_array($status,['online','offline','unknown'],true)) $mappings=$mappings->where('status',$status)->values();
+            $normalizeStable = static fn ($value) => strtolower(preg_replace('/[^a-z0-9]/i','',(string) $value));
+            $mappingByOnu=collect();
+            foreach($mappings as $m){
+                $macKey=$normalizeStable($m->onu_mac);
+                $serialKey=strtolower(trim((string)$m->onu_serial));
+                if($macKey!=='') $mappingByOnu->put('mac:'.$macKey,$m);
+                if($serialKey!=='') $mappingByOnu->put('serial:'.$serialKey,$m);
+                $mappingByOnu->put('id:'.(string)$m->onu_id,$m);
+            }
+            $customers=\App\Models\CustomersInfo::with('pppUser')->orderBy('customer_unique_id')->get();
+            $live=['status'=>'error','onus'=>[],'error'=>null];
+            try { $live=$manager->read($device); } catch (\Throwable $e) { $live=['status'=>'error','onus'=>[],'error'=>$e->getMessage()]; }
+            // Read-only candidate matching: surface only unambiguous evidence-based
+            // suggestions on this OLT; no customer mapping is changed here.
+            $candidateService = app(\App\Services\AiEngineerDiagnosticService::class);
+            $candidateResult = $candidateService->matchingCandidates(200);
+            $matchingCandidates = collect($candidateResult['matches'] ?? [])
+                ->filter(fn ($match) => (int) ($match['olt_device_id'] ?? 0) === (int) $device->id)
+                ->keyBy(fn ($match) => (string) ($match['mapping_id'] ?? ''))
+                ->all();
+            $recommendedCustomerId=(string)request('customer_id','');
+
+            // Detect reused Customer/PPPoE assignments without changing existing data.
+            $customerMapCounts=$mappings->whereNotNull('customer_id')->groupBy('customer_id');
+            $pppMapCounts=$mappings->whereNotNull('ppp_user_id')->groupBy('ppp_user_id');
+            $mappingConflictIds=$mappings->filter(function($m) use($customerMapCounts,$pppMapCounts){
+                return ($m->customer_id && (($customerMapCounts->get($m->customer_id)?->count() ?? 0) > 1))
+                    || ($m->ppp_user_id && (($pppMapCounts->get($m->ppp_user_id)?->count() ?? 0) > 1));
+            })->pluck('id')->map(fn($id)=>(int)$id)->all();
+
+            return view('xlink.olt-customers',compact('device','mappings','mappingByOnu','customers','live','q','status','matchingCandidates','recommendedCustomerId','mappingConflictIds'));
+        })->name('network-inventory.olt.customers');
+        Route::post('/network-inventory/olt/{device}/customers/mapping', function(\Illuminate\Http\Request $request, \App\Models\NetworkInventoryDevice $device){
+            abort_unless($device->type==='olt',404);
+            $data=$request->validate(['onu_id'=>'required|string|max:120','onu_mac'=>'nullable|string|max:80','onu_serial'=>'nullable|string|max:160','pon_port'=>'nullable|string|max:80','customer_id'=>'required|integer|exists:customers_infos,id','confirm_overwrite'=>'nullable|boolean','confirm_reuse'=>'nullable|boolean']);
+            $normalizeStable = static fn ($value) => strtolower(preg_replace('/[^a-z0-9]/i','',(string)$value));
+            $macKey=$normalizeStable($data['onu_mac']??'');
+            $serialKey=strtolower(trim((string)($data['onu_serial']??'')));
+            $mapping=null;
+            $existing=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->get();
+            if($macKey!=='') $mapping=$existing->first(fn($m)=>$normalizeStable($m->onu_mac)===$macKey);
+            if(!$mapping && $serialKey!=='') $mapping=$existing->first(fn($m)=>strtolower(trim((string)$m->onu_serial))===$serialKey);
+            if(!$mapping) $mapping=$existing->first(fn($m)=>(string)$m->onu_id===(string)$data['onu_id']);
+            if($mapping && $mapping->customer_id && !$request->boolean('confirm_overwrite')) return back()->with('inventory_message','Existing mapping found. Confirm replacement before saving.')->with('onu_sync_success',false);
             $customer=\App\Models\CustomersInfo::with('pppUser')->findOrFail($data['customer_id']);
-            if ($customer->status !== 'active') return back()->withErrors(['customer_id'=>'Only active customers can be mapped.']);
-            // PPPoE is optional for customer-to-ONU mapping; never guess a username.
-            $live=$manager->read($device);
-            if (($live['status'] ?? '') !== 'ok') return back()->withErrors(['onu_id'=>'Live ONU verification failed; no mapping was saved.']);
-            $onu=collect($live['onus']??[])->first(fn($row)=>(string)($row['onu_id']??'')===(string)$data['onu_id']);
-            $normalizeMac=fn($mac)=>strtolower(preg_replace('/[^a-f0-9]/i','',(string)$mac));
-            $postedMac=$normalizeMac($data['onu_mac'] ?? '');
-            $liveMac=$normalizeMac($onu['onu_mac'] ?? '');
-            if (!$onu || ($postedMac !== '' && $liveMac !== '' && $postedMac !== $liveMac)) return back()->withErrors(['onu_id'=>'ONU telemetry changed or did not match. Refresh the page and try again.']);
-            $existing=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->where('onu_id',$data['onu_id'])->first();
-            abort_if($existing && !$request->boolean('confirm_overwrite'),409,'This ONU already has a saved mapping. Confirm replacement before saving.');
-            \App\Models\OltOnuCustomerMapping::updateOrCreate(['olt_device_id'=>$device->id,'onu_id'=>$data['onu_id']],['customer_id'=>$customer->id,'ppp_user_id'=>$customer->ppp_user_id,'onu_serial'=>$onu['onu_serial']??null,'onu_mac'=>$onu['onu_mac']??null,'pon_port'=>$onu['pon_port']??null,'onu_type'=>$onu['onu_type']??null,'rx_power'=>$onu['rx_power']??null,'tx_power'=>$onu['tx_power']??null,'onu_ip'=>$onu['onu_ip']??null,'status'=>$onu['status']??'unknown','last_seen_at'=>now(),'notes'=>$existing?'Manually updated by operator':'Manually mapped by operator']);
-            return back()->with('inventory_message',$customer->pppUser ? 'ONU mapping saved for the selected customer and PPPoE account.' : 'ONU mapping saved for the selected customer. No PPPoE account is linked yet.');
+            $reuseQuery=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id);
+            if($mapping) $reuseQuery->where('id','<>',$mapping->id);
+            $sameCustomer=$reuseQuery->where('customer_id',$customer->id)->exists();
+            $samePpp=$customer->ppp_user_id ? (clone $reuseQuery)->where('ppp_user_id',$customer->ppp_user_id)->exists() : false;
+            if(($sameCustomer || $samePpp) && !$request->boolean('confirm_reuse')) {
+                $who=$sameCustomer && $samePpp ? 'Customer and PPPoE' : ($sameCustomer ? 'Customer' : 'PPPoE');
+                return back()->with('inventory_message',"This {$who} is already mapped to another ONU. Confirm reuse before saving.")
+                    ->with('onu_sync_success',false);
+            }
+            $payload=['customer_id'=>$customer->id,'ppp_user_id'=>$customer->ppp_user_id,'onu_serial'=>$data['onu_serial']??$mapping?->onu_serial,'onu_mac'=>$data['onu_mac']??$mapping?->onu_mac,'pon_port'=>$data['pon_port']??$mapping?->pon_port,'status'=>$mapping?->status ?? 'unknown','last_seen_at'=>$mapping?->last_seen_at ?? now()];
+            if($mapping){
+                $idConflict=(string)$mapping->onu_id!==(string)$data['onu_id'] && \App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->where('onu_id',$data['onu_id'])->where('id','<>',$mapping->id)->exists();
+                if(!$idConflict) $mapping->onu_id=$data['onu_id'];
+                $mapping->fill($payload); $mapping->save();
+            } else {
+                $mapping=\App\Models\OltOnuCustomerMapping::create($payload+['olt_device_id'=>$device->id,'onu_id'=>$data['onu_id']]);
+            }
+            return back()->with('inventory_message','ONU/customer mapping saved successfully.')->with('onu_sync_success',true);
         })->name('network-inventory.olt.customers.mapping');
-        Route::get('/network-inventory/olt/{device}/diagnostics', function(\App\Models\NetworkInventoryDevice $device){ abort_unless($device->type==='olt',404); return view('xlink.olt-diagnostics',compact('device')); })->name('network-inventory.olt.diagnostics');
+        Route::get('/network-inventory/olt/{device}/provisioning', [\App\Http\Controllers\OltProvisioningController::class, 'index'])->name('network-inventory.olt.provisioning');
+        Route::post('/network-inventory/olt/{device}/provisioning/discover', [\App\Http\Controllers\OltProvisioningController::class, 'discover'])->name('network-inventory.olt.provisioning.discover');
+        Route::post('/network-inventory/olt/{device}/provisioning/execute', [\App\Http\Controllers\OltProvisioningController::class, 'execute'])->name('network-inventory.olt.provisioning.execute');
+        Route::post('/network-inventory/olt/{device}/discover', [\App\Http\Controllers\OltProvisioningController::class, 'discover'])->name('network-inventory.olt.discover');
+        Route::post('/network-inventory/olt/{device}/provision', [\App\Http\Controllers\OltProvisioningController::class, 'execute'])->name('network-inventory.olt.provision');
+        Route::get('/network-inventory/olt/{device}/diagnostics', function(\App\Models\NetworkInventoryDevice $device, \App\Services\Olt\OltReadOnlyAdapterManager $manager){
+            abort_unless($device->type==='olt',404);
+            $opm=['status'=>'error','onus'=>[],'error'=>null];
+            try { $opm=$manager->read($device); } catch (\Throwable $e) { $opm=['status'=>'error','onus'=>[],'error'=>$e->getMessage()]; }
+
+            // When live CLI OPM is unavailable, use the last stored read-only
+            // MAC/TX/RX snapshot. Stable MAC is the primary key; PON+ONU ID
+            // is only a fallback for rows that have no MAC.
+            $storedMappings=\App\Models\OltOnuCustomerMapping::where('olt_device_id',$device->id)->get();
+            $storedByMac=$storedMappings->filter(fn($m)=>trim((string)$m->onu_mac)!=='')
+                ->keyBy(fn($m)=>strtolower(preg_replace('/[^a-f0-9]/i','',(string)$m->onu_mac)));
+            $storedByKey=$storedMappings->keyBy(fn($m)=>(string)$m->pon_port.':'.(string)$m->onu_id);
+
+            foreach(($opm['onus']??[]) as &$liveRow){
+                $macKey=strtolower(preg_replace('/[^a-f0-9]/i','',(string)($liveRow['onu_mac']??'')));
+                $stored=$macKey!=='' ? $storedByMac->get($macKey) : null;
+                if(!$stored){
+                    $key=(string)($liveRow['pon_port']??'').':'.(string)($liveRow['onu_id']??'');
+                    $stored=$storedByKey->get($key);
+                }
+                if($stored){
+                    if(!is_numeric($liveRow['tx_power']??null) && is_numeric($stored->tx_power)) $liveRow['tx_power']=(float)$stored->tx_power;
+                    if(!is_numeric($liveRow['rx_power']??null) && is_numeric($stored->rx_power)) $liveRow['rx_power']=(float)$stored->rx_power;
+                    if(trim((string)($liveRow['onu_mac']??''))==='' && trim((string)$stored->onu_mac)!=='') $liveRow['onu_mac']=$stored->onu_mac;
+                    $liveRow['stored_opm']=true;
+                }
+            }
+            unset($liveRow);
+
+            $storedOpmCount=collect($opm['onus']??[])->filter(fn($r)=>is_numeric($r['tx_power']??null)||is_numeric($r['rx_power']??null))->count();
+            if(($opm['meta']['opm_status']??'')!=='ok' && $storedOpmCount>0){
+                $opm['meta']['opm_status']='stored';
+                $opm['meta']['opm_message']="Showing {$storedOpmCount} ONU rows from the last stored read-only MAC/TX/RX snapshot. Live CLI will replace these values when SSH OPM is available.";
+            }
+
+            $q=trim((string)request('opm_q',''));
+            $pon=trim((string)request('opm_pon',''));
+            $rows=collect($opm['onus']??[])->filter(function($row) use($q,$pon){
+                if($pon!=='' && (string)($row['pon_port']??'') !== $pon) return false;
+                if($q==='') return true;
+                $hay=implode(' ',[(string)($row['onu_id']??''),(string)($row['onu_mac']??''),(string)($row['onu_serial']??''),(string)($row['description']??''),(string)($row['onu_model']??''),(string)($row['onu_vendor']??'')]);
+                return stripos($hay,$q)!==false;
+            })->values();
+            $ponOptions=collect($opm['onus']??[])->pluck('pon_port')->filter(fn($v)=>(string)$v!=='')->map(fn($v)=>(string)$v)->unique()->sort(SORT_NATURAL)->values();
+            return view('xlink.olt-diagnostics',compact('device','opm','rows','ponOptions','q','pon'));
+        })->name('network-inventory.olt.diagnostics');
         Route::post('/network-inventory/olt/{device}/diagnostic-check', function(\App\Models\NetworkInventoryDevice $device){
             abort_unless($device->type==='olt',404);
-            $probe=(new \App\Services\NetworkInventoryHealthProbe())->check($device);
-            $ok=$probe['ok']; $host=$device->host ?: $device->ip_address; $port=(int)$probe['port'];
-            $device->update(['status'=>$ok?'online':($probe['status']==='unknown'?'unknown':'offline'),'health_status'=>$ok?'ready':($probe['status']==='unknown'?'unknown':'failed'),'last_latency_ms'=>(int)$probe['latency_ms'],'last_checked_at'=>now()]);
-            return back()->with('diagnostic_message',$ok?'Connectivity check passed via '.strtoupper($probe['protocol']).' on '.$host.':'.$port.' ('.$probe['latency_ms'].' ms).':'Connectivity check failed on '.$host.':'.$port.' — '.$probe['message']);
+            $host=$device->host ?: $device->ip_address;
+            $port=(int)($device->port ?: 23);
+            $start=microtime(true); $ok=false; $err=''; $errno=0;
+            if($host){
+                $s=@fsockopen($host,$port,$errno,$err,3);
+                if($s){$ok=true; fclose($s);}
+            }
+            $device->update(['status'=>$ok?'online':'offline','health_status'=>$ok?'ready':'failed','last_latency_ms'=>(int)round((microtime(true)-$start)*1000),'last_checked_at'=>now()]);
+            return back()->with('diagnostic_message',$ok?'Connectivity check passed on '.$host.':'.$port.'.':'Connectivity check failed on '.$host.':'.$port.' — '.($err?:'connection refused').'. Health Port '.$device->health_port.' is reserved for health/SNMP monitoring.');
         })->name('network-inventory.olt.diagnostic-check');
 
         Route::get('/network-inventory/switch-management', fn () => redirect()->route('network-inventory.devices', ['type' => 'switch']))
@@ -700,115 +782,63 @@ Route::middleware([
         })->name('network-inventory.onu-management.export');
 
         Route::get('/stock-inventory', function () {
-            $q=\App\Models\StockInventoryProduct::query();
-            $products=$q->orderByRaw('CASE WHEN quantity <= reorder_level THEN 0 ELSE 1 END')->orderBy('name')->paginate(20)->withQueryString();
-            $totalQty=(int)\App\Models\StockInventoryProduct::sum('quantity');
-            $stockValue=(float)\App\Models\StockInventoryProduct::selectRaw('COALESCE(SUM(quantity * unit_cost),0) total')->value('total');
-            $lowStock=(int)\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count();
-            $outOfStock=(int)\App\Models\StockInventoryProduct::where('quantity',0)->count();
-            \App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->where('warranty_end','<',now()->toDateString())->update(['status'=>'expired']);
-            $warrantyExpiring=(int)\App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->whereBetween('warranty_end',[now()->toDateString(),now()->addDays(30)->toDateString()])->count();
-            $openDamage=(int)\App\Models\StockInventoryDamageRecord::where('status','open')->count();
-            $recentMovements=\App\Models\StockInventoryMovement::with('product')->latest()->limit(8)->get();
-            return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,'recentMovements'=>$recentMovements,
-                'warrantyExpiring'=>$warrantyExpiring,'openDamage'=>$openDamage,
-                'stats'=>[['Products',\App\Models\StockInventoryProduct::count()],['Total Qty',$totalQty],['Stock Value',number_format($stockValue,2).' '.siteUrlSettings('site_currency')],['Low Stock',$lowStock],['Out of Stock',$outOfStock]]]);
+            $products = \App\Models\StockInventoryProduct::orderBy('name')->paginate(20)->withQueryString();
+            return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,
+                'stats'=>[['Packages',\App\Models\PackageList::count()],['Products',\App\Models\StockInventoryProduct::count()],['Low Stock',\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count()],['Movements',\App\Models\StockInventoryMovement::count()]]]);
         })->name('xlink.stock-inventory');
-        Route::get('/stock-inventory/products', function (\Illuminate\Http\Request $r) {
-            $q=\App\Models\StockInventoryProduct::query();
-            if($r->filled('q')){ $term=trim($r->input('q')); $q->where(function($x) use($term){$x->where('sku','like','%'.$term.'%')->orWhere('name','like','%'.$term.'%')->orWhere('category','like','%'.$term.'%');}); }
-            if($r->filled('status')) $q->where('status',$r->input('status'));
-            if($r->input('stock_alert')==='low') $q->whereColumn('quantity','<=','reorder_level')->where('quantity','>','0');
-            if($r->input('stock_alert')==='out') $q->where('quantity',0);
-            $products=$q->orderBy('name')->paginate(25)->withQueryString();
-            return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[],'filters'=>['q'=>$r->input('q'),'status'=>$r->input('status')]]);
-        })->name('stock-inventory.products');
-        Route::post('/stock-inventory/products/{product}/update', function(\Illuminate\Http\Request $r, \App\Models\StockInventoryProduct $product){
-            $d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku,'.$product->id,'name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','status'=>'required|in:active,inactive','notes'=>'nullable|string|max:1000']);
-            $product->update($d); return back()->with('inventory_message','Product updated.');
-        })->name('stock-inventory.products.update');
-        Route::post('/stock-inventory/products/{product}/delete', function(\App\Models\StockInventoryProduct $product){
-            abort_if($product->movements()->exists(),422,'Product cannot be deleted because stock movements exist. Mark it inactive instead.');
-            $product->delete(); return back()->with('inventory_message','Product deleted.');
-        })->name('stock-inventory.products.delete');
+        Route::get('/stock-inventory/categories', function () {
+            $categories = \App\Models\StockInventoryProduct::query()
+                ->select('category', \Illuminate\Support\Facades\DB::raw('COUNT(*) as product_count'))
+                ->whereNotNull('category')->whereRaw("TRIM(category) <> ''")
+                ->groupBy('category')->orderBy('category')->get();
+            return view('xlink.stock-inventory', ['tab'=>'categories','categories'=>$categories,'stats'=>[]]);
+        })->name('stock-inventory.categories');
+        Route::get('/stock-inventory/vendors', function () {
+            $suppliers = \App\Models\StockInventorySupplier::query()
+                ->select('stock_inventory_suppliers.*')
+                ->selectSub(\Illuminate\Support\Facades\DB::table('stock_inventory_purchases')->selectRaw('COALESCE(SUM(total_amount),0)')->whereColumn('supplier_id','stock_inventory_suppliers.id'), 'purchase_total')
+                ->selectSub(\Illuminate\Support\Facades\DB::table('stock_inventory_supplier_payments')->selectRaw('COALESCE(SUM(amount),0)')->whereColumn('supplier_id','stock_inventory_suppliers.id'), 'paid_total')
+                ->orderBy('name')->paginate(25)->withQueryString();
+            return view('xlink.stock-inventory', ['tab'=>'vendors','suppliers'=>$suppliers,'stats'=>[]]);
+        })->name('stock-inventory.vendors');
+        Route::get('/stock-inventory/vendor-payments', function () {
+            $suppliers = \App\Models\StockInventorySupplier::orderBy('name')->get();
+            $supplierPayments = \App\Models\StockInventorySupplierPayment::with('supplier')->latest('payment_date')->paginate(30)->withQueryString();
+            return view('xlink.stock-inventory', ['tab'=>'vendor-payments','suppliers'=>$suppliers,'supplierPayments'=>$supplierPayments,'stats'=>[]]);
+        })->name('stock-inventory.vendor-payments');
+        Route::post('/stock-inventory/vendor-payments', function (\Illuminate\Http\Request $request) {
+            $data = $request->validate([
+                'supplier_id'=>'required|exists:stock_inventory_suppliers,id',
+                'payment_date'=>'required|date',
+                'amount'=>'required|numeric|min:0.01',
+                'method'=>'required|in:cash,bank,bkash,nagad,rocket,other',
+                'reference'=>'nullable|string|max:120',
+                'notes'=>'nullable|string|max:1000',
+            ]);
+            $data['recorded_by'] = auth()->id();
+            \App\Models\StockInventorySupplierPayment::create($data);
+            return redirect()->route('stock-inventory.vendor-payments')->with('inventory_message','Supplier payment recorded.');
+        })->name('stock-inventory.vendor-payments.store');
+        Route::get('/stock-inventory/products', function () { $products=\App\Models\StockInventoryProduct::orderBy('name')->paginate(25)->withQueryString(); return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[]]); })->name('stock-inventory.products');
         Route::post('/stock-inventory/products', function(\Illuminate\Http\Request $r){$d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku','name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','quantity'=>'required|integer|min:0','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryProduct::create($d); return back()->with('inventory_message','Product added.');})->name('stock-inventory.products.store');
-        Route::post('/stock-inventory/movements', function(\Illuminate\Http\Request $r){$d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','movement_type'=>'required|in:stock-in,issue,sale,return,adjustment','quantity'=>'required|integer|min:1','reference'=>'nullable|string|max:120','source'=>'nullable|string|max:120','destination'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); return \Illuminate\Support\Facades\DB::transaction(function() use($d){$p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail(); abort_if($p->status!=='active',422,'Inactive products cannot receive new stock movements.'); $delta=in_array($d['movement_type'],['stock-in','return','adjustment'],true)?$d['quantity']:-$d['quantity']; abort_if($delta<0 && $p->quantity < abs($delta),422,'Insufficient stock.'); $p->update(['quantity'=>$p->quantity+$delta]); \App\Models\StockInventoryMovement::create($d); return back()->with('inventory_message','Stock movement recorded successfully.');});})->name('stock-inventory.movements.store');
-        Route::get('/stock-inventory/movements', function(){ $movements=\App\Models\StockInventoryMovement::with('product')->latest()->paginate(30); return view('xlink.stock-inventory',['tab'=>'movements','movements'=>$movements,'products'=>\App\Models\StockInventoryProduct::where('status','active')->orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.movements');
-        Route::get('/stock-inventory/purchases', function(){ $purchases=\App\Models\StockInventoryPurchase::with('supplier','items.product')->latest()->paginate(20); return view('xlink.stock-inventory',['tab'=>'purchases','purchases'=>$purchases,'suppliers'=>\App\Models\StockInventorySupplier::where('status','active')->orderBy('name')->get(),'products'=>\App\Models\StockInventoryProduct::where('status','active')->orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.purchases');
-        Route::post('/stock-inventory/suppliers', function(\Illuminate\Http\Request $r){$d=$r->validate(['name'=>'required|string|max:160','phone'=>'nullable|string|max:40','email'=>'nullable|email|max:190','address'=>'nullable|string|max:1000','notes'=>'nullable|string|max:1000']); \App\Models\StockInventorySupplier::create($d); return back()->with('inventory_message','Supplier added.');})->name('stock-inventory.suppliers.store');
-        Route::post('/stock-inventory/purchases', function(\Illuminate\Http\Request $r){$d=$r->validate(['supplier_id'=>'nullable|exists:stock_inventory_suppliers,id','invoice_no'=>'nullable|string|max:120','purchase_date'=>'required|date','product_id'=>'required|exists:stock_inventory_products,id','quantity'=>'required|integer|min:1','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); return \Illuminate\Support\Facades\DB::transaction(function() use($d){$p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail(); abort_if($p->status!=='active',422,'Inactive products cannot receive purchases.'); $line=(float)$d['quantity']*(float)$d['unit_cost']; $purchase=\App\Models\StockInventoryPurchase::create(['supplier_id'=>$d['supplier_id']??null,'invoice_no'=>$d['invoice_no']??null,'purchase_date'=>$d['purchase_date'],'total_amount'=>$line,'notes'=>$d['notes']??null]); \App\Models\StockInventoryPurchaseItem::create(['purchase_id'=>$purchase->id,'product_id'=>$p->id,'quantity'=>$d['quantity'],'unit_cost'=>$d['unit_cost'],'line_total'=>$line]); $p->update(['quantity'=>$p->quantity+$d['quantity'],'unit_cost'=>$d['unit_cost']]); \App\Models\StockInventoryMovement::create(['product_id'=>$p->id,'movement_type'=>'stock-in','quantity'=>$d['quantity'],'reference'=>$d['invoice_no']??'Purchase #'.$purchase->id,'source'=>'Supplier purchase','destination'=>'Stock','notes'=>$d['notes']??null]); return back()->with('inventory_message','Purchase received and stock updated.');});})->name('stock-inventory.purchases.store');
-        Route::get('/stock-inventory/assets', function(\Illuminate\Http\Request $r){
-            $q=\App\Models\StockInventoryAsset::with('product');
-            if($r->filled('q')){ $term=trim($r->input('q')); $q->where(function($x) use($term){$x->where('asset_tag','like','%'.$term.'%')->orWhere('serial_no','like','%'.$term.'%')->orWhere('mac_address','like','%'.$term.'%')->orWhere('vendor','like','%'.$term.'%')->orWhere('model','like','%'.$term.'%')->orWhere('location','like','%'.$term.'%')->orWhere('assigned_to','like','%'.$term.'%');}); }
-            if($r->filled('asset_type')) $q->where('asset_type',$r->input('asset_type')); if($r->filled('status')) $q->where('status',$r->input('status'));
-            $assets=$q->orderBy('asset_type')->orderBy('asset_tag')->paginate(25)->withQueryString();
-            return view('xlink.stock-inventory',['tab'=>'assets','title'=>'Network Assets','assets'=>$assets,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]);
-        })->name('stock-inventory.assets');
-        Route::post('/stock-inventory/assets', function(\Illuminate\Http\Request $r){
-            $d=$r->validate(['product_id'=>'nullable|exists:stock_inventory_products,id','asset_type'=>'required|in:onu,olt,router,switch,access-point,sfp,fiber,patch-cord,power-adapter,ups,other','asset_tag'=>'nullable|string|max:100|unique:stock_inventory_assets,asset_tag','serial_no'=>'nullable|string|max:160|unique:stock_inventory_assets,serial_no','mac_address'=>'nullable|string|max:80','vendor'=>'nullable|string|max:160','model'=>'nullable|string|max:160','status'=>'required|in:in-stock,installed,spare,repair,retired,lost','location'=>'nullable|string|max:190','assigned_to'=>'nullable|string|max:190','reference'=>'nullable|string|max:120','purchase_date'=>'nullable|date','warranty_end'=>'nullable|date','notes'=>'nullable|string|max:1000']);
-            \App\Models\StockInventoryAsset::create($d); return back()->with('inventory_message','Network asset added.');
-        })->name('stock-inventory.assets.store');
-        Route::get('/stock-inventory/warranty', function(\Illuminate\Http\Request $r){
-            $q=\App\Models\StockInventoryWarranty::with('product');
-            if($r->filled('q')){ $term=trim($r->input('q')); $q->where(function($x) use($term){$x->where('asset_serial','like','%'.$term.'%')->orWhere('asset_mac','like','%'.$term.'%')->orWhere('vendor','like','%'.$term.'%')->orWhere('reference','like','%'.$term.'%');}); }
-            if($r->filled('status')) $q->where('status',$r->input('status'));
-            if($r->input('expiring')==='1') $q->where('status','active')->whereNotNull('warranty_end')->whereBetween('warranty_end',[now()->toDateString(),now()->addDays(30)->toDateString()]);
-            $warranties=$q->orderByRaw('CASE WHEN warranty_end IS NULL THEN 1 ELSE 0 END')->orderBy('warranty_end')->paginate(25)->withQueryString();
-            return view('xlink.stock-inventory',['tab'=>'warranty','title'=>'Warranty','warranties'=>$warranties,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]);
-        })->name('stock-inventory.warranty');
-        Route::post('/stock-inventory/warranty', function(\Illuminate\Http\Request $r){
-            $d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','asset_serial'=>'nullable|string|max:160','asset_mac'=>'nullable|string|max:80','vendor'=>'nullable|string|max:160','warranty_start'=>'nullable|date','warranty_end'=>'nullable|date|after_or_equal:warranty_start','status'=>'required|in:active,expired,claimed,void','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']);
-            \App\Models\StockInventoryWarranty::create($d); return back()->with('inventory_message','Warranty record added.');
-        })->name('stock-inventory.warranty.store');
-        Route::get('/stock-inventory/damaged', function(\Illuminate\Http\Request $r){
-            $q=\App\Models\StockInventoryDamageRecord::with('product');
-            if($r->filled('q')){ $term=trim($r->input('q')); $q->where(function($x) use($term){$x->where('asset_serial','like','%'.$term.'%')->orWhere('asset_mac','like','%'.$term.'%')->orWhere('reason','like','%'.$term.'%')->orWhere('reference','like','%'.$term.'%');}); }
-            if($r->filled('status')) $q->where('status',$r->input('status'));
-            $records=$q->latest('incident_date')->paginate(25)->withQueryString();
-            return view('xlink.stock-inventory',['tab'=>'damaged','title'=>'Lost & Damaged','damageRecords'=>$records,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]);
-        })->name('stock-inventory.damaged');
-        Route::post('/stock-inventory/damaged', function(\Illuminate\Http\Request $r){
-            $d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','quantity'=>'required|integer|min:1','asset_serial'=>'nullable|string|max:160','asset_mac'=>'nullable|string|max:80','record_type'=>'required|in:damaged,lost','incident_date'=>'required|date','reason'=>'nullable|string|max:190','status'=>'required|in:open,recovered,resolved,disposed','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']);
-            if($d['record_type']==='lost' && $d['status']==='open'){
-                \Illuminate\Support\Facades\DB::transaction(function() use($d){
-                    $p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail();
-                    abort_if($p->quantity < $d['quantity'],422,'Insufficient stock for this lost quantity.');
-                    \App\Models\StockInventoryDamageRecord::create($d);
-                    $p->update(['quantity'=>$p->quantity-$d['quantity']]);
-                    \App\Models\StockInventoryMovement::create(['product_id'=>$p->id,'movement_type'=>'issue','quantity'=>$d['quantity'],'reference'=>$d['reference']??'Lost asset','source'=>'Lost/Damaged register','destination'=>'Loss','notes'=>$d['notes']??null]);
-                });
-            } else { \App\Models\StockInventoryDamageRecord::create($d); }
-            return back()->with('inventory_message',$d['record_type']==='lost' && $d['status']==='open' ? 'Lost record added and stock ledger updated.' : 'Lost/damaged record added. Stock quantity was not changed.');
-        })->name('stock-inventory.damaged.store');
-        Route::get('/stock-inventory/export/movements.csv', function (\Illuminate\Http\Request $r) {
-            $from=$r->input('from',now()->startOfMonth()->toDateString()); $to=$r->input('to',now()->toDateString());
-            $rows=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
-            return response()->streamDownload(function() use($rows){$o=fopen('php://output','w'); fputcsv($o,['Date','Product','SKU','Type','Quantity','Reference','Source','Destination','Notes']); foreach($rows as $m) fputcsv($o,[$m->created_at->format('Y-m-d H:i:s'),$m->product->name??'', $m->product->sku??'', $m->movement_type,$m->quantity,$m->reference,$m->source,$m->destination,$m->notes]); fclose($o);},'stock-movements-'.$from.'-to-'.$to.'.csv',['Content-Type'=>'text/csv']);
-        })->name('stock-inventory.export.movements.csv');
-        Route::get('/stock-inventory/export/products.xlsx', function () {
-            $sheet=new \PhpOffice\PhpSpreadsheet\Spreadsheet(); $ws=$sheet->getActiveSheet(); $ws->fromArray([['SKU','Product','Category','Unit','Quantity','Reorder Level','Unit Cost','Status','Notes']],null,'A1'); $r=2;
-            foreach(\App\Models\StockInventoryProduct::orderBy('name')->get() as $p) $ws->fromArray([[$p->sku,$p->name,$p->category,$p->unit,$p->quantity,$p->reorder_level,$p->unit_cost,$p->status,$p->notes]],null,'A'.$r++);
-            foreach(range('A','I') as $c) $ws->getColumnDimension($c)->setAutoSize(true); $writer=new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($sheet); return response()->streamDownload(fn()=>$writer->save('php://output'),'stock-products-'.now()->format('Y-m-d').'.xlsx',['Content-Type'=>'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
-        })->name('stock-inventory.export.products.xlsx');
-        Route::get('/stock-inventory/reports/print', function (\Illuminate\Http\Request $r) {
-            $from=$r->input('from',now()->startOfMonth()->toDateString()); $to=$r->input('to',now()->toDateString()); $mov=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
-            return view('xlink.stock-inventory-print',['from'=>$from,'to'=>$to,'movements'=>$mov,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'assets'=>\App\Models\StockInventoryAsset::orderBy('asset_type')->get(),'warranties'=>\App\Models\StockInventoryWarranty::with('product')->orderBy('warranty_end')->get(),'damageRecords'=>\App\Models\StockInventoryDamageRecord::with('product')->latest('incident_date')->get()]);
-        })->name('stock-inventory.reports.print');
-        Route::get('/stock-inventory/reports', function (\Illuminate\Http\Request $r) {
-            $from=$r->input('from', now()->startOfMonth()->toDateString()); $to=$r->input('to', now()->toDateString());
-            $mov=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->latest()->get();
-            $movementSummary=$mov->groupBy('movement_type')->map(fn($rows)=>['count'=>$rows->count(),'qty'=>$rows->sum('quantity')]);
-            $productUsage=$mov->groupBy('product_id')->map(fn($rows)=>$rows->sum('quantity'))->sortDesc()->take(10);
-            $products=\App\Models\StockInventoryProduct::whereIn('id',$productUsage->keys())->get()->keyBy('id');
-            $assetSummary=\App\Models\StockInventoryAsset::selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total','status');
-            $warrantySummary=\App\Models\StockInventoryWarranty::selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total','status');
-            $damageSummary=\App\Models\StockInventoryDamageRecord::selectRaw('record_type, status, SUM(quantity) qty')->groupBy('record_type','status')->get();
-            return view('xlink.stock-inventory',['tab'=>'reports','title'=>'Inventory Reports','from'=>$from,'to'=>$to,'movementSummary'=>$movementSummary,'productUsage'=>$productUsage,'usageProducts'=>$products,'assetSummary'=>$assetSummary,'warrantySummary'=>$warrantySummary,'damageSummary'=>$damageSummary,'stats'=>[]]);
-        })->name('stock-inventory.reports');
-        Route::get('/stock-inventory/settings', function(){
-            $expired=\App\Models\StockInventoryWarranty::where('status','active')->whereNotNull('warranty_end')->where('warranty_end','<',now()->toDateString())->update(['status'=>'expired']);
-            return view('xlink.stock-inventory',['tab'=>'settings','title'=>'Settings','products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[],'expiredWarrantyUpdated'=>$expired]);
-        })->name('stock-inventory.settings');
+        Route::post('/stock-inventory/movements', function(\Illuminate\Http\Request $r){$d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','movement_type'=>'required|in:stock-in,issue,sale,return,adjustment','quantity'=>'required|integer|min:1','reference'=>'nullable|string|max:120','source'=>'nullable|string|max:120','destination'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); $p=\App\Models\StockInventoryProduct::findOrFail($d['product_id']); $delta=in_array($d['movement_type'],['stock-in','return','adjustment'],true)?$d['quantity']:-$d['quantity']; abort_if($delta<0 && $p->quantity < abs($delta),422,'Insufficient stock.'); $p->increment('quantity',$delta); \App\Models\StockInventoryMovement::create($d); return back()->with('inventory_message','Stock movement recorded.');})->name('stock-inventory.movements.store');
+        Route::get('/stock-inventory/movements', function(){ $movements=\App\Models\StockInventoryMovement::with('product')->latest()->paginate(30); return view('xlink.stock-inventory',['tab'=>'movements','movements'=>$movements,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.movements');
+        Route::post('/stock-inventory/products/{product}/update', function(\Illuminate\Http\Request $r, \App\Models\StockInventoryProduct $product){ $d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku,'.$product->id,'name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','status'=>'required|in:active,inactive','notes'=>'nullable|string|max:1000']); $product->update($d); return back()->with('inventory_message','Product updated.'); })->name('stock-inventory.products.update');
+        Route::post('/stock-inventory/products/{product}/delete', function(\App\Models\StockInventoryProduct $product){ abort_if($product->movements()->exists(),422,'Product with movement history cannot be deleted.'); $product->delete(); return back()->with('inventory_message','Product deleted.'); })->name('stock-inventory.products.delete');
+        Route::post('/stock-inventory/suppliers', function(\Illuminate\Http\Request $r){ $d=$r->validate(['name'=>'required|string|max:160','phone'=>'nullable|string|max:40','email'=>'nullable|email|max:190','address'=>'nullable|string|max:1000']); \App\Models\StockInventorySupplier::create($d); return back()->with('inventory_message','Supplier added.'); })->name('stock-inventory.suppliers.store');
+        Route::get('/stock-inventory/purchases', function(){ return view('xlink.stock-inventory',['tab'=>'purchases','title'=>'Purchases','products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'suppliers'=>\App\Models\StockInventorySupplier::orderBy('name')->get(),'purchases'=>\App\Models\StockInventoryPurchase::with(['supplier','items.product'])->latest('purchase_date')->paginate(25),'stats'=>[]]); })->name('stock-inventory.purchases');
+        Route::post('/stock-inventory/purchases', function(\Illuminate\Http\Request $r){ $d=$r->validate(['supplier_id'=>'nullable|exists:stock_inventory_suppliers,id','invoice_no'=>'nullable|string|max:120','purchase_date'=>'required|date','product_id'=>'required|exists:stock_inventory_products,id','quantity'=>'required|integer|min:1','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']); $total=(float)$d['quantity']*(float)$d['unit_cost']; $p=\App\Models\StockInventoryPurchase::create(['supplier_id'=>$d['supplier_id']??null,'invoice_no'=>$d['invoice_no']??null,'purchase_date'=>$d['purchase_date'],'total_amount'=>$total,'status'=>'received','notes'=>$d['notes']??null]); \App\Models\StockInventoryPurchaseItem::create(['purchase_id'=>$p->id,'product_id'=>$d['product_id'],'quantity'=>$d['quantity'],'unit_cost'=>$d['unit_cost'],'line_total'=>$total]); \App\Models\StockInventoryProduct::whereKey($d['product_id'])->increment('quantity',(int)$d['quantity']); return back()->with('inventory_message','Purchase received and stock updated.'); })->name('stock-inventory.purchases.store');
+        Route::get('/stock-inventory/assets', function(){ $q=trim((string)request('q','')); $type=trim((string)request('asset_type','')); $status=trim((string)request('status','')); $query=\App\Models\StockInventoryAsset::with('product')->latest('id'); if($q!=='')$query->where(function($x)use($q){$x->where('asset_tag','like',"%$q%")->orWhere('serial_no','like',"%$q%")->orWhere('mac_address','like',"%$q%")->orWhere('vendor','like',"%$q%")->orWhere('model','like',"%$q%")->orWhere('location','like',"%$q%");}); if($type!=='')$query->where('asset_type',$type); if($status!=='')$query->where('status',$status); return view('xlink.stock-inventory',['tab'=>'assets','products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'assets'=>$query->paginate(25)->withQueryString(),'stats'=>[]]); })->name('stock-inventory.assets');
+        Route::post('/stock-inventory/assets', function(\Illuminate\Http\Request $r){ $d=$r->validate(['asset_type'=>'required|string|max:40','product_id'=>'nullable|exists:stock_inventory_products,id','asset_tag'=>'nullable|string|max:120','serial_no'=>'nullable|string|max:160','mac_address'=>'nullable|string|max:80','vendor'=>'nullable|string|max:120','model'=>'nullable|string|max:120','status'=>'required|string|max:40','location'=>'nullable|string|max:160','assigned_to'=>'nullable|string|max:160','purchase_date'=>'nullable|date','warranty_end'=>'nullable|date','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryAsset::create($d); return back()->with('inventory_message','Network asset saved.'); })->name('stock-inventory.assets.store');
+        Route::get('/stock-inventory/reports', function(){ $from=request('from',now()->startOfMonth()->toDateString()); $to=request('to',now()->endOfMonth()->toDateString()); $rows=\App\Models\StockInventoryMovement::with('product')->whereBetween('created_at',[$from.' 00:00:00',$to.' 23:59:59'])->get(); $movementSummary=$rows->groupBy('movement_type')->map(fn($g)=>['count'=>$g->count(),'qty'=>$g->sum('quantity')]); $productUsage=$rows->groupBy('product_id')->map->sum('quantity'); $usageProducts=\App\Models\StockInventoryProduct::whereIn('id',$productUsage->keys())->get()->keyBy('id'); $assetSummary=\App\Models\StockInventoryAsset::selectRaw('status,count(*) as total')->groupBy('status')->pluck('total','status'); $warrantySummary=\App\Models\StockInventoryWarranty::selectRaw('status,count(*) as total')->groupBy('status')->pluck('total','status'); $damageSummary=\App\Models\StockInventoryDamageRecord::selectRaw('record_type,status,sum(quantity) as qty')->groupBy('record_type','status')->get(); return view('xlink.stock-inventory',['tab'=>'reports','from'=>$from,'to'=>$to,'movementSummary'=>$movementSummary,'productUsage'=>$productUsage,'usageProducts'=>$usageProducts,'assetSummary'=>$assetSummary,'warrantySummary'=>$warrantySummary,'damageSummary'=>$damageSummary,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[]]); })->name('stock-inventory.reports');
+        Route::get('/stock-inventory/reports/print', function(){ return redirect()->route('stock-inventory.reports',request()->query()); })->name('stock-inventory.reports.print');
+        Route::get('/stock-inventory/export/movements.csv', function(){ $rows=\App\Models\StockInventoryMovement::with('product')->when(request('from'),fn($q)=>$q->whereDate('created_at','>=',request('from')))->when(request('to'),fn($q)=>$q->whereDate('created_at','<=',request('to')))->latest()->get(); $csv="SKU,Product,Type,Quantity,Reference,Created\n"; foreach($rows as $r){$csv.=sprintf("%s,%s,%s,%s,%s,%s\n",$r->product?->sku,$r->product?->name,$r->movement_type,$r->quantity,$r->reference,$r->created_at);} return response($csv,200,['Content-Type'=>'text/csv','Content-Disposition'=>'attachment; filename="stock-movements.csv"']); })->name('stock-inventory.export.movements.csv');
+        Route::get('/stock-inventory/export/products.xlsx', function(){ $rows=\App\Models\StockInventoryProduct::orderBy('name')->get(); $spreadsheet=new \PhpOffice\PhpSpreadsheet\Spreadsheet(); $sheet=$spreadsheet->getActiveSheet(); $sheet->setTitle('Products'); $headers=['SKU','Product','Category','Unit','Quantity','Reorder Level','Unit Cost','Status']; $columns=range('A','H'); foreach($headers as $i=>$header){$sheet->setCellValue($columns[$i].'1',$header);} foreach($rows as $ri=>$r){$values=[$r->sku,$r->name,$r->category,$r->unit,$r->quantity,$r->reorder_level,(float)$r->unit_cost,$r->status]; foreach($values as $ci=>$value){$sheet->setCellValue($columns[$ci].($ri+2),$value);}} $sheet->getStyle('A1:H1')->getFont()->setBold(true); $sheet->freezePane('A2'); $sheet->setAutoFilter('A1:H'.max(1,$rows->count()+1)); foreach(range('A','H') as $col){$sheet->getColumnDimension($col)->setAutoSize(true);} $writer=new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet); ob_start(); $writer->save('php://output'); $xlsx=ob_get_clean(); return response($xlsx,200,['Content-Type'=>'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition'=>'attachment; filename="stock-products.xlsx"','Content-Length'=>strlen($xlsx)]); })->name('stock-inventory.export.products.xlsx');
+        Route::post('/stock-inventory/warranty', function(\Illuminate\Http\Request $r){ $d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','asset_serial'=>'nullable|string|max:160','asset_mac'=>'nullable|string|max:80','vendor'=>'nullable|string|max:120','warranty_start'=>'nullable|date','warranty_end'=>'nullable|date','status'=>'required|in:active,expired,claimed,void','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryWarranty::create($d); return back()->with('inventory_message','Warranty record saved.'); })->name('stock-inventory.warranty.store');
+        Route::post('/stock-inventory/damaged', function(\Illuminate\Http\Request $r){ $d=$r->validate(['product_id'=>'required|exists:stock_inventory_products,id','quantity'=>'required|integer|min:1','asset_serial'=>'nullable|string|max:160','asset_mac'=>'nullable|string|max:80','record_type'=>'required|in:damaged,lost','incident_date'=>'required|date','reason'=>'nullable|string|max:500','status'=>'required|in:open,recovered,resolved,disposed','reference'=>'nullable|string|max:120','notes'=>'nullable|string|max:1000']); \App\Models\StockInventoryDamageRecord::create($d); return back()->with('inventory_message','Lost/damaged record saved.'); })->name('stock-inventory.damaged.store');
+        Route::get('/stock-inventory/warranty', function(){ $q=trim((string)request('q','')); $status=trim((string)request('status','')); $query=\App\Models\StockInventoryWarranty::with('product')->latest('id'); if($q!=='')$query->where(function($x)use($q){$x->where('asset_serial','like',"%$q%")->orWhere('asset_mac','like',"%$q%")->orWhere('vendor','like',"%$q%")->orWhere('reference','like',"%$q%");}); if($status!=='')$query->where('status',$status); return view('xlink.stock-inventory',['tab'=>'warranty','title'=>'Warranty','products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'warranties'=>$query->paginate(25)->withQueryString(),'stats'=>[]]); })->name('stock-inventory.warranty');
+        Route::get('/stock-inventory/damaged', function(){ $q=trim((string)request('q','')); $status=trim((string)request('status','')); $query=\App\Models\StockInventoryDamageRecord::with('product')->latest('incident_date'); if($q!=='')$query->where(function($x)use($q){$x->where('asset_serial','like',"%$q%")->orWhere('asset_mac','like',"%$q%")->orWhere('reason','like',"%$q%")->orWhere('reference','like',"%$q%");}); if($status!=='')$query->where('status',$status); return view('xlink.stock-inventory',['tab'=>'damaged','title'=>'Lost & Damaged','products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'damageRecords'=>$query->paginate(25)->withQueryString(),'stats'=>[]]); })->name('stock-inventory.damaged');
+        Route::get('/stock-inventory/settings', fn()=>view('xlink.stock-inventory',['tab'=>'settings','title'=>'Settings','products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[]]))->name('stock-inventory.settings');
 
         Route::get('/communication-center', function () {
             $templates = \App\Models\SmsTemplate::count();
