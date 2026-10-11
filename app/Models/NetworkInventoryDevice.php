@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Crypt;
 
 class NetworkInventoryDevice extends Model
 {
@@ -27,6 +28,43 @@ class NetworkInventoryDevice extends Model
         'ssh_enabled' => 'boolean', 'telnet_enabled' => 'boolean', 'api_enabled' => 'boolean',
         'provisioning_enabled' => 'boolean',
     ];
+
+    private function encryptCredentialValue($value): ?string
+    {
+        if (! filled($value)) {
+            return null;
+        }
+
+        $value = (string) $value;
+        try {
+            Crypt::decryptString($value);
+            return $value; // Already encrypted; do not encrypt twice.
+        } catch (\Throwable) {
+            return Crypt::encryptString($value);
+        }
+    }
+
+    private function decryptCredentialValue($value): ?string
+    {
+        if (! filled($value)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString((string) $value);
+        } catch (\Throwable) {
+            return (string) $value; // Backward-compatible for existing plaintext rows.
+        }
+    }
+
+    public function setUsernameAttribute($value): void { $this->attributes['username'] = $this->encryptCredentialValue($value); }
+    public function getUsernameAttribute($value): ?string { return $this->decryptCredentialValue($value); }
+    public function setPasswordAttribute($value): void { $this->attributes['password'] = $this->encryptCredentialValue($value); }
+    public function getPasswordAttribute($value): ?string { return $this->decryptCredentialValue($value); }
+    public function setSnmpCommunityAttribute($value): void { $this->attributes['snmp_community'] = $this->encryptCredentialValue($value); }
+    public function getSnmpCommunityAttribute($value): ?string { return $this->decryptCredentialValue($value); }
+    public function setApiTokenAttribute($value): void { $this->attributes['api_token'] = $this->encryptCredentialValue($value); }
+    public function getApiTokenAttribute($value): ?string { return $this->decryptCredentialValue($value); }
 
     public function scopeType($query, string $type)
     {
