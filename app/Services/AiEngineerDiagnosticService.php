@@ -79,7 +79,7 @@ class AiEngineerDiagnosticService
                 'last_disconnect_reason'=>$ppp->last_disconnect_reason,
                 'live_session'=>$livePpp,
             ] : ['state'=>'missing'],
-            'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'অজানা','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at,'check_age_seconds'=>$routerAge,'check_freshness'=>$routerAge === null ? 'অজানা' : ($routerAge <= 900 ? 'সাম্প্রতিক' : 'পুরোনো')] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
+            'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'অজানা','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at,'check_age_seconds'=>$routerAge,'check_freshness'=>$routerAge === null ? 'unknown' : ($routerAge <= 900 ? 'fresh' : 'stale')] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
             'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'olt_name'=>$olt?->name,'olt_ip'=>$olt?->ip_address,'olt_state'=>$olt?->health_status ?: $olt?->status ?: 'অজানা','olt_latency_ms'=>$olt?->last_latency_ms,'olt_last_checked_at'=>$olt?->last_checked_at,'health_check'=>$oltHealth ? ['status'=>$oltHealth->status,'latency_ms'=>$oltHealth->latency_ms,'checked_at'=>$oltHealth->checked_at] : null,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'অজানা','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at,'last_seen_age_seconds'=>$mapping->last_seen_at ? max(0, now()->diffInSeconds($mapping->last_seen_at, false) * -1) : null] : ['state'=>'not_mapped'],
             'billing' => $billing ? ['state'=>$this->billingState($billing),'due'=>$this->billingDue($billing)] : ['state'=>'not_found'],
         ];
@@ -105,7 +105,7 @@ class AiEngineerDiagnosticService
                 $findings[]='এই ব্যবহারকারীর কোনো সক্রিয় MikroTik PPPoE সেশন পাওয়া যায়নি।';
                 if (strtolower((string)$ppp->status) === 'active') {
                     $severity=$severity==='critical'?'critical':'warning';
-                    $causes[]='PPP secret is active in billing data, but no লাইভ PPPoE session was found on the assigned router.';
+                    $causes[]='PPP secret is active in billing data, but no live PPPoE session was found on the assigned router.';
                     $checks[]='রাউটার লগ, PPPoE অনুমোদন ত্রুটি এবং গ্রাহকের CPE-তে পৌঁছানো যাচ্ছে কি না পরীক্ষা করুন।';
                 }
             }

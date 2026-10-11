@@ -6,6 +6,7 @@ use App\Livewire\NetworkTopology;
 use App\Models\NetworkInventoryDevice;
 use App\Models\NetworkTopologyLink;
 use App\Models\NetworkTopologyNode;
+use App\Models\NetworkTopologyMap;
 use App\Models\RouterList;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,8 +59,9 @@ class NetworkTopologyTest extends TestCase
             'router_name' => 'Access Router', 'ip_address' => '192.0.2.3',
             'username' => 'test', 'password' => 'test', 'action' => 'connected',
         ]);
+        $map = NetworkTopologyMap::where('is_default', true)->firstOrFail();
         $node = NetworkTopologyNode::create([
-            'type' => 'splitter', 'name' => 'SPL-POP-01', 'is_published' => false,
+            'map_id' => $map->id, 'type' => 'splitter', 'name' => 'SPL-POP-01', 'is_published' => false,
         ]);
 
         Livewire::test(NetworkTopology::class, ['mode' => 'designer'])
