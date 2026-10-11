@@ -66,6 +66,11 @@ class AiEngineerControllerTest extends TestCase
     public function test_ai_engineer_page_renders_for_authenticated_user(): void
     {
         $service = Mockery::mock(AiEngineerDiagnosticService::class);
+        $service->shouldReceive('dailySummary')->once()->andReturn([
+            'generated_at' => now()->toIso8601String(),
+            'alerts' => [],
+            'highlights' => [],
+        ]);
         $service->shouldReceive('overview')->once()->andReturn([
             'customers' => ['total' => 0, 'active' => 0, 'pending' => 0, 'disabled' => 0],
             'routers' => ['total' => 0, 'connected' => 0, 'disconnected' => 0],

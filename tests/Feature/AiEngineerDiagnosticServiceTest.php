@@ -10,6 +10,7 @@ use App\Models\PPPSecrets;
 use App\Models\RouterList;
 use App\Services\AiEngineerDiagnosticService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
 use Tests\TestCase;
@@ -21,6 +22,9 @@ class AiEngineerDiagnosticServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['database.connections.sqlite.database' => ':memory:']);
+        DB::purge('sqlite');
+        DB::setDefaultConnection('sqlite');
         $this->createDiagnosticSchema();
         $this->mikrotik = Mockery::mock(MikrotikController::class);
     }
