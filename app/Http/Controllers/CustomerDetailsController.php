@@ -22,7 +22,8 @@ class CustomerDetailsController extends Controller
             ->where('customer_unique_id', $uniqueId)
             ->first();
 
-        // Resolve a deleted customer's old CID only when no current CID matches.
+        // After CID reuse, historical customers retain a private archive key.
+        // Resolve their old human-readable CID only when no current CID matches.
         if (! $customer) {
             $customer = CustomersInfo::withTrashed()
                 ->with(['pppUser', 'package', 'billing', 'official', 'customerAddress'])

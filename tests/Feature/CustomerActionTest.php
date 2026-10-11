@@ -93,7 +93,7 @@ class CustomerActionTest extends TestCase
         // Deleted customer references are deliberately archived so the human-readable
         // CID can be reused without attaching old history to a new customer.
         $this->assertDatabaseHas('mikrotik_pending_actions', [
-            'customer_unique_id' => '__ARCHIVED_CUSTOMER_1',
+            'customer_unique_id' => '__ARCHIVED_CUSTOMER_'.$customer->id,
             'router_name' => 'delete-router',
             'username' => 'ppp-ACTION-DELETE',
             'action' => 'remove',

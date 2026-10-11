@@ -644,7 +644,9 @@ class NewCustomer extends Component
             $customer->email = $this->email;
             $customer->identification_no = $this->identification_no;
             $customer->photo_url = $this->photo_url ? $path : null;
-            // Add Customer accepts the Bangladesh local number format.
+            // Keep customer contact numbers in Bangladesh local format only.
+            // CustomersInfo normalizes legacy international formats on import,
+            // but Add Customer must not add a country-code prefix.
             $customer->mobile = filled($this->mobile) ? trim((string) $this->mobile) : null;
             $customer->alternative_mobile = filled($this->alternative_mobile) ? trim((string) $this->alternative_mobile) : null;
             $customer->profession = $this->profession;

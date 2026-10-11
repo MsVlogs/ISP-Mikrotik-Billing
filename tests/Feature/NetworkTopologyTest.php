@@ -59,9 +59,9 @@ class NetworkTopologyTest extends TestCase
             'router_name' => 'Access Router', 'ip_address' => '192.0.2.3',
             'username' => 'test', 'password' => 'test', 'action' => 'connected',
         ]);
-        $map = NetworkTopologyMap::where('is_default', true)->firstOrFail();
+        $mapId = (int) NetworkTopologyMap::where('is_default', true)->value('id');
         $node = NetworkTopologyNode::create([
-            'map_id' => $map->id, 'type' => 'splitter', 'name' => 'SPL-POP-01', 'is_published' => false,
+            'map_id' => $mapId, 'type' => 'splitter', 'name' => 'SPL-POP-01', 'is_published' => false,
         ]);
 
         Livewire::test(NetworkTopology::class, ['mode' => 'designer'])

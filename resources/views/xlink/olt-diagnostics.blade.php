@@ -23,7 +23,7 @@
   <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
     <div><strong>ONU OPM Diag</strong><small class="d-block text-muted">Read-only optical diagnostics · {{ count($rows ?? []) }} ONU rows</small></div>
     @php($opmStatus=$opm['meta']['opm_status'] ?? 'not_ready')
-    <span class="badge {{ $opmStatus === 'ok' ? 'bg-success' : 'bg-warning text-dark' }}">OPM: {{ strtoupper($opmStatus) }}</span>
+    <span class="badge {{ $opmStatus === 'ok' ? 'bg-success' : 'bg-warning text-dark' }}">OPM SNMP: {{ strtoupper($opmStatus) }}</span>
   </div>
   <div class="card-body border-bottom">
     <form method="GET" class="row g-2 align-items-end">
@@ -32,7 +32,7 @@
       <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Filter</button></div>
       <div class="col-md-2"><a class="btn btn-sm btn-outline-secondary w-100" href="{{ route('network-inventory.olt.diagnostics',$device) }}">Reset</a></div>
     </form>
-    @if(($opmStatus ?? '') !== 'ok')<div class="alert alert-warning py-2 mt-3 mb-0"><strong>Automatic OPM population:</strong> {{ $opm['meta']['opm_message'] ?? 'Read-only OPM data is not ready.' }}@if($opmStatus === 'not_ready') <a class="alert-link ms-2" href="{{ route('network-inventory.olt.edit',$device) }}">Check OLT credentials</a>@endif</div>@endif
+    @if(($opmStatus ?? '') !== 'ok')<div class="alert alert-warning py-2 mt-3 mb-0"><strong>Automatic OPM population:</strong> {{ $opm['meta']['opm_message'] ?? 'OPM SNMP is not ready.' }}</div>@endif
   </div>
   <div class="table-responsive">
     <table class="table table-sm table-hover align-middle mb-0 text-nowrap">
