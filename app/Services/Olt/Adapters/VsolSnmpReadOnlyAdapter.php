@@ -1,13 +1,24 @@
 <?php
+
 namespace App\Services\Olt\Adapters;
 
 use App\Contracts\OltReadOnlyAdapter;
 use App\Models\NetworkInventoryDevice;
 use Illuminate\Support\Facades\Crypt;
 
+/**
+ * Read-only VSOL SNMP adapter.
+ *
+ * ONU identity is read from the EPON authInfo2Table. In particular, ONU ID is
+ * the second table index/column, not the ordinal row number from the legacy
+ * .12.1.9 table; the MAC field is never treated as a serial number.
+ */
 class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
 {
-    public function key(): string { return 'vsol_snmp_readonly'; }
+    public function key(): string
+    {
+        return 'vsol_snmp_readonly';
+    }
 
     public function supports(NetworkInventoryDevice $device): bool
     {
@@ -18,27 +29,39 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
 
     public function read(NetworkInventoryDevice $device): array
     {
-        if (!function_exists('snmp2_get')) return $this->fail($device, 'PHP SNMP extension is not installed.');
+        if (!function_exists('snmp2_get') || !function_exists('snmp2_real_walk')) {
+            return $this->fail($device, 'PHP SNMP extension is not installed.');
+        }
 
         $config = $this->config($device);
-        $host = (string) ($device->ip_address ?: $device->host);
+        $host = trim((string) ($device->ip_address ?: $device->host));
         $community = (string) ($config['community'] ?? $this->storedCommunity($device));
 
-        if ($host === '') return $this->fail($device, 'OLT management host/IP is not configured.');
-        if ($community === '') return $this->fail($device, 'SNMP community is not configured for the adapter.');
+        if ($host === '') {
+            return $this->fail($device, 'OLT management host/IP is not configured.');
+        }
+        if ($community === '') {
+            return $this->fail($device, 'SNMP community is not configured for the adapter.');
+        }
 
-        $timeout = min(max(100000, (int) ($config['timeout_us'] ?? 500000)), 750000);
+        $profile = $this->mibProfile($device, $config);
+        $timeout = min(max(100000, (int) ($config['timeout_us'] ?? 500000)), 1000000);
         $retries = min(max(0, (int) ($config['retries'] ?? 0)), 1);
-
-        // Standard SNMP system OIDs provide a safe connectivity/identity probe.
-        // Vendor-specific ONU OIDs remain configuration-driven and are never guessed.
-        $oids = (array) ($config['oids'] ?? []);
-        if (!$oids) {
-            $oids = [
+        $systemOids = array_merge(
+            $profile['system_oids'] ?? [
                 'sysDescr' => '1.3.6.1.2.1.1.1.0',
                 'sysUpTime' => '1.3.6.1.2.1.1.3.0',
-            ];
-        }
+            ],
+            is_array($config['oids'] ?? null) ? $config['oids'] : []
+        );
+        $onuConfig = array_merge(
+            $profile['onu_oids'] ?? [],
+            is_array($config['onu_oids'] ?? null) ? $config['onu_oids'] : []
+        );
+        $opmOids = array_merge(
+            $profile['opm_oids'] ?? [],
+            is_array($config['opm_oids'] ?? null) ? $config['opm_oids'] : []
+        );
 
         $result = [
             'ok' => false,
@@ -56,53 +79,47 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             'meta' => [
                 'read_only' => true,
                 'writes_performed' => false,
+                'mib_profile' => $profile['key'] ?? (count($onuConfig) ? 'custom_oid_configuration' : 'unsupported_model'),
+                'mib_profile_label' => $profile['label'] ?? null,
+                'enterprise_oid' => $profile['enterprise_oid'] ?? '1.3.6.1.4.1.37950',
+                'mib_table_oid' => $profile['mib_table_oid'] ?? null,
                 'oid_count' => 0,
+                'failed_oids' => [],
                 'onu_count' => 0,
-                'onu_discovery_configured' => !empty($config['onu_oids']),
+                'onu_discovery_configured' => count($onuConfig) > 0,
             ],
         ];
 
-        foreach ($oids as $name => $oid) {
-            if (!is_string($name) || !is_string($oid) || trim($oid) === '' || !preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/', trim($oid))) continue;
+        foreach ($systemOids as $name => $oid) {
+            if (!is_string($name) || !is_string($oid) || !$this->validOid($oid)) {
+                continue;
+            }
+
             $value = @snmp2_get($host, $community, trim($oid), $timeout, $retries);
             $result['meta']['oid_count']++;
-            if ($value === false) { $result['meta']['failed_oids'][] = $name; continue; }
-            $result['device'][$name] = trim(preg_replace('/^[A-Z0-9-]+:\\s*/i', '', $value) ?? $value);
+            if ($value === false) {
+                $result['meta']['failed_oids'][] = $name;
+                continue;
+            }
+
+            $result['device'][$name] = $this->cleanSnmpValue($value);
         }
 
-        $onuConfig = (array) ($config['onu_oids'] ?? []);
-        if (!$onuConfig) {
-            $onuConfig = [
-                'onu_id' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.1',
-                'pon_port' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.2',
-                'status' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.4',
-                'onu_mac' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.5',
-            ];
-        }
         if ($onuConfig) {
             $result['onus'] = $this->discoverOnus($host, $community, $onuConfig, $timeout, $retries);
-            $result['onus'] = $this->enrichOnus($host, $community, $result['onus'], $timeout, $retries);
+            if ($opmOids && $result['onus']) {
+                $result['onus'] = $this->enrichOpticalPower($host, $community, $result['onus'], $opmOids, $timeout, $retries);
+            }
+
             $result['meta']['onu_count'] = count($result['onus']);
             $result['meta']['onu_discovery_configured'] = true;
-
-            // The application only needs three automatic OPM fields:
-            // ONU MAC (from read-only SNMP discovery) plus TX/RX optical power.
-            // Temperature, voltage and TX bias are intentionally not required.
-            $txCount = 0;
-            $rxCount = 0;
-            foreach ($result['onus'] as $onu) {
-                if (is_numeric($onu['tx_power'] ?? null)) $txCount++;
-                if (is_numeric($onu['rx_power'] ?? null)) $rxCount++;
-            }
-            $macCount = 0;
-            foreach ($result['onus'] as $onu) {
-                if (trim((string) ($onu['onu_mac'] ?? '')) !== '') $macCount++;
-            }
-
             $onuCount = count($result['onus']);
-            $snmpMetricCount = $txCount + $rxCount;
+            $txCount = count(array_filter($result['onus'], fn ($onu) => is_numeric($onu['tx_power'] ?? null)));
+            $rxCount = count(array_filter($result['onus'], fn ($onu) => is_numeric($onu['rx_power'] ?? null)));
+            $macCount = count(array_filter($result['onus'], fn ($onu) => trim((string) ($onu['onu_mac'] ?? '')) !== ''));
+
             $result['meta']['onu_mac_count'] = $macCount;
-            $result['meta']['snmp_opm_metric_count'] = $snmpMetricCount;
+            $result['meta']['snmp_opm_metric_count'] = $txCount + $rxCount;
             $result['meta']['opm_tx_count'] = $txCount;
             $result['meta']['opm_rx_count'] = $rxCount;
             $result['meta']['opm_tx_coverage'] = $onuCount > 0 ? round(($txCount / $onuCount) * 100, 1) : 0;
@@ -110,115 +127,263 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             $result['meta']['opm_status'] = ($txCount > 0 && $rxCount > 0)
                 ? (($txCount === $onuCount && $rxCount === $onuCount) ? 'ok' : 'partial')
                 : 'not_ready';
-            $result['meta']['opm_message'] = $snmpMetricCount > 0
+            $result['meta']['opm_message'] = ($txCount + $rxCount) > 0
                 ? "VSOL SNMP supplied {$macCount} ONU MACs; TX {$txCount}/{$onuCount}, RX {$rxCount}/{$onuCount}."
-                : "VSOL SNMP supplied {$macCount} ONU MACs; TX/RX OPM is temporarily unavailable. Last-known values are preserved by mapping sync.";
-            $result['meta']['opm_source'] = $snmpMetricCount > 0 ? 'vsol-snmp-opm' : null;
+                : 'VSOL ONU inventory was read, but optical TX/RX metrics were unavailable in this poll.';
+            $result['meta']['opm_source'] = ($txCount + $rxCount) > 0 ? 'vsol-snmp-opm' : null;
         }
 
-        if ($result['meta']['oid_count'] === 0 && !$result['meta']['onu_discovery_configured']) {
+        if ($result['meta']['oid_count'] === 0 && !$onuConfig) {
             $result['status'] = 'not_configured';
-            $result['message'] = 'VSOL adapter is ready, but no valid OID mappings are configured.';
+            $result['message'] = 'VSOL read-only adapter is ready, but no supported model MIB or custom ONU OIDs are configured.';
             return $result;
         }
 
-        $hasDeviceData = $result['meta']['oid_count'] > 0 && empty($result['meta']['failed_oids']);
-        $hasOnuData = $result['meta']['onu_count'] > 0;
+        $hasDeviceData = $result['meta']['oid_count'] > 0
+            && count($result['meta']['failed_oids']) < $result['meta']['oid_count'];
+        $hasOnuData = count($result['onus']) > 0;
         $hasFailures = !empty($result['meta']['failed_oids']);
         $result['ok'] = $hasDeviceData || $hasOnuData;
         $result['status'] = $result['ok'] ? ($hasFailures ? 'partial' : 'ok') : 'unreachable';
         $result['message'] = $result['status'] === 'ok'
-            ? 'Configured VSOL SNMP OIDs and ONU discovery were read successfully.'
+            ? 'Configured VSOL MIB OIDs and ONU discovery were read successfully; no OLT changes were made.'
             : ($result['status'] === 'partial'
-                ? 'VSOL SNMP returned usable read-only data, but one or more configured probes failed.'
+                ? 'VSOL SNMP returned usable read-only data, but one or more configured system probes failed.'
                 : 'VSOL SNMP read failed. No OLT changes were made.');
 
         return $result;
     }
 
+    private function mibProfile(NetworkInventoryDevice $device, array $config): ?array
+    {
+        $profiles = (array) config('olt_vsol.snmp_profiles', []);
+        $requested = trim((string) ($config['mib_profile'] ?? ''));
+
+        if ($requested !== '' && isset($profiles[$requested])) {
+            return ['key' => $requested] + $profiles[$requested];
+        }
+
+        $model = strtoupper(trim((string) $device->model));
+        foreach ($profiles as $key => $profile) {
+            foreach ((array) ($profile['models'] ?? []) as $candidate) {
+                $candidate = strtoupper(trim((string) $candidate));
+                if ($candidate !== '' && ($model === $candidate || str_contains($model, $candidate))) {
+                    return ['key' => $key] + $profile;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private function discoverOnus(string $host, string $community, array $onuConfig, int $timeout, int $retries): array
     {
         $tables = [];
+
         foreach ($onuConfig as $field => $baseOid) {
-            if (!is_string($field) || !is_string($baseOid) || !preg_match('/^(?:\\.?(?:\\d+\\.)*\\d+)$/', trim($baseOid))) continue;
+            if (!is_string($field) || !is_string($baseOid) || !$this->validOid($baseOid)) {
+                continue;
+            }
+
             $walk = $this->walkWithRetry($host, $community, trim($baseOid), $timeout, $retries);
-            if (!is_array($walk) || !$walk) continue;
-            $position = 0;
+            if (!$walk) {
+                continue;
+            }
+
             foreach ($walk as $returnedOid => $value) {
                 $index = $this->oidIndex((string) $returnedOid, trim($baseOid));
-                if ($index === null) $index = (string) $position;
+                if ($index === null || $index === '') {
+                    continue;
+                }
                 $tables[$index][$field] = $this->cleanSnmpValue($value);
-                $position++;
             }
         }
 
         $normalized = [];
         foreach ($tables as $index => $row) {
-            $row['snmp_index'] = $index;
-            $row['onu_id'] = $row['onu_id'] ?? $row['id'] ?? $index;
-            $row['onu_serial'] = $row['onu_serial'] ?? $row['serial'] ?? null;
-            $row['onu_mac'] = $row['onu_mac'] ?? $row['mac'] ?? null;
-            $row['pon_port'] = $row['pon_port'] ?? $row['pon'] ?? null;
-            $row['onu_type'] = $row['onu_type'] ?? $row['type'] ?? null;
-            $rawStatus = strtolower(trim((string) ($row['status'] ?? ($row['online'] ?? ''))));
-            $row['status'] = in_array($rawStatus, ['1', 'online', 'up', 'active', 'registered', 'auth success'], true) ? 'online' : (in_array($rawStatus, ['0', 'offline', 'down', 'inactive', 'lost', 'deregistered'], true) ? 'offline' : ($rawStatus !== '' ? $rawStatus : 'unknown'));
-            $row['rx_power'] = $row['rx_power'] ?? $row['optical_rx'] ?? null;
-            $row['tx_power'] = $row['tx_power'] ?? $row['optical_tx'] ?? null;
-            $row['onu_ip'] = $row['onu_ip'] ?? $row['ip'] ?? null;
-            $row['last_seen'] = $row['last_seen'] ?? null;
-            $row['pppoe_username'] = $row['pppoe_username'] ?? $row['username'] ?? null;
+            $indexParts = explode('.', (string) $index);
+            $row['snmp_index'] = (string) $index;
+            $row['onu_id'] = $row['onu_id'] ?? end($indexParts);
+            $row['pon_port'] = $row['pon_port'] ?? (count($indexParts) > 1 ? $indexParts[0] : null);
+            $row['onu_serial'] = $row['onu_serial'] ?? null;
+            $row['onu_mac'] = $this->normalizeMac($row['onu_mac'] ?? null);
+            $row['onu_type'] = $row['onu_type'] ?? null;
+            $row['onu_model'] = $row['onu_model'] ?? null;
+            $row['distance_m'] = $this->normalizeMetric($row['distance_m'] ?? null);
+
+            $rawStatus = strtolower(trim((string) ($row['status'] ?? '')));
+            $row['status'] = in_array($rawStatus, ['1', 'online', 'up', 'active', 'registered', 'auth success'], true)
+                ? 'online'
+                : (in_array($rawStatus, ['0', '2', '4', 'offline', 'down', 'inactive', 'lost', 'deregistered', 'unregistered'], true)
+                    ? 'offline'
+                    : ($rawStatus !== '' ? $rawStatus : 'unknown'));
+
+            $row['rx_power'] = null;
+            $row['tx_power'] = null;
+            $row['opm_source'] = null;
             $normalized[] = $row;
         }
+
         return $normalized;
     }
 
-    private function oidIndex(string $returnedOid, string $baseOid): ?string
-    {
-        $returned = preg_replace('/^iso\\./i', '1.', $returnedOid) ?? $returnedOid;
-        $returned = ltrim($returned, '.');
-        $base = ltrim($baseOid, '.');
-        if ($returned === $base) return '';
-        $prefix = $base . '.';
-        return str_starts_with($returned, $prefix) ? substr($returned, strlen($prefix)) : null;
+    private function enrichOpticalPower(
+        string $host,
+        string $community,
+        array $onus,
+        array $opmOids,
+        int $timeout,
+        int $retries
+    ): array {
+        $values = ['rx_power' => [], 'tx_power' => []];
+
+        foreach (['rx_power', 'tx_power'] as $field) {
+            $oid = $opmOids[$field] ?? null;
+            if (!is_string($oid) || !$this->validOid($oid)) {
+                continue;
+            }
+            $walk = $this->walkWithRetry($host, $community, trim($oid), $timeout, $retries);
+            foreach ($walk as $returnedOid => $value) {
+                $index = $this->oidIndex((string) $returnedOid, trim($oid));
+                if ($index === null || $index === '') {
+                    continue;
+                }
+                $values[$field][$index] = $this->normalizeOpticalPower($this->cleanSnmpValue($value));
+            }
+        }
+
+        foreach ($onus as &$onu) {
+            $index = (string) ($onu['snmp_index'] ?? '');
+            $rx = $values['rx_power'][$index] ?? null;
+            $tx = $values['tx_power'][$index] ?? null;
+            $onu['rx_power'] = $rx;
+            $onu['tx_power'] = $tx;
+            if ($rx !== null || $tx !== null) {
+                $onu['opm_source'] = 'vsol-snmp-opm';
+            }
+        }
+        unset($onu);
+
+        return $onus;
     }
 
     private function walkWithRetry(string $host, string $community, string $oid, int $timeout, int $retries): array
     {
-        $attempts = 3;
         $baseTimeout = max(250000, min(1000000, $timeout));
         $baseRetries = max(0, min(2, $retries));
 
-        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
             $attemptTimeout = min(1500000, $baseTimeout * $attempt);
             $attemptRetries = min(2, $baseRetries + ($attempt - 1));
             $walk = @snmp2_real_walk($host, $community, $oid, $attemptTimeout, $attemptRetries);
-            if (is_array($walk) && $walk) return $walk;
+            if (is_array($walk) && $walk) {
+                return $walk;
+            }
         }
 
         return [];
     }
 
+    private function oidIndex(string $returnedOid, string $baseOid): ?string
+    {
+        $returned = preg_replace('/^iso\./i', '1.', $returnedOid) ?? $returnedOid;
+        $returned = ltrim($returned, '.');
+        $base = ltrim($baseOid, '.');
+
+        if ($returned === $base) {
+            return '';
+        }
+
+        $prefix = $base . '.';
+        return str_starts_with($returned, $prefix) ? substr($returned, strlen($prefix)) : null;
+    }
+
     private function cleanSnmpValue(mixed $value): mixed
     {
-        if (!is_string($value)) return $value;
+        if (!is_string($value)) {
+            return $value;
+        }
+
         $value = trim($value);
-        $value = preg_replace('/^[A-Z0-9-]+:\\s*/i', '', $value) ?? $value;
-        return trim($value, '"');
+        $value = preg_replace('/^[A-Z0-9-]+:\s*/i', '', $value) ?? $value;
+        return trim($value, " \t\n\r\0\x0B\"");
+    }
+
+    private function validOid(string $oid): bool
+    {
+        return (bool) preg_match('/^\.?\d+(?:\.\d+)*$/', trim($oid));
+    }
+
+    private function normalizeMac(mixed $value): ?string
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        $raw = preg_replace('/^0x/i', '', trim((string) $value)) ?? trim((string) $value);
+        $hex = preg_replace('/[^0-9a-f]/i', '', $raw) ?? '';
+        if (strlen($hex) !== 12) {
+            return null;
+        }
+
+        return strtolower(implode(':', str_split($hex, 2)));
+    }
+
+    private function normalizeOpticalPower(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (preg_match('/\((-?\d+(?:\.\d+)?)\s*dBm\)/i', (string) $value, $m)) {
+            return (float) $m[1];
+        }
+        if (preg_match('/(-?\d+(?:\.\d+)?)\s*dBm/i', (string) $value, $m)) {
+            return (float) $m[1];
+        }
+
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function normalizeMetric(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+        if (preg_match('/-?\d+(?:\.\d+)?/', (string) $value, $m)) {
+            return (float) $m[0];
+        }
+
+        return null;
     }
 
     private function storedCommunity(NetworkInventoryDevice $device): string
     {
         $raw = $device->getRawOriginal('snmp_community');
-        if (!$raw) return '';
-        try { return (string) Crypt::decryptString($raw); }
-        catch (\Throwable) { return (string) $raw; }
+        if (!$raw) {
+            return '';
+        }
+
+        try {
+            return (string) Crypt::decryptString($raw);
+        } catch (\Throwable) {
+            return (string) $raw;
+        }
     }
 
     private function config(NetworkInventoryDevice $device): array
     {
         $raw = $device->adapter_config;
-        if (is_array($raw)) return $raw;
-        if (!is_string($raw) || trim($raw) === '') return [];
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (!is_string($raw) || trim($raw) === '') {
+            return [];
+        }
+
         $decoded = json_decode($raw, true);
         return is_array($decoded) ? $decoded : [];
     }
@@ -239,120 +404,5 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             'onus' => [],
             'meta' => ['read_only' => true, 'writes_performed' => false, 'oid_count' => 0],
         ];
-    }
-
-    // VSOL enrichment helpers.
-    private function enrichOnus(string $host, string $community, array $onus, int $timeout, int $retries): array
-{
-    $tables = [
-        'auth' => [
-            'onu_no' => '1.3.6.1.4.1.37950.1.1.5.12.1.12.1.3',
-            'mac' => '1.3.6.1.4.1.37950.1.1.5.12.1.12.1.6',
-            'type' => '1.3.6.1.4.1.37950.1.1.5.12.1.12.1.7',
-        ],
-        'sn' => [
-            'vendor' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.3',
-            'model' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.4',
-            'onu_id' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.5',
-            'hw' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.6',
-            'sw' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.2.1.7',
-        ],
-        'opm' => [
-            // Only the required read-only optical metrics are polled.
-            'tx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.6',
-            'rx' => '1.3.6.1.4.1.37950.1.1.5.12.2.1.8.1.7',
-        ],
-    ];
-    $numericIds = array_values(array_filter(array_map(
-        fn ($onu) => ctype_digit(trim((string) ($onu['onu_id'] ?? ''))) ? (int) trim((string) $onu['onu_id']) : null,
-        $onus
-    ), fn ($id) => $id !== null));
-    $inventoryZeroBased = in_array(0, $numericIds, true);
-
-    $lookup = [];
-    foreach ($tables as $group => $fields) {
-        foreach ($fields as $field => $base) {
-            $walk = $this->walkWithRetry($host, $community, $base, $timeout, $retries);
-            if (!is_array($walk) || !$walk) continue;
-            foreach ($walk as $oid => $value) {
-                $idx = $this->oidIndex((string) $oid, $base);
-                if ($idx === null) continue;
-                $parts = array_values(array_filter(explode('.', $idx), 'strlen'));
-                $key = count($parts) >= 2 ? $parts[count($parts)-2].'.'.$parts[count($parts)-1] : (string) ($parts[0] ?? '');
-                if (in_array($group, ['sn','opm'], true) && $inventoryZeroBased && count($parts) >= 2 && ctype_digit((string) $parts[count($parts)-1])) {
-                    $key = $parts[count($parts)-2].'.'.max(0, ((int) $parts[count($parts)-1]) - 1);
-                }
-                $lookup[$group][$key][$field] = $this->cleanSnmpValue($value);
-            }
-        }
-    }
-    foreach ($onus as &$onu) {
-        $pon = (string) ($onu['pon_port'] ?? '');
-        $id = (string) ($onu['onu_id'] ?? '');
-        $key = $pon !== '' ? $pon.'.'.$id : $id;
-        $shiftedKey = $pon !== '' && $inventoryZeroBased && ctype_digit($id) ? $pon.'.'.((int) $id + 1) : null;
-        $snKey = $shiftedKey ?: $key;
-        $snExtra = [];
-        $targetMac = $this->normalizeMac($onu['onu_mac'] ?? '');
-        if ($targetMac !== '') {
-            foreach ($lookup['sn'] ?? [] as $candidateKey => $candidate) {
-                if ($this->normalizeMac($candidate['onu_id'] ?? '') === $targetMac) {
-                    $snKey = $candidateKey;
-                    $snExtra = $candidate;
-                    break;
-                }
-            }
-        }
-        foreach (['auth','sn','opm'] as $group) {
-            $extra = $group === 'sn'
-                ? ($snExtra ?: ($lookup[$group][$snKey] ?? []))
-                : ($group === 'opm' ? ($lookup[$group][$snKey] ?? $lookup[$group][$key] ?? []) : ($lookup[$group][$key] ?? $lookup[$group][$id] ?? []));
-            if ($group === 'auth') {
-                $onu['onu_type'] = $onu['onu_type'] ?? ($extra['type'] ?? null);
-                $onu['onu_mac'] = $onu['onu_mac'] ?? ($extra['mac'] ?? null);
-            } elseif ($group === 'sn') {
-                $onu['onu_vendor'] = $extra['vendor'] ?? null;
-                $onu['onu_model'] = $extra['model'] ?? null;
-                $onu['onu_serial'] = $extra['onu_id'] ?? ($onu['onu_serial'] ?? null);
-                $onu['hardware_version'] = $extra['hw'] ?? null;
-                $onu['software_version'] = $extra['sw'] ?? null;
-            } else {
-                $onu['temperature'] = $this->normalizeMetric($extra['temperature'] ?? ($onu['temperature'] ?? null));
-                $onu['supply_voltage'] = $this->normalizeMetric($extra['supply_voltage'] ?? ($onu['supply_voltage'] ?? null));
-                $onu['tx_bias_current'] = $this->normalizeMetric($extra['tx_bias_current'] ?? ($onu['tx_bias_current'] ?? null));
-                $onu['tx_power'] = $this->normalizeOpticalPower($extra['tx'] ?? ($onu['tx_power'] ?? null));
-                $onu['rx_power'] = $this->normalizeOpticalPower($extra['rx'] ?? ($onu['rx_power'] ?? null));
-                if ($onu['temperature'] !== null || $onu['supply_voltage'] !== null || $onu['tx_bias_current'] !== null || $onu['tx_power'] !== null || $onu['rx_power'] !== null) {
-                    $onu['opm_source'] = 'vsol-snmp-opm';
-                }
-            }
-        }
-    }
-    unset($onu);
-        return $onus;
-    }
-
-    private function normalizeOpticalPower(mixed $value): mixed
-    {
-        if ($value === null || $value === '') return null;
-        if (preg_match('/\((-?\d+(?:\.\d+)?)\s*dBm\)/i', (string) $value, $m)) return (float) $m[1];
-        if (preg_match('/(-?\d+(?:\.\d+)?)\s*dBm/i', (string) $value, $m)) return (float) $m[1];
-        return is_numeric($value) ? (float) $value : null;
-    }
-
-    private function normalizeMetric(mixed $value): ?float
-    {
-        if ($value === null || $value === '') return null;
-        if (is_numeric($value)) return (float) $value;
-        if (preg_match('/-?\d+(?:\.\d+)?/', (string) $value, $m)) return (float) $m[0];
-        return null;
-    }
-
-    private function normalizeMac(mixed $value): string
-    {
-        $raw = preg_replace('/^0x/i', '', (string) $value) ?? (string) $value;
-        $hex = preg_replace('/[^0-9a-f]/i', '', $raw) ?? '';
-        if (strlen($hex) !== 12) return '';
-        return strtolower(implode(':', str_split($hex, 2)));
     }
 }
