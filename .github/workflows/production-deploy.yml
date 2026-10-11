@@ -53,11 +53,11 @@ jobs:
           MAIL_MAILER: array
           TELESCOPE_ENABLED: false
         run: |
+          composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
           cp .env.example .env
           php artisan key:generate --force
           mkdir -p database
           touch database/database.sqlite
-          composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
           php artisan migrate --force
           php artisan test --no-ansi
 
