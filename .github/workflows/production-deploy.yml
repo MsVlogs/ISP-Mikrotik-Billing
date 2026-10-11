@@ -1,0 +1,103 @@
+name: Production Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: 'Type deploy to authorize production deployment'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xlink-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_production == 'deploy' }}
+    runs-on: [self-hosted, linux, x64, xlink-production]
+    environment:
+      name: production
+    timeout-minutes: 30
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v4
+
+      - name: Verify production target and clean state
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH=/var/www/isp-billing-import
+          test -d "$APP_PATH/.git" || test -f "$APP_PATH/.git"
+          test -f "$APP_PATH/.env"
+          test -f "$APP_PATH/artisan"
+          if [ -n "$(git -C "$APP_PATH" status --porcelain --untracked-files=normal)" ]; then
+            echo 'Refusing deployment: production checkout contains uncommitted/untracked changes.'
+            git -C "$APP_PATH" status --short
+            exit 1
+          fi
+          php -v | head -1
+          composer --version
+
+      - name: Run release tests
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          SESSION_DRIVER: array
+          MAIL_MAILER: array
+          TELESCOPE_ENABLED: false
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          mkdir -p database
+          touch database/database.sqlite
+          composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
+          php artisan migrate --force
+          php artisan test --no-ansi
+
+      - name: Back up production code
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH=/var/www/isp-billing-import
+          BACKUP_DIR=/var/backups/xlink-billing-deploy
+          mkdir -p "$BACKUP_DIR"
+          chmod 750 "$BACKUP_DIR"
+          tar --exclude='./.git' --exclude='./.env' --exclude='./vendor' --exclude='./node_modules' --exclude='./storage/logs' -czf "$BACKUP_DIR/code-$(date +%Y%m%d-%H%M%S).tar.gz" -C "$APP_PATH" .
+
+      - name: Deploy release and run migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH=/var/www/isp-billing-import
+          rsync -a --delete \
+            --exclude='/.env' \
+            --exclude='/.git' \
+            --exclude='/storage/' \
+            --exclude='/vendor/' \
+            --exclude='/node_modules/' \
+            --exclude='*.bak*' \
+            --exclude='*.backup' \
+            ./ "$APP_PATH/"
+          cd "$APP_PATH"
+          composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
+          php artisan migrate --force
+          php artisan optimize:clear
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan queue:restart || true
+          php artisan about --only=environment
+
+      - name: Verify production HTTP health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 http://127.0.0.1:8081/login >/dev/null
+          echo 'Production login endpoint returned HTTP 200.'
