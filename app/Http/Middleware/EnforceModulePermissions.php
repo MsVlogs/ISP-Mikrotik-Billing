@@ -128,6 +128,32 @@ class EnforceModulePermissions
         if ($path === 'payment-invoice') {
             return 'payment-collection-invoice';
         }
+        // Administrative finance and oversight tools are intentionally Admin/Super Admin only.
+        if ($path === 'admin/resellers' || str_starts_with($path, 'admin/resellers/')) {
+            return 'manage-resellers';
+        }
+        if ($path === 'admin/expenses' || str_starts_with($path, 'admin/expenses/')) {
+            return 'manage-expenses';
+        }
+        if ($path === 'admin/profit-summary') {
+            return 'view-profit-summary';
+        }
+        if (in_array($path, ['admin/activity-logs', 'admin/login-logs', 'user-activity'], true)) {
+            return 'view-audit-logs';
+        }
+        if ($path === 'admin/reviews') {
+            return 'manage-reviews';
+        }
+        if ($path === 'admin/vouchers') {
+            return 'view-vouchers';
+        }
+        if ($path === 'admin/purchase-requests') {
+            return 'manage-purchase-requests';
+        }
+        if ($path === 'admin/system-logs') {
+            return 'site-setup';
+        }
+
         if ($path === 'collection-form') {
             return 'payment-collection';
         }
