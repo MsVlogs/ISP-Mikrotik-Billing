@@ -73,6 +73,7 @@ class AiEngineerControllerTest extends TestCase
         ]);
         $service->shouldReceive('unmappedOnus')->once()->andReturn([]);
         $service->shouldReceive('upstreamCorrelation')->once()->with(100)->andReturn(['groups' => [], 'affected_customers' => 0, 'read_only' => true]);
+        $service->shouldReceive('matchingCandidates')->once()->with(100)->andReturn(['candidates' => [], 'total' => 0, 'read_only' => true]);
         $service->shouldReceive('overview')->once()->andReturn([
             'customers' => ['total' => 0, 'active' => 0, 'pending' => 0, 'disabled' => 0],
             'routers' => ['total' => 0, 'connected' => 0, 'disconnected' => 0],
