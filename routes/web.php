@@ -796,7 +796,8 @@ Route::middleware([
 
         Route::get('/stock-inventory', function () {
             $products = \App\Models\StockInventoryProduct::orderBy('name')->paginate(20)->withQueryString();
-            return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,
+            $recentMovements = \App\Models\StockInventoryMovement::with('product')->latest()->limit(8)->get();
+            return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,'recentMovements'=>$recentMovements,
                 'stats'=>[['Packages',\App\Models\PackageList::count()],['Products',\App\Models\StockInventoryProduct::count()],['Low Stock',\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count()],['Movements',\App\Models\StockInventoryMovement::count()],['Out of Stock',\App\Models\StockInventoryProduct::where('quantity',0)->count()]]]);
         })->name('xlink.stock-inventory');
         Route::get('/stock-inventory/categories', function () {
