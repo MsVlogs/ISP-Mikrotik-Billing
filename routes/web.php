@@ -527,7 +527,13 @@ Route::middleware([
                 'onu_total' => \App\Models\OltOnuCustomerMapping::count(),
                 'onu_online' => \App\Models\OltOnuCustomerMapping::where('status','online')->count(),
             ];
-            return view('xlink.olts',['devices'=>$devices,'oltStats'=>$oltStats]);
+            $vendors = \App\Models\NetworkInventoryDevice::type('olt')->whereNotNull('vendor')->where('vendor','<>','')->distinct()->orderBy('vendor')->pluck('vendor');
+            $ponTypes = \App\Models\NetworkInventoryDevice::type('olt')->whereNotNull('olt_type_id')->where('olt_type_id','<>','')->distinct()->orderBy('olt_type_id')->pluck('olt_type_id');
+            $onuCountsByOlt = \App\Models\OltOnuCustomerMapping::query()
+                ->selectRaw('olt_device_id, COUNT(*) as total, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as online', ['online'])
+                ->groupBy('olt_device_id')->get()->keyBy('olt_device_id')
+                ->map(fn ($row) => ['total'=>(int)$row->total,'online'=>(int)$row->online]);
+            return view('xlink.olts',['devices'=>$devices,'oltStats'=>$oltStats,'vendors'=>$vendors,'ponTypes'=>$ponTypes,'onuCountsByOlt'=>$onuCountsByOlt]);
         })->name('network-inventory.olt');
 
         Route::get('/olts', fn () => redirect()->route('network-inventory.olt'))->name('olts');
@@ -791,7 +797,7 @@ Route::middleware([
         Route::get('/stock-inventory', function () {
             $products = \App\Models\StockInventoryProduct::orderBy('name')->paginate(20)->withQueryString();
             return view('xlink.stock-inventory', ['tab'=>'dashboard','products'=>$products,
-                'stats'=>[['Packages',\App\Models\PackageList::count()],['Products',\App\Models\StockInventoryProduct::count()],['Low Stock',\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count()],['Movements',\App\Models\StockInventoryMovement::count()]]]);
+                'stats'=>[['Packages',\App\Models\PackageList::count()],['Products',\App\Models\StockInventoryProduct::count()],['Low Stock',\App\Models\StockInventoryProduct::whereColumn('quantity','<=','reorder_level')->count()],['Movements',\App\Models\StockInventoryMovement::count()],['Out of Stock',\App\Models\StockInventoryProduct::where('quantity',0)->count()]]]);
         })->name('xlink.stock-inventory');
         Route::get('/stock-inventory/categories', function () {
             $categories = \App\Models\StockInventoryProduct::query()
