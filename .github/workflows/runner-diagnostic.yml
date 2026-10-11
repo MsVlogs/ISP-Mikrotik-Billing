@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   inspect:
-    runs-on: [self-hosted, linux, x64]
+    runs-on: self-hosted
     timeout-minutes: 3
     steps:
       - name: Report runner identity and production target presence
