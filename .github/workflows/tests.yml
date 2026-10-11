@@ -22,6 +22,11 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Build frontend assets
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
 

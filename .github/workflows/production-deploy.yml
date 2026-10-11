@@ -42,6 +42,11 @@ jobs:
           php -v | head -1
           composer --version
 
+      - name: Build frontend assets
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
       - name: Run release tests
         env:
           APP_ENV: testing
