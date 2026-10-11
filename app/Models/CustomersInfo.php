@@ -31,10 +31,20 @@ class CustomersInfo extends Model
         'package_id',
         'status',
         'reseller_id',
+        'left_date',
+        'left_reason',
+        'zone_name',
+        'left_equipment',
+        'recovery_status',
+        'server_label',
         // 'auto_disabled',
         // 'expired_date',
         // 'auto_disabled_month',
         // 'extra_date',
+    ];
+
+    protected $casts = [
+        'left_date' => 'datetime',
     ];
 
     /**

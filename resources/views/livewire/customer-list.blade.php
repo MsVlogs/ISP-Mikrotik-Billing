@@ -240,6 +240,12 @@
 
 @push('styles')
     <style>
+        .customer-cid-live { display:inline-flex; align-items:center; gap:.45rem; white-space:nowrap; }
+        .customer-live-dot { display:inline-block; width:.58rem; height:.58rem; flex:0 0 .58rem; border-radius:50%; }
+        .customer-live-dot--active { background:#16a34a; box-shadow:0 0 0 0 rgba(22,163,74,.55); animation:customerLivePulse 1.6s infinite; }
+        .customer-live-dot--inactive { background:#f43f5e; box-shadow:0 0 0 0 rgba(244,63,94,.35); }
+        @keyframes customerLivePulse { 0% { box-shadow:0 0 0 0 rgba(22,163,74,.5); } 70% { box-shadow:0 0 0 .42rem rgba(22,163,74,0); } 100% { box-shadow:0 0 0 0 rgba(22,163,74,0); } }
+        @media (prefers-reduced-motion: reduce) { .customer-live-dot--active { animation:none; } }
         .customer-page-header { color: #172033; }
         .customer-eyebrow { color: #4f46e5; font-size: .72rem; font-weight: 800; letter-spacing: .12em; margin-bottom: .35rem; }
         .customer-page-title { font-size: clamp(1.45rem, 2.3vw, 2rem); font-weight: 800; letter-spacing: -.035em; margin: 0; color: #172033; }

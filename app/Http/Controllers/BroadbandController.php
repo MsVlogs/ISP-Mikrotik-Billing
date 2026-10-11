@@ -207,9 +207,10 @@ class BroadbandController extends Controller
         }
     }
 
-    public function disableCustomer(string $id)
+    public function disableCustomer(Request $request, string $id)
     {
         abort_unless(auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['disable-customer']), 403);
+        $request->validate(['left_reason' => 'nullable|string|max:2000']);
 
         try {
             $uniqueId = decrypt($id);
@@ -223,8 +224,12 @@ class BroadbandController extends Controller
                 );
             }
 
-            \DB::transaction(function () use ($customer) {
+            \DB::transaction(function () use ($customer, $request) {
                 $customer->status = 'disable';
+                $customer->left_date = now();
+                $customer->left_reason = filled($request->input('left_reason')) ? trim($request->input('left_reason')) : $customer->left_reason;
+                $customer->server_label = $customer->server_label ?: ($customer->pppUser?->router_name ?: 'X-Link Internet');
+                $customer->recovery_status = $customer->recovery_status ?: 'pending';
                 $customer->save();
 
                 if ($customer->pppUser) {
@@ -236,6 +241,30 @@ class BroadbandController extends Controller
         } catch (\Throwable $e) {
             report($e);
             return back()->withErrors(['customer' => 'Failed to disable customer. Please try again.']);
+        }
+    }
+
+    public function updateLeftDetails(Request $request, string $id)
+    {
+        abort_unless(auth()->user()?->hasRole('Super Admin') || hasAccess(['Super Admin'], ['edit-customer']), 403);
+        $data = $request->validate([
+            'zone_name' => 'nullable|string|max:120',
+            'left_equipment' => 'nullable|string|max:5000',
+            'recovery_status' => 'required|in:pending,partial,recovered,not_required,issue',
+            'left_reason' => 'nullable|string|max:2000',
+            'server_label' => 'nullable|string|max:160',
+            'left_date' => 'nullable|date',
+        ]);
+
+        try {
+            $uniqueId = decrypt($id);
+            $customer = CustomersInfo::where('customer_unique_id', $uniqueId)->firstOrFail();
+            $customer->fill($data);
+            $customer->save();
+            return back()->with('broadband_message', 'Left customer details updated successfully.');
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->withErrors(['customer' => 'Could not update Left Customer details.']);
         }
     }
 

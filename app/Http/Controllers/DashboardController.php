@@ -65,12 +65,10 @@ class DashboardController extends Controller
         $statusBillingRaw = BillingInfo::join('customers_infos', 'billing_infos.customer_bill_unique_id', '=', 'customers_infos.customer_unique_id')
             ->whereNull('customers_infos.deleted_at')
             ->whereIn('customers_infos.status', ['active', 'free', 'inactive', 'pending'])
-            ->selectRaw('
-                customers_infos.status,
+            ->selectRaw("customers_infos.status,
                 SUM(billing_infos.monthly_rent) as monthly_rent,
                 SUM(billing_infos.advance) as advance,
-                SUM(billing_infos.due_amount) as due_amount
-            ')
+                SUM(billing_infos.due_amount) as due_amount")
             ->groupBy('customers_infos.status')
             ->get()
             ->keyBy('status');

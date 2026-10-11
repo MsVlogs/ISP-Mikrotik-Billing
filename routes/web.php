@@ -250,6 +250,7 @@ Route::middleware([
             Route::get('/packages', [\App\Http\Controllers\BroadbandController::class, 'packages'])->name('broadband-packages');
             Route::get('/customer-package-import', [\App\Http\Controllers\BroadbandController::class, 'import'])->name('broadband-customer-package-import');
             Route::post('/customers/{id}/disable', [\App\Http\Controllers\BroadbandController::class, 'disableCustomer'])->name('broadband-customer-disable');
+            Route::patch('/customers/{id}/left-details', [\App\Http\Controllers\BroadbandController::class, 'updateLeftDetails'])->name('broadband-customer-left-details');
             Route::get('/customers/{id}/ping', [\App\Http\Controllers\BroadbandController::class, 'customerPing'])->name('broadband-customer-ping');
             Route::get('/customers/{id}/traffic', [\App\Http\Controllers\BroadbandController::class, 'customerTraffic'])->name('broadband-customer-traffic');
             Route::delete('/customers/{id}', [\App\Http\Controllers\BroadbandController::class, 'destroyCustomer'])->name('broadband-customer-destroy');
@@ -862,7 +863,28 @@ Route::middleware([
             return redirect()->route('stock-inventory.vendor-payments')->with('inventory_message','Supplier payment recorded.');
         })->name('stock-inventory.vendor-payments.store');
         Route::get('/stock-inventory/stock', function () { $movements=\App\Models\StockInventoryMovement::with('product')->latest()->paginate(30); return view('xlink.stock-inventory',['tab'=>'movements','movements'=>$movements,'products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'stats'=>[]]); })->name('stock-inventory.stock');
-        Route::get('/stock-inventory/products', function () { $products=\App\Models\StockInventoryProduct::orderBy('name')->paginate(25)->withQueryString(); return view('xlink.stock-inventory',['tab'=>'products','products'=>$products,'stats'=>[]]); })->name('stock-inventory.products');
+        Route::get('/stock-inventory/products', function (\Illuminate\Http\Request $request) {
+            $query = \App\Models\StockInventoryProduct::query();
+            $search = trim((string) $request->query('q', ''));
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('sku', 'like', '%'.$search.'%')
+                      ->orWhere('name', 'like', '%'.$search.'%')
+                      ->orWhere('category', 'like', '%'.$search.'%');
+                });
+            }
+            if (in_array($request->query('status'), ['active', 'inactive'], true)) {
+                $query->where('status', $request->query('status'));
+            }
+            if ($request->query('stock_alert') === 'low') {
+                $query->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'reorder_level');
+            } elseif ($request->query('stock_alert') === 'out') {
+                $query->where('quantity', '<=', 0);
+            }
+            $products = $query->orderByRaw('CASE WHEN quantity <= reorder_level THEN 0 ELSE 1 END')
+                ->orderBy('name')->paginate(25)->withQueryString();
+            return view('xlink.stock-inventory', ['tab'=>'products','products'=>$products,'stats'=>[], 'filters'=>$request->query()]);
+        })->name('stock-inventory.products');
         Route::post('/stock-inventory/products', function(\Illuminate\Http\Request $r){
             $d=$r->validate(['sku'=>'required|string|max:80|unique:stock_inventory_products,sku','name'=>'required|string|max:160','category'=>'nullable|string|max:100','unit'=>'required|string|max:20','quantity'=>'required|integer|min:0','reorder_level'=>'required|integer|min:0','unit_cost'=>'required|numeric|min:0','notes'=>'nullable|string|max:1000']);
             \Illuminate\Support\Facades\DB::transaction(function() use($d){
@@ -879,6 +901,7 @@ Route::middleware([
                 'product_id'=>'required|exists:stock_inventory_products,id',
                 'movement_type'=>'required|in:stock-in,issue,sale,return,adjustment',
                 'quantity'=>'required|integer|min:1',
+                'adjustment_direction'=>'nullable|required_if:movement_type,adjustment|in:increase,decrease',
                 'reference'=>'nullable|string|max:120',
                 'source'=>'nullable|string|max:120',
                 'destination'=>'nullable|string|max:120',
@@ -887,9 +910,18 @@ Route::middleware([
             return \Illuminate\Support\Facades\DB::transaction(function() use($d){
                 $p=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail();
                 abort_if($p->status!=='active',422,'Inactive products cannot receive new stock movements.');
-                $delta=in_array($d['movement_type'],['stock-in','return','adjustment'],true)?(int)$d['quantity']:-((int)$d['quantity']);
+                $adjustmentOut = ($d['movement_type']==='adjustment' && ($d['adjustment_direction']??'increase')==='decrease');
+                $delta = ($adjustmentOut || in_array($d['movement_type'],['issue','sale'],true)) ? -(int)$d['quantity'] : (int)$d['quantity'];
                 abort_if($delta<0 && $p->quantity < abs($delta),422,'Insufficient stock.');
                 $p->update(['quantity'=>$p->quantity+$delta]);
+                unset($d['adjustment_direction']);
+                if ($adjustmentOut) {
+                    $d['movement_type']='issue';
+                    $d['notes']=trim('Adjustment decrease. '.($d['notes']??''));
+                    $d['destination']=$d['destination']??'Stock adjustment';
+                } elseif (($d['movement_type']??'')==='adjustment') {
+                    $d['notes']=trim('Adjustment increase. '.($d['notes']??''));
+                }
                 \App\Models\StockInventoryMovement::create($d);
                 return back()->with('inventory_message','Stock movement recorded successfully.');
             });
@@ -901,7 +933,7 @@ Route::middleware([
             $categories = \App\Models\StockInventoryProduct::query()->selectRaw('category, COUNT(*) as product_count')->whereNotNull('category')->where('category','<>','')->groupBy('category')->orderBy('category')->get();
             return view('xlink.stock-inventory',['tab'=>'categories','categories'=>$categories,'stats'=>[]]);
         })->name('stock-inventory.categories');
-        Route::get('/stock-inventory/stock', fn()=>redirect()->route('stock-inventory.products'))->name('stock-inventory.stock');
+        Route::get('/stock-inventory/stock', fn()=>redirect()->route('stock-inventory.movements'))->name('stock-inventory.stock');
         Route::get('/stock-inventory/vendors', function(){
             $suppliers = \App\Models\StockInventorySupplier::withSum('purchases as purchase_total','total_amount')->withSum('payments as paid_total','amount')->orderBy('name')->paginate(25)->withQueryString();
             return view('xlink.stock-inventory',['tab'=>'vendors','suppliers'=>$suppliers,'stats'=>[]]);
@@ -926,9 +958,13 @@ Route::middleware([
             \Illuminate\Support\Facades\DB::transaction(function() use($d,$total){
                 $product=\App\Models\StockInventoryProduct::whereKey($d['product_id'])->lockForUpdate()->firstOrFail();
                 abort_if($product->status!=='active',422,'Inactive products cannot receive purchases.');
+                $oldQuantity=(int)$product->quantity;
+                $newQuantity=$oldQuantity+(int)$d['quantity'];
+                $oldValue=$oldQuantity*(float)$product->unit_cost;
+                $newAverageCost=$newQuantity>0 ? (($oldValue+$total)/$newQuantity) : (float)$d['unit_cost'];
                 $purchase=\App\Models\StockInventoryPurchase::create(['supplier_id'=>$d['supplier_id']??null,'invoice_no'=>$d['invoice_no']??null,'purchase_date'=>$d['purchase_date'],'total_amount'=>$total,'status'=>'received','notes'=>$d['notes']??null]);
                 \App\Models\StockInventoryPurchaseItem::create(['purchase_id'=>$purchase->id,'product_id'=>$product->id,'quantity'=>$d['quantity'],'unit_cost'=>$d['unit_cost'],'line_total'=>$total]);
-                $product->increment('quantity',(int)$d['quantity']);
+                $product->update(['quantity'=>$newQuantity,'unit_cost'=>round($newAverageCost,2)]);
                 \App\Models\StockInventoryMovement::create(['product_id'=>$product->id,'movement_type'=>'stock-in','quantity'=>(int)$d['quantity'],'reference'=>$d['invoice_no']??('Purchase #'.$purchase->id),'source'=>isset($d['supplier_id'])?\App\Models\StockInventorySupplier::whereKey($d['supplier_id'])->value('name'):null,'notes'=>'Received purchase #'.$purchase->id.($d['notes']?' — '.$d['notes']:'')]);
             });
             return back()->with('inventory_message','Purchase received, stock updated, and movement ledger recorded.');
@@ -970,7 +1006,7 @@ Route::middleware([
                 return back()->with('inventory_message','Lost/damaged record saved and stock ledger reconciled.');
             });
         })->name('stock-inventory.damaged.store');
-        Route::get('/stock-inventory/warranty', function(){ $q=trim((string)request('q','')); $status=trim((string)request('status','')); $query=\App\Models\StockInventoryWarranty::with('product')->latest('id'); if($q!=='')$query->where(function($x)use($q){$x->where('asset_serial','like',"%$q%")->orWhere('asset_mac','like',"%$q%")->orWhere('vendor','like',"%$q%")->orWhere('reference','like',"%$q%");}); if($status!=='')$query->where('status',$status); return view('xlink.stock-inventory',['tab'=>'warranty','title'=>'Warranty','products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'warranties'=>$query->paginate(25)->withQueryString(),'stats'=>[]]); })->name('stock-inventory.warranty');
+        Route::get('/stock-inventory/warranty', function(){ $q=trim((string)request('q','')); $status=trim((string)request('status','')); $query=\App\Models\StockInventoryWarranty::with('product')->latest('id'); if($q!=='')$query->where(function($x)use($q){$x->where('asset_serial','like',"%$q%")->orWhere('asset_mac','like',"%$q%")->orWhere('vendor','like',"%$q%")->orWhere('reference','like',"%$q%");}); if($status!=='')$query->where('status',$status); if(request('expiring')==='1')$query->where('status','active')->whereNotNull('warranty_end')->whereBetween('warranty_end',[now()->toDateString(),now()->addDays(30)->toDateString()]); return view('xlink.stock-inventory',['tab'=>'warranty','title'=>'Warranty','products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'warranties'=>$query->paginate(25)->withQueryString(),'stats'=>[]]); })->name('stock-inventory.warranty');
         Route::get('/stock-inventory/damaged', function(){ $q=trim((string)request('q','')); $status=trim((string)request('status','')); $query=\App\Models\StockInventoryDamageRecord::with('product')->latest('incident_date'); if($q!=='')$query->where(function($x)use($q){$x->where('asset_serial','like',"%$q%")->orWhere('asset_mac','like',"%$q%")->orWhere('reason','like',"%$q%")->orWhere('reference','like',"%$q%");}); if($status!=='')$query->where('status',$status); return view('xlink.stock-inventory',['tab'=>'damaged','title'=>'Lost & Damaged','products'=>\App\Models\StockInventoryProduct::orderBy('name')->get(),'damageRecords'=>$query->paginate(25)->withQueryString(),'stats'=>[]]); })->name('stock-inventory.damaged');
         Route::get('/stock-inventory/settings', fn()=>view('xlink.stock-inventory',['tab'=>'settings','title'=>'Settings','products'=>\App\Models\StockInventoryProduct::orderBy('name')->paginate(20),'stats'=>[]]))->name('stock-inventory.settings');
 

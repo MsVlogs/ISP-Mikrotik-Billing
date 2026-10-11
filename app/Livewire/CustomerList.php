@@ -274,9 +274,13 @@ class CustomerList extends Component
             })
             ->addColumn('cid', function ($row) {
                 $url = route('customer.details', ['id' => encrypt($row->customer_unique_id)]);
-                return '<a href="'.e($url).'" class="fw-bold text-primary text-decoration-none" title="Open Customer Details">'
+                $isActive = strtolower((string) ($row->status ?? '')) === 'active';
+                $dotClass = $isActive ? 'customer-live-dot customer-live-dot--active' : 'customer-live-dot customer-live-dot--inactive';
+                $label = $isActive ? 'Active customer status' : 'Inactive customer status';
+                return '<span class="customer-cid-live" title="'.e($label).'"><span class="'.e($dotClass).'" aria-label="'.e($label).'"></span>'
+                    .'<a href="'.e($url).'" class="fw-bold text-primary text-decoration-none" title="Open Customer Details">'
                     .e($row->customer_unique_id)
-                    .'</a>';
+                    .'</a></span>';
             })
             ->addColumn('customer_name_display', function ($row) {
                 return '<div class="fw-semibold text-dark">'.e($row->customer_name ?? 'N/A').'</div>';
