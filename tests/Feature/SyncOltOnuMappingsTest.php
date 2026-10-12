@@ -6,6 +6,7 @@ use App\Models\CustomersInfo;
 use App\Models\NetworkInventoryDevice;
 use App\Models\OltOnuCustomerMapping;
 use App\Models\PPPSecrets;
+use App\Models\RouterList;
 use App\Services\Olt\OltReadOnlyAdapterManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,6 +14,16 @@ use Tests\TestCase;
 class SyncOltOnuMappingsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        RouterList::create([
+            'router_name' => 'MatcherRouter', 'ip_address' => '127.0.0.1',
+            'username' => 'matcher-user', 'password' => 'matcher-password',
+            'action' => 'disconnected',
+        ]);
+    }
 
     private function olt(): NetworkInventoryDevice
     {
