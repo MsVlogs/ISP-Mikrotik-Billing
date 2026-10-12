@@ -104,7 +104,11 @@ class SyncOltOnuMappings extends Command
                         if (! $this->option('dry-run')) {
                             $sameIdMapping->customer_id = null;
                             $sameIdMapping->ppp_user_id = null;
-                            $sameIdMapping->notes = trim(((string) $sameIdMapping->notes)." Stable ONU identity changed; manual review required.");
+                            $reviewNote = 'Stable ONU identity changed; manual review required.';
+                            $existingNotes = trim((string) $sameIdMapping->notes);
+                            if (! str_contains($existingNotes, $reviewNote)) {
+                                $sameIdMapping->notes = trim($existingNotes . ($existingNotes !== '' ? "\n" : '') . $reviewNote);
+                            }
                             $sameIdMapping->save();
                         }
                         $existingMapping = $sameIdMapping;
@@ -119,19 +123,20 @@ class SyncOltOnuMappings extends Command
                     // then ONU IP == PPP remote IP.
                     $candidates = [];
                     $onuUsername = strtolower(trim((string) ($row['pppoe_username'] ?? $row['ppp_username'] ?? '')));
-                    if ($onuUsername !== '' && count($byPppUsername[$onuUsername] ?? []) === 1) {
-                        $candidates = $byPppUsername[$onuUsername];
+                    if ($onuUsername !== '') {
+                        $usernameCandidates = $this->preferActiveCandidates($byPppUsername[$onuUsername] ?? []);
+                        if (count($usernameCandidates) === 1) $candidates = $usernameCandidates;
                     }
 
                     if (count($candidates) !== 1) {
                         $macKey = $this->normalizeMac($onuMac);
-                        $macCandidates = $macKey !== '' ? ($byCallerMac[$macKey] ?? []) : [];
+                        $macCandidates = $this->preferActiveCandidates($macKey !== '' ? ($byCallerMac[$macKey] ?? []) : []);
                         if (count($macCandidates) === 1) $candidates = $macCandidates;
                     }
 
                     if (count($candidates) !== 1) {
                         $ipKey = trim((string) ($row['onu_ip'] ?? $row['ip'] ?? ''));
-                        $ipCandidates = $ipKey !== '' ? ($byRemoteIp[$ipKey] ?? []) : [];
+                        $ipCandidates = $this->preferActiveCandidates($ipKey !== '' ? ($byRemoteIp[$ipKey] ?? []) : []);
                         if (count($ipCandidates) === 1) $candidates = $ipCandidates;
                     }
 
@@ -242,6 +247,23 @@ class SyncOltOnuMappings extends Command
         } catch (\Throwable) {
             return ['ok' => false, 'status' => 'unreachable', 'message' => 'Legacy OLT telemetry is unavailable; no write performed.', 'onus' => []];
         }
+    }
+
+    /**
+     * When a stale/removed PPP record and one live account share a caller ID,
+     * prefer the single active customer. Multiple active candidates remain
+     * ambiguous and are never auto-assigned.
+     */
+    private function preferActiveCandidates(array $candidates): array
+    {
+        $candidates = array_values($candidates);
+        if (count($candidates) <= 1) return $candidates;
+
+        $active = array_values(array_filter($candidates, static function ($customer): bool {
+            return strtolower(trim((string) ($customer->pppUser?->status ?? ''))) === 'active';
+        }));
+
+        return count($active) > 0 ? $active : $candidates;
     }
 
     private function normalizeMac($mac): string
