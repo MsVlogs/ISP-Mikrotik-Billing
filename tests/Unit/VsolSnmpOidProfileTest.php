@@ -39,7 +39,21 @@ class VsolSnmpOidProfileTest extends TestCase
 
         $this->assertSame('v1600d_epon_authinfo2', $profile['key']);
         $this->assertSame('snmp_sysdescr', $profile['selection_source']);
-        $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.25', $profile['mib_table_oid']);
+        $this->assertSame('v1600d4_legacy_onu_table', $profile['key']);
+        $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.9', $profile['mib_table_oid']);
+    }
+
+    public function test_v1600d4_profile_uses_live_verified_legacy_columns_and_skips_unavailable_walks(): void
+    {
+        $profile = config('olt_vsol.snmp_profiles.v1600d4_legacy_onu_table');
+        $this->assertNotNull($profile);
+        $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.9.1.2', $profile['onu_oids']['pon_port']);
+        $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.9.1.3', $profile['onu_oids']['onu_id']);
+        $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.9.1.4', $profile['onu_oids']['status']);
+        $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.9.1.5', $profile['onu_oids']['onu_mac']);
+        $this->assertSame([], $profile['opm_oids']);
+        $this->assertFalse($profile['client_mac_discovery']);
+        $this->assertNotContains('V1600D4', $profile['models'] ?? []);
     }
 
     public function test_vsol_read_only_adapter_supports_vsol_olt_without_any_write_surface(): void
@@ -62,7 +76,8 @@ class VsolSnmpOidProfileTest extends TestCase
 
         $this->assertContains('V1601E04-DP', $profiles['v1601e_epon_authinfo2']['models']);
         $this->assertContains('V1600D', $profiles['v1600d_epon_authinfo2']['models']);
-        $this->assertContains('V1600D4', $profiles['v1600d_epon_authinfo2']['models']);
+        $this->assertContains('V1600D4', $profiles['v1600d4_legacy_onu_table']['models']);
+        $this->assertNotContains('V1600D4', $profiles['v1600d_epon_authinfo2']['models']);
         $this->assertNotContains('V1601E04-DP', $profiles['v1600d_epon_authinfo2']['models']);
     }
 }
