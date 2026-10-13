@@ -49,7 +49,7 @@ class SyncOltOnuMappingsTest extends TestCase
         return [$customer, $ppp];
     }
 
-    private function fakeAdapter(NetworkInventoryDevice $olt, string $mac): void
+    private function fakeAdapter(NetworkInventoryDevice $olt, string $mac, array $clientMacs = []): void
     {
         $manager = \Mockery::mock(OltReadOnlyAdapterManager::class);
         $manager->shouldReceive('read')->once()->with(\Mockery::on(
@@ -58,6 +58,7 @@ class SyncOltOnuMappingsTest extends TestCase
             'ok' => true, 'status' => 'ok', 'message' => 'test response',
             'onus' => [[
                 'onu_id' => '25', 'pon_port' => '1', 'onu_mac' => $mac,
+                'client_macs' => $clientMacs,
                 'status' => 'online', 'snmp_index' => '1.25',
             ]],
         ]);
@@ -83,6 +84,45 @@ class SyncOltOnuMappingsTest extends TestCase
         $this->assertSame($activePpp->id, $mapping->ppp_user_id);
         $this->assertNotSame($removedCustomer->id, $mapping->customer_id);
         $this->assertNotSame($removedPpp->id, $mapping->ppp_user_id);
+    }
+
+    public function test_unique_active_ppp_client_mac_learned_behind_onu_maps_customer(): void
+    {
+        $olt = $this->olt();
+        $onuMac = '00:11:46:95:1c:c5';
+        $clientMac = 'a4:b1:c1:22:33:44';
+        [$customer, $ppp] = $this->customer('BTFDB01', 'fdb.unique.customer', 'active', $clientMac);
+        OltOnuCustomerMapping::create([
+            'olt_device_id' => $olt->id, 'onu_id' => '25', 'pon_port' => '1',
+            'onu_mac' => $onuMac, 'status' => 'online',
+        ]);
+        $this->fakeAdapter($olt, $onuMac, [$clientMac]);
+
+        $this->artisan('olt:sync-onu-mappings', ['--device' => $olt->id])->assertExitCode(0);
+
+        $mapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)->where('onu_id', '25')->firstOrFail();
+        $this->assertSame($customer->id, $mapping->customer_id);
+        $this->assertSame($ppp->id, $mapping->ppp_user_id);
+    }
+
+    public function test_multiple_active_ppp_client_macs_on_same_onu_remain_unmapped(): void
+    {
+        $olt = $this->olt();
+        $onuMac = '00:11:46:95:1c:c5';
+        $clientMac = 'a4:b1:c1:22:33:55';
+        $this->customer('BTFDB02', 'fdb.first.customer', 'active', $clientMac);
+        $this->customer('BTFDB03', 'fdb.second.customer', 'active', $clientMac);
+        OltOnuCustomerMapping::create([
+            'olt_device_id' => $olt->id, 'onu_id' => '25', 'pon_port' => '1',
+            'onu_mac' => $onuMac, 'status' => 'online',
+        ]);
+        $this->fakeAdapter($olt, $onuMac, [$clientMac]);
+
+        $this->artisan('olt:sync-onu-mappings', ['--device' => $olt->id])->assertExitCode(0);
+
+        $mapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)->where('onu_id', '25')->firstOrFail();
+        $this->assertNull($mapping->customer_id);
+        $this->assertNull($mapping->ppp_user_id);
     }
 
     public function test_multiple_active_ppp_accounts_with_same_onu_mac_remain_unmapped(): void

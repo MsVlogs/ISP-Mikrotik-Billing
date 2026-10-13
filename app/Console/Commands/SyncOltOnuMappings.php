@@ -45,6 +45,12 @@ class SyncOltOnuMappings extends Command
             $byPppUsername = [];
             $byCallerMac = [];
             $byRemoteIp = [];
+            $usedCustomerIds = [];
+            $usedPppIds = [];
+            foreach ($existingMappings as $mapping) {
+                if ($mapping->customer_id) $usedCustomerIds[(string) $mapping->customer_id] = true;
+                if ($mapping->ppp_user_id) $usedPppIds[(string) $mapping->ppp_user_id] = true;
+            }
             foreach ($customers as $customer) {
                 $ppp = $customer->pppUser;
                 if (! $ppp) continue;
@@ -121,29 +127,55 @@ class SyncOltOnuMappings extends Command
                     // existing-unmapped rows, and rows whose old index identity changed.
                     // Priority: PPPoE username, ONU MAC == PPP caller/last-caller,
                     // then ONU IP == PPP remote IP.
+                    $availableCandidates = function (array $items) use (&$usedCustomerIds, &$usedPppIds): array {
+                        $items = $this->preferActiveCandidates($items);
+                        return array_values(array_filter($items, static function ($customer) use (&$usedCustomerIds, &$usedPppIds): bool {
+                            return !isset($usedCustomerIds[(string) $customer->id])
+                                && !isset($usedPppIds[(string) $customer->ppp_user_id]);
+                        }));
+                    };
+
                     $candidates = [];
                     $onuUsername = strtolower(trim((string) ($row['pppoe_username'] ?? $row['ppp_username'] ?? '')));
                     if ($onuUsername !== '') {
-                        $usernameCandidates = $this->preferActiveCandidates($byPppUsername[$onuUsername] ?? []);
-                        if (count($usernameCandidates) === 1) $candidates = $usernameCandidates;
+                        $candidates = $availableCandidates($byPppUsername[$onuUsername] ?? []);
                     }
 
-                    if (count($candidates) !== 1) {
+                    // Prefer dynamic client MACs learned behind this exact EPON
+                    // interface. These are different from the ONU's own MAC and
+                    // allow matching the customer's active PPP caller-ID identity.
+                    if (!$candidates && is_array($row['client_macs'] ?? null)) {
+                        $fdbCandidates = [];
+                        foreach ($row['client_macs'] as $clientMac) {
+                            $clientMacKey = $this->normalizeMac($clientMac);
+                            if ($clientMacKey === '') continue;
+                            foreach ($availableCandidates($byCallerMac[$clientMacKey] ?? []) as $candidate) {
+                                $fdbCandidates[(string) $candidate->id] = $candidate;
+                            }
+                        }
+                        $candidates = array_values($fdbCandidates);
+                    }
+
+                    if (!$candidates) {
                         $macKey = $this->normalizeMac($onuMac);
-                        $macCandidates = $this->preferActiveCandidates($macKey !== '' ? ($byCallerMac[$macKey] ?? []) : []);
-                        if (count($macCandidates) === 1) $candidates = $macCandidates;
+                        $candidates = $availableCandidates($macKey !== '' ? ($byCallerMac[$macKey] ?? []) : []);
                     }
 
-                    if (count($candidates) !== 1) {
+                    if (!$candidates) {
                         $ipKey = trim((string) ($row['onu_ip'] ?? $row['ip'] ?? ''));
-                        $ipCandidates = $this->preferActiveCandidates($ipKey !== '' ? ($byRemoteIp[$ipKey] ?? []) : []);
-                        if (count($ipCandidates) === 1) $candidates = $ipCandidates;
+                        $candidates = $availableCandidates($ipKey !== '' ? ($byRemoteIp[$ipKey] ?? []) : []);
                     }
 
                     if (count($candidates) === 1) {
                         $customerId = $candidates[0]->id;
                         $pppId = $candidates[0]->ppp_user_id;
+                        // Reserve this identity for the remainder of this pass so a
+                        // duplicated MAC cannot auto-assign one account to two ONUs.
+                        $usedCustomerIds[(string) $customerId] = true;
+                        $usedPppIds[(string) $pppId] = true;
                         $autoMapped++;
+                    } elseif (count($candidates) > 1) {
+                        $issues[] = "ONU {$onuId}: multiple active customer identities were learned behind this ONU; left unmapped for review.";
                     }
                 }
 
@@ -256,7 +288,15 @@ class SyncOltOnuMappings extends Command
      */
     private function preferActiveCandidates(array $candidates): array
     {
-        $candidates = array_values($candidates);
+        // Caller ID and last-caller ID may contain the same MAC for one PPP user;
+        // deduplicate by actual Customer ID before deciding uniqueness.
+        $unique = [];
+        foreach ($candidates as $customer) {
+            if ($customer && $customer->id !== null) {
+                $unique[(string) $customer->id] = $customer;
+            }
+        }
+        $candidates = array_values($unique);
         if (count($candidates) <= 1) return $candidates;
 
         $active = array_values(array_filter($candidates, static function ($customer): bool {

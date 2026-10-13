@@ -44,9 +44,26 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             return $this->fail($device, 'SNMP community is not configured for the adapter.');
         }
 
-        $profile = $this->mibProfile($device, $config);
         $timeout = min(max(100000, (int) ($config['timeout_us'] ?? 500000)), 1000000);
         $retries = min(max(0, (int) ($config['retries'] ?? 0)), 1);
+
+        // Read the device's own model string before choosing a private MIB.
+        // Inventory labels can be stale or firmware may report a family string.
+        $sysDescrOid = '1.3.6.1.2.1.1.1.0';
+        $reportedSysDescrRaw = @snmp2_get($host, $community, $sysDescrOid, $timeout, $retries);
+        $reportedSysDescr = $reportedSysDescrRaw === false
+            ? ''
+            : trim((string) $this->cleanSnmpValue($reportedSysDescrRaw));
+
+        $profile = $this->mibProfile($device, $config, $reportedSysDescr);
+        $profiles = (array) config('olt_vsol.snmp_profiles', []);
+        $inventoryModelMatch = $this->findModelProfile($profiles, (string) $device->model);
+        $sysDescrModelMatch = $reportedSysDescr !== ''
+            ? $this->findModelProfile($profiles, $reportedSysDescr)
+            : null;
+        $modelProfileMismatch = $inventoryModelMatch !== null
+            && $sysDescrModelMatch !== null
+            && $inventoryModelMatch['key'] !== $sysDescrModelMatch['key'];
         $systemOids = array_merge(
             $profile['system_oids'] ?? [
                 'sysDescr' => '1.3.6.1.2.1.1.1.0',
@@ -83,6 +100,10 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
                 'mib_profile_label' => $profile['label'] ?? null,
                 'enterprise_oid' => $profile['enterprise_oid'] ?? '1.3.6.1.4.1.37950',
                 'mib_table_oid' => $profile['mib_table_oid'] ?? null,
+                'mib_profile_source' => $profile['selection_source'] ?? (count($onuConfig) ? 'custom_oid_configuration' : 'unsupported_model'),
+                'inventory_model' => trim((string) $device->model),
+                'snmp_sys_descr' => $reportedSysDescr !== '' ? $reportedSysDescr : null,
+                'model_profile_mismatch' => $modelProfileMismatch,
                 'oid_count' => 0,
                 'failed_oids' => [],
                 'onu_count' => 0,
@@ -95,7 +116,11 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
                 continue;
             }
 
-            $value = @snmp2_get($host, $community, trim($oid), $timeout, $retries);
+            $value = $name === 'sysDescr'
+                && ltrim(trim($oid), '.') === $sysDescrOid
+                && $reportedSysDescrRaw !== false
+                    ? $reportedSysDescrRaw
+                    : @snmp2_get($host, $community, trim($oid), $timeout, $retries);
             $result['meta']['oid_count']++;
             if ($value === false) {
                 $result['meta']['failed_oids'][] = $name;
@@ -110,6 +135,25 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
             if ($opmOids && $result['onus']) {
                 $result['onus'] = $this->enrichOpticalPower($host, $community, $result['onus'], $opmOids, $timeout, $retries);
             }
+
+            $clientMacDiscovery = $this->discoverClientMacsByOnu($host, $community, $timeout, $retries, $result['onus']);
+            foreach ($result['onus'] as &$onu) {
+                $onuKey = trim((string) ($onu['pon_port'] ?? '')).'|'.trim((string) ($onu['onu_id'] ?? ''));
+                $onu['client_macs'] = $clientMacDiscovery['by_onu'][$onuKey] ?? [];
+            }
+            unset($onu);
+
+            $result['meta']['client_mac_source'] = 'standard-dot1d-bridge-fdb';
+            $result['meta']['client_mac_count'] = array_sum(array_map(
+                static fn ($onu) => count($onu['client_macs'] ?? []),
+                $result['onus']
+            ));
+            $result['meta']['client_mac_onu_count'] = count(array_filter(
+                $result['onus'],
+                static fn ($onu) => !empty($onu['client_macs'])
+            ));
+            $result['meta']['client_mac_fdb_rows'] = $clientMacDiscovery['fdb_rows'];
+            $result['meta']['client_mac_fdb_readable'] = $clientMacDiscovery['readable'];
 
             $result['meta']['onu_count'] = count($result['onus']);
             $result['meta']['onu_discovery_configured'] = true;
@@ -151,24 +195,56 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
                 ? 'VSOL SNMP returned usable read-only data, but one or more configured system probes failed.'
                 : 'VSOL SNMP read failed. No OLT changes were made.');
 
+        if ($modelProfileMismatch) {
+            if (($profile['selection_source'] ?? null) === 'snmp_sysdescr') {
+                $result['message'] .= " Inventory model {$device->model} resolves to {$inventoryModelMatch['key']}, while live sysDescr {$reportedSysDescr} resolves to {$sysDescrModelMatch['key']}; selected the profile from live sysDescr.";
+            } else {
+                $result['message'] .= " Inventory model {$device->model} and live sysDescr {$reportedSysDescr} resolve to different MIB profiles; review the explicit profile selection.";
+            }
+        }
+
         return $result;
     }
 
-    private function mibProfile(NetworkInventoryDevice $device, array $config): ?array
+    private function mibProfile(NetworkInventoryDevice $device, array $config, ?string $reportedSysDescr = null): ?array
     {
         $profiles = (array) config('olt_vsol.snmp_profiles', []);
         $requested = trim((string) ($config['mib_profile'] ?? ''));
 
         if ($requested !== '' && isset($profiles[$requested])) {
-            return ['key' => $requested] + $profiles[$requested];
+            return ['key' => $requested, 'selection_source' => 'configured'] + $profiles[$requested];
         }
 
-        $model = strtoupper(trim((string) $device->model));
+        // A supported sysDescr is more reliable than a manually maintained
+        // inventory model. Fall back to inventory only when the live hint is
+        // missing or does not identify a known profile.
+        if (trim((string) $reportedSysDescr) !== '') {
+            $liveMatch = $this->findModelProfile($profiles, (string) $reportedSysDescr);
+            if ($liveMatch !== null) {
+                return ['key' => $liveMatch['key'], 'selection_source' => 'snmp_sysdescr'] + $liveMatch['profile'];
+            }
+        }
+
+        $inventoryMatch = $this->findModelProfile($profiles, (string) $device->model);
+        if ($inventoryMatch !== null) {
+            return ['key' => $inventoryMatch['key'], 'selection_source' => 'inventory_model'] + $inventoryMatch['profile'];
+        }
+
+        return null;
+    }
+
+    private function findModelProfile(array $profiles, string $model): ?array
+    {
+        $model = strtoupper(trim($model));
+        if ($model === '') {
+            return null;
+        }
+
         foreach ($profiles as $key => $profile) {
             foreach ((array) ($profile['models'] ?? []) as $candidate) {
                 $candidate = strtoupper(trim((string) $candidate));
                 if ($candidate !== '' && ($model === $candidate || str_contains($model, $candidate))) {
-                    return ['key' => $key] + $profile;
+                    return ['key' => $key, 'profile' => $profile];
                 }
             }
         }
@@ -225,6 +301,132 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         }
 
         return $normalized;
+    }
+
+    /**
+     * Read learned customer/client MACs from the standard IEEE 802.1D bridge FDB.
+     *
+     * V-Solution exposes per-ONU logical interfaces in ifDescr (for example
+     * EPON0/1:23) and uses the corresponding interface index in dot1dTpFdbPort.
+     * Only dynamic/learned FDB rows (dot1dTpFdbStatus = 3) are considered.
+     * This routine is read-only and never uses SNMP SET.
+     *
+     * @return array{by_onu: array<string, array<int, string>>, fdb_rows: int, readable: bool}
+     */
+    private function discoverClientMacsByOnu(
+        string $host,
+        string $community,
+        int $timeout,
+        int $retries,
+        array $onus
+    ): array {
+        $fdbPortOid = '1.3.6.1.2.1.17.4.3.1.2'; // dot1dTpFdbPort
+        $fdbStatusOid = '1.3.6.1.2.1.17.4.3.1.3'; // dot1dTpFdbStatus
+        $bridgePortIfIndexOid = '1.3.6.1.2.1.17.1.4.1.2'; // dot1dBasePortIfIndex
+        $ifDescrOid = '1.3.6.1.2.1.2.2.1.2'; // ifDescr
+
+        $fdbPorts = $this->walkWithRetry($host, $community, $fdbPortOid, $timeout, $retries);
+        if (!$fdbPorts) {
+            return ['by_onu' => [], 'fdb_rows' => 0, 'readable' => false];
+        }
+
+        $fdbStatuses = $this->walkWithRetry($host, $community, $fdbStatusOid, $timeout, $retries);
+        $bridgePortIfIndexes = $this->walkWithRetry($host, $community, $bridgePortIfIndexOid, $timeout, $retries);
+        $ifDescriptions = $this->walkWithRetry($host, $community, $ifDescrOid, $timeout, $retries);
+
+        $statusByIndex = [];
+        foreach ($fdbStatuses as $returnedOid => $value) {
+            $index = $this->oidIndex((string) $returnedOid, $fdbStatusOid);
+            if ($index !== null && $index !== '') {
+                $statusByIndex[$index] = trim((string) $this->cleanSnmpValue($value));
+            }
+        }
+
+        $ifIndexByBridgePort = [];
+        foreach ($bridgePortIfIndexes as $returnedOid => $value) {
+            $index = $this->oidIndex((string) $returnedOid, $bridgePortIfIndexOid);
+            if ($index === null || $index === '') {
+                continue;
+            }
+            $ifIndex = $this->normalizeMetric($this->cleanSnmpValue($value));
+            if ($ifIndex !== null) {
+                $ifIndexByBridgePort[(int) $index] = (int) $ifIndex;
+            }
+        }
+
+        $ifDescriptionByIndex = [];
+        foreach ($ifDescriptions as $returnedOid => $value) {
+            $index = $this->oidIndex((string) $returnedOid, $ifDescrOid);
+            if ($index !== null && $index !== '') {
+                $ifDescriptionByIndex[(int) $index] = trim((string) $this->cleanSnmpValue($value));
+            }
+        }
+
+        $knownOnus = [];
+        foreach ($onus as $onu) {
+            $pon = trim((string) ($onu['pon_port'] ?? ''));
+            $onuId = trim((string) ($onu['onu_id'] ?? ''));
+            if ($pon !== '' && $onuId !== '') {
+                $knownOnus[$pon.'|'.$onuId] = true;
+            }
+        }
+
+        $byOnu = [];
+        foreach ($fdbPorts as $returnedOid => $value) {
+            $index = $this->oidIndex((string) $returnedOid, $fdbPortOid);
+            if ($index === null || ($statusByIndex[$index] ?? null) !== '3') {
+                continue; // Only a currently learned/dynamic FDB entry is safe evidence.
+            }
+
+            $parts = explode('.', $index);
+            // dot1dTpFdbPort index = {6, six octets of the learned MAC address}.
+            if (count($parts) !== 7 || (int) $parts[0] !== 6) {
+                continue;
+            }
+            $octets = array_slice($parts, 1);
+            if (count(array_filter($octets, static fn ($part) => ctype_digit($part) && (int) $part >= 0 && (int) $part <= 255)) !== 6) {
+                continue;
+            }
+            $mac = implode(':', array_map(static fn ($part) => sprintf('%02x', (int) $part), $octets));
+
+            $bridgePort = $this->normalizeMetric($this->cleanSnmpValue($value));
+            if ($bridgePort === null) {
+                continue;
+            }
+            $bridgePort = (int) $bridgePort;
+            $ifIndex = $ifIndexByBridgePort[$bridgePort] ?? $bridgePort;
+            $ifDescription = $ifDescriptionByIndex[$ifIndex] ?? '';
+
+            // Some VSOL firmware omits virtual EPON ONU interfaces from
+            // dot1dBasePortIfIndex, but exposes them directly in ifDescr using
+            // EPON0/<pon>:<onu>. Only use the bridge-port index directly if
+            // that exact per-ONU interface pattern is present.
+            if (!preg_match('/^EPON\d+\/(\d+):(\d+)$/i', $ifDescription, $match)) {
+                $directDescription = $ifDescriptionByIndex[$bridgePort] ?? '';
+                if (!preg_match('/^EPON\d+\/(\d+):(\d+)$/i', $directDescription, $match)) {
+                    continue;
+                }
+                $ifDescription = $directDescription;
+            }
+
+            $pon = trim((string) $match[1]);
+            $onuId = trim((string) $match[2]);
+            $onuKey = $pon.'|'.$onuId;
+            if (!isset($knownOnus[$onuKey])) {
+                continue; // Never create/infer an ONU from the FDB alone.
+            }
+
+            $byOnu[$onuKey] ??= [];
+            if (!in_array($mac, $byOnu[$onuKey], true)) {
+                $byOnu[$onuKey][] = $mac;
+            }
+        }
+
+        return [
+            'by_onu' => $byOnu,
+            'fdb_rows' => count($fdbPorts),
+            'readable' => true,
+        ];
     }
 
     private function enrichOpticalPower(

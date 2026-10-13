@@ -23,6 +23,25 @@ class VsolSnmpOidProfileTest extends TestCase
         $this->assertArrayNotHasKey('serial', $profile['onu_oids']);
     }
 
+    public function test_live_sysdescr_profile_overrides_a_conflicting_inventory_model(): void
+    {
+        $adapter = new VsolSnmpReadOnlyAdapter();
+        $device = new NetworkInventoryDevice([
+            'type' => 'olt',
+            'vendor' => 'VSOL',
+            'model' => 'V1601E04-DP',
+            'adapter_config' => ['transport' => 'snmp'],
+        ]);
+
+        $method = new \ReflectionMethod(VsolSnmpReadOnlyAdapter::class, 'mibProfile');
+        $method->setAccessible(true);
+        $profile = $method->invoke($adapter, $device, [], 'V1600D4');
+
+        $this->assertSame('v1600d_epon_authinfo2', $profile['key']);
+        $this->assertSame('snmp_sysdescr', $profile['selection_source']);
+        $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.25', $profile['mib_table_oid']);
+    }
+
     public function test_vsol_read_only_adapter_supports_vsol_olt_without_any_write_surface(): void
     {
         $adapter = new VsolSnmpReadOnlyAdapter();
@@ -43,6 +62,7 @@ class VsolSnmpOidProfileTest extends TestCase
 
         $this->assertContains('V1601E04-DP', $profiles['v1601e_epon_authinfo2']['models']);
         $this->assertContains('V1600D', $profiles['v1600d_epon_authinfo2']['models']);
+        $this->assertContains('V1600D4', $profiles['v1600d_epon_authinfo2']['models']);
         $this->assertNotContains('V1601E04-DP', $profiles['v1600d_epon_authinfo2']['models']);
     }
 }
