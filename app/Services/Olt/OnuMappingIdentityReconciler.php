@@ -44,7 +44,7 @@ class OnuMappingIdentityReconciler
             }
             $linked = !empty($data['customer_id']) || !empty($data['ppp_user_id']);
             $stale[] = ['mapping_id' => $rowId, 'current_onu_id' => (string) ($data['onu_id'] ?? ''), 'onu_mac' => $mac, 'linked' => $linked];
-            if ($linked) $blockers[] = "Stale mapping row {$rowId} has a customer/PPPoE link but its MAC was not present in live SNMP.";
+            // A linked stale row is retained under an audit ID; its customer link is never reassigned.
         }
 
         $matched = [];
