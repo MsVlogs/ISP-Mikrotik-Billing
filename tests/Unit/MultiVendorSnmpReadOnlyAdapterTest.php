@@ -21,7 +21,7 @@ class MultiVendorSnmpReadOnlyAdapterTest extends TestCase
     {
         $adapter = new MultiVendorSnmpReadOnlyAdapter();
         $device = new NetworkInventoryDevice(['type' => 'olt', 'vendor' => 'VSOL', 'model' => 'V1601E04-DP']);
-        $method = new \\ReflectionMethod(MultiVendorSnmpReadOnlyAdapter::class, 'profile');
+        $method = new \ReflectionMethod(MultiVendorSnmpReadOnlyAdapter::class, 'profile');
         $method->setAccessible(true);
         $profile = $method->invoke($adapter, $device, 'V1600D4');
 
