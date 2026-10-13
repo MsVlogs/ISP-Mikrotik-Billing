@@ -26,7 +26,7 @@ class OnuMappingIdentityReconcilerTest extends TestCase
         $this->assertSame([], $plan['blockers']);
     }
 
-    public function test_linked_stale_mapping_blocks_apply_and_unlinked_stale_is_retained(): void
+    public function test_linked_stale_mapping_is_preserved_in_archive_plan_and_unlinked_stale_is_retained(): void
     {
         $plan = (new OnuMappingIdentityReconciler())->plan([
             ['onu_id' => '1', 'pon_port' => '1', 'onu_mac' => '00:11:22:33:44:55', 'status' => 'online'],
@@ -36,7 +36,7 @@ class OnuMappingIdentityReconcilerTest extends TestCase
         ]);
         $this->assertCount(2, $plan['stale']);
         $this->assertTrue($plan['stale'][1]['linked']);
-        $this->assertCount(1, $plan['blockers']);
+        $this->assertSame([], $plan['blockers']);
         $this->assertCount(1, $plan['new']);
     }
 
