@@ -136,14 +136,19 @@ class VsolSnmpReadOnlyAdapter implements OltReadOnlyAdapter
                 $result['onus'] = $this->enrichOpticalPower($host, $community, $result['onus'], $opmOids, $timeout, $retries);
             }
 
-            $clientMacDiscovery = $this->discoverClientMacsByOnu($host, $community, $timeout, $retries, $result['onus']);
+            $clientMacDiscovery = ($profile['client_mac_discovery'] ?? true)
+                ? $this->discoverClientMacsByOnu($host, $community, $timeout, $retries, $result['onus'])
+                : ['by_onu' => [], 'fdb_rows' => 0, 'readable' => false];
             foreach ($result['onus'] as &$onu) {
                 $onuKey = trim((string) ($onu['pon_port'] ?? '')).'|'.trim((string) ($onu['onu_id'] ?? ''));
                 $onu['client_macs'] = $clientMacDiscovery['by_onu'][$onuKey] ?? [];
             }
             unset($onu);
 
-            $result['meta']['client_mac_source'] = 'standard-dot1d-bridge-fdb';
+            $result['meta']['client_mac_source'] = ($profile['client_mac_discovery'] ?? true)
+                ? 'standard-dot1d-bridge-fdb'
+                : null;
+            $result['meta']['client_mac_discovery_configured'] = (bool) ($profile['client_mac_discovery'] ?? true);
             $result['meta']['client_mac_count'] = array_sum(array_map(
                 static fn ($onu) => count($onu['client_macs'] ?? []),
                 $result['onus']

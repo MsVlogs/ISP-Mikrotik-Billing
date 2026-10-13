@@ -24,6 +24,28 @@ return [
     // (inventory model V1601E04-DP, live sysDescr V1600D4, 2026-10-12/13).
     // No SET/write OIDs are configured here.
     'snmp_profiles' => [
+        'v1600d4_legacy_onu_table' => [
+            'label' => 'V-Solution V1600D4 legacy ONU authentication table (live verified)',
+            'models' => ['V1600D4'],
+            'enterprise_oid' => '1.3.6.1.4.1.37950',
+            'mib_table_oid' => '1.3.6.1.4.1.37950.1.1.5.12.1.9',
+            'client_mac_discovery' => false,
+            'system_oids' => [
+                'sysDescr' => '1.3.6.1.2.1.1.1.0',
+                'sysUpTime' => '1.3.6.1.2.1.1.3.0',
+            ],
+            'onu_oids' => [
+                // These four columns were read successfully from BT-EPON-OLT on 2026-10-13.
+                // Table suffix is only the row index; .1.3 contains the actual ONU ID.
+                'pon_port' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.2',
+                'onu_id' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.3',
+                'status' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.4',
+                'onu_mac' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.5',
+            ],
+            // This firmware denied the authInfo2 (.25), optical (.12.2.1.8),
+            // and standard bridge FDB/ifDescr walks. Do not guess their values.
+            'opm_oids' => [],
+        ],
         'v1601e_epon_authinfo2' => [
             'label' => 'V-Solution V1601E EPON authInfo2Table',
             'models' => ['V1601E04-DP', 'V1601E'],
@@ -49,8 +71,8 @@ return [
             ],
         ],
         'v1600d_epon_authinfo2' => [
-            'label' => 'V-Solution V1600D/V1600D4 EPON authInfo2Table',
-            'models' => ['V1600D4', 'V1600D'],
+            'label' => 'V-Solution V1600D EPON authInfo2Table (model-specific; not V1600D4)',
+            'models' => ['V1600D'],
             'enterprise_oid' => '1.3.6.1.4.1.37950',
             'mib_table_oid' => '1.3.6.1.4.1.37950.1.1.5.12.1.25',
             'system_oids' => [

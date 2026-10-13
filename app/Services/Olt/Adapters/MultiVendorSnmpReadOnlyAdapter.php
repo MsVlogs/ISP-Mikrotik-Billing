@@ -23,12 +23,19 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
     {
         if (!function_exists('snmp2_get')) return $this->fail($device, 'PHP SNMP extension is not installed.');
 
-        $profile = $this->profile($device);
         $config = $this->config($device);
         $host = trim((string) ($device->ip_address ?: $device->host));
         $community = (string) ($config['community'] ?? $this->storedCommunity($device));
         if ($host === '') return $this->fail($device, 'OLT management host/IP is not configured.');
         if ($community === '') return $this->fail($device, 'SNMP community is not configured for the adapter.');
+
+        $reportedModel = (string) $device->model;
+        if (strtoupper(trim((string) $device->vendor)) === 'VSOL') {
+            $liveDescription = @snmp2_get($host, $community, '1.3.6.1.2.1.1.1.0', 300000, 0);
+            if ($liveDescription !== false) $reportedModel = (string) $this->clean($liveDescription);
+        }
+        $profile = $this->profile($device, $reportedModel);
+        if ($profile === null) return $this->fail($device, 'No verified SNMP profile for this OLT model.');
 
         $timeout = max(100000, (int) ($config['timeout_us'] ?? 1000000));
         $retries = max(0, (int) ($config['retries'] ?? 1));
@@ -69,9 +76,24 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
         return $result;
     }
 
-    private function profile(NetworkInventoryDevice $device): ?array
+    private function profile(NetworkInventoryDevice $device, ?string $reportedModel = null): ?array
     {
         $vendor = strtoupper(trim((string) $device->vendor));
+        $model = strtoupper(trim((string) ($reportedModel ?? $device->model)));
+        if ($vendor === 'VSOL' && str_contains($model, 'V1600D4')) {
+            return [
+                'key' => 'vsol_v1600d4_legacy_onu_table',
+                'enterprise_oid' => '1.3.6.1.4.1.37950',
+                'source' => 'V-Solution V1600D4 live legacy ONU authentication table; read-only SNMP verified',
+                'oids' => ['sysDescr' => '1.3.6.1.2.1.1.1.0', 'sysUpTime' => '1.3.6.1.2.1.1.3.0'],
+                'onu_oids' => [
+                    'pon_port' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.2',
+                    'onu_id' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.3',
+                    'status' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.4',
+                    'onu_mac' => '1.3.6.1.4.1.37950.1.1.5.12.1.9.1.5',
+                ],
+            ];
+        }
         $profiles = [
             'BDCOM'=>['key'=>'bdcom_epon','enterprise_oid'=>'1.3.6.1.4.1.3320.101','source'=>'BDCOM P3616-2TE EPON NMS MIB','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0'],'onu_oids'=>['onu_id'=>'1.3.6.1.4.1.3320.101.10.1.1.3','onu_vendor'=>'1.3.6.1.4.1.3320.101.10.1.1.1','onu_model'=>'1.3.6.1.4.1.3320.101.10.1.1.2','status'=>'1.3.6.1.4.1.3320.101.10.1.1.26','distance'=>'1.3.6.1.4.1.3320.101.10.1.1.27','onu_uptime'=>'1.3.6.1.4.1.3320.101.10.1.1.80','onu_mac'=>'1.3.6.1.4.1.3320.101.10.4.1.1','rx_power'=>'1.3.6.1.4.1.3320.101.10.5.1.5','tx_power'=>'1.3.6.1.4.1.3320.101.10.5.1.6','__table_root'=>'1.3.6.1.4.1.3320.101.10.1.1','__column_map'=>[1=>'onu_vendor',2=>'onu_model',3=>'onu_id',27=>'distance']]],
             'HUAWEI'=>['key'=>'huawei','enterprise_oid'=>'1.3.6.1.4.1.2011','source'=>'Huawei private MIB + standard system OIDs','oids'=>['sysDescr'=>'1.3.6.1.2.1.1.1.0','sysUpTime'=>'1.3.6.1.2.1.1.3.0','onuStatus'=>'1.3.6.1.4.1.2011.6.128.1.1.2.62.1.22'],'onu_oids'=>['onu_serial'=>'1.3.6.1.4.1.2011.6.128.1.1.2.43.1.3','status'=>'1.3.6.1.4.1.2011.6.128.1.1.2.62.1.22','rx_power'=>'1.3.6.1.4.1.2011.6.128.1.1.2.51.1.4']],
@@ -162,7 +184,7 @@ class MultiVendorSnmpReadOnlyAdapter implements OltReadOnlyAdapter
     private function oidIndex(string $returned,string $base):?string{$returned=preg_replace('/^iso\\./i','',$returned)??$returned;$returned=ltrim($returned,'.');$base=ltrim($base,'.');$prefix=$base.'.';return $returned===$base?'':(str_starts_with($returned,$prefix)?substr($returned,strlen($prefix)):null);}
     private function clean(mixed $value):mixed{if(!is_string($value))return $value;return preg_replace('/^[A-Z0-9-]+:\\s*/i','',trim($value))??trim($value);}
     private function normalizeMac(mixed $value):?string{if(!is_string($value)||trim($value)==='')return null;$v=trim($value);if(preg_match('/^(?:[0-9A-Fa-f]{2}[ :.-]?){6}$/',$v)){$hex=preg_replace('/[^0-9A-Fa-f]/','',$v);return implode(':',str_split(strtolower($hex),2));}return $v;}
-    private function normalizeEponStatus(mixed $value):string{$v=strtolower(trim((string)$value));return match($v){'1','registered'=>'online','2','deregistered','4','lost'=>'offline','0','authenticated','3','auto_config','5','standby',''=>'unknown',default=>$v};}
+    private function normalizeEponStatus(mixed $value):string{$v=strtolower(trim((string)$value));return match($v){'1','registered','auth success'=>'online','2','deregistered','4','lost'=>'offline','0','authenticated','3','auto_config','5','standby',''=>'unknown',default=>$v};}
     private function storedCommunity(NetworkInventoryDevice $device):string{$raw=$device->getRawOriginal('snmp_community');if(!$raw)return '';try{return (string)Crypt::decryptString($raw);}catch(\Throwable){return (string)$raw;}}
     private function config(NetworkInventoryDevice $device):array{$raw=$device->adapter_config;if(is_array($raw))return $raw;if(!is_string($raw)||trim($raw)==='')return []; $v=json_decode($raw,true);return is_array($v)?$v:[];}
     private function fail(NetworkInventoryDevice $device,string $message):array{return ['ok'=>false,'status'=>'not_ready','message'=>$message,'device'=>['id'=>$device->id,'host'=>$device->ip_address?:$device->host,'vendor'=>$device->vendor,'model'=>$device->model,'transport'=>'snmp'],'onus'=>[],'meta'=>['read_only'=>true,'writes_performed'=>false,'oid_count'=>0]];}
