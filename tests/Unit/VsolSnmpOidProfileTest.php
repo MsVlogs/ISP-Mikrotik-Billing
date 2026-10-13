@@ -37,7 +37,6 @@ class VsolSnmpOidProfileTest extends TestCase
         $method->setAccessible(true);
         $profile = $method->invoke($adapter, $device, [], 'V1600D4');
 
-        $this->assertSame('v1600d_epon_authinfo2', $profile['key']);
         $this->assertSame('snmp_sysdescr', $profile['selection_source']);
         $this->assertSame('v1600d4_legacy_onu_table', $profile['key']);
         $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.9', $profile['mib_table_oid']);
@@ -53,7 +52,7 @@ class VsolSnmpOidProfileTest extends TestCase
         $this->assertSame('1.3.6.1.4.1.37950.1.1.5.12.1.9.1.5', $profile['onu_oids']['onu_mac']);
         $this->assertSame([], $profile['opm_oids']);
         $this->assertFalse($profile['client_mac_discovery']);
-        $this->assertNotContains('V1600D4', $profile['models'] ?? []);
+        $this->assertContains('V1600D4', $profile['models']);
     }
 
     public function test_vsol_read_only_adapter_supports_vsol_olt_without_any_write_surface(): void
