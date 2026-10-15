@@ -32,6 +32,8 @@ class MikrotikSync extends Component
 
     public $api_port;
 
+    public $api_ssl = false;
+
     public $latitude;
 
     public $longitude;
@@ -88,7 +90,8 @@ class MikrotikSync extends Component
             'username' => 'required|string|max:255',
             'password' => 'required_if:RouterListId,null|string|max:255',
             'ssh_port' => 'nullable|required_without:api_port|integer|min:1|max:65535',
-            'api_port' => 'nullable|required_without:ssh_port|integer|min:1|max:65535',
+            'api_port' => 'nullable|required_without:ssh_port|required_if:api_ssl,1|integer|min:1|max:65535',
+            'api_ssl' => 'nullable|boolean',
             'latitude' => ['nullable','numeric','between:-90,90'],
             'longitude' => ['nullable','numeric','between:-180,180'],
             'location' => ['nullable','string','max:160'],
@@ -106,6 +109,7 @@ class MikrotikSync extends Component
             'username' => $this->username,
             'ssh_port' => $this->ssh_port ?? null,
             'api_port' => $this->api_port ?? null,
+            'api_ssl' => (bool) $this->api_ssl,
             'latitude' => $this->latitude !== '' ? $this->latitude : null,
             'longitude' => $this->longitude !== '' ? $this->longitude : null,
             'location' => $this->location !== '' ? $this->location : null,
@@ -116,10 +120,21 @@ class MikrotikSync extends Component
             $data['password'] = $this->password;
         }
 
-        RouterList::updateOrCreate(
+        $previousRouterName = $this->RouterListId
+            ? RouterList::whereKey($this->RouterListId)->value('router_name')
+            : null;
+
+        $savedRouter = RouterList::updateOrCreate(
             ['id' => $this->RouterListId],
             $data
         );
+
+        // Protocol and port settings are part of the router connection identity.
+        // Invalidate cached read results so edits take effect immediately.
+        $controller = app(MikrotikController::class);
+        foreach (array_unique(array_filter([$previousRouterName, $savedRouter->router_name])) as $name) {
+            $controller->invalidateRouterCache((string) $name);
+        }
 
         $this->reset();
         flash()->success('Router added successfully!');
@@ -356,6 +371,7 @@ class MikrotikSync extends Component
             $this->password = '';  // Reset password field
             $this->ssh_port = $router->ssh_port;
             $this->api_port = $router->api_port;
+            $this->api_ssl = (bool) $router->api_ssl;
             $this->latitude = $router->latitude;
             $this->longitude = $router->longitude;
             $this->location = $router->location ?? '';

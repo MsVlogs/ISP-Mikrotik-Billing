@@ -19,11 +19,11 @@ class MikrotikController extends Controller
     /**
      * Get or create a pooled API service instance
      */
-    protected function getPooledApiService(string $ip, int $port, string $username, string $password, int $timeout = 3): MikrotikApiService
+    protected function getPooledApiService(string $ip, int $port, string $username, string $password, int $timeout = 3, bool $ssl = false): MikrotikApiService
     {
-        $key = "{$ip}:{$port}:{$username}";
+        $key = "{$ip}:{$port}:{$username}:ssl=".(int) $ssl;
         if (! isset(self::$apiPool[$key])) {
-            self::$apiPool[$key] = new MikrotikApiService($ip, $port, $username, $password, $timeout);
+            self::$apiPool[$key] = new MikrotikApiService($ip, $port, $username, $password, $timeout, $ssl);
         }
 
         return self::$apiPool[$key];
@@ -93,7 +93,8 @@ class MikrotikController extends Controller
         ?string $apiCmd = null,
         ?string $sshCmd = null,
         array $apiParams = [],
-        bool $showErrorFlash = true
+        bool $showErrorFlash = true,
+        bool $apiSsl = false
     ): array {
         $apiError = null;
 
@@ -104,7 +105,7 @@ class MikrotikController extends Controller
                 }
 
                 // Short 3s timeout: if API port is unreachable we fail fast and try SSH immediately
-                $response = $this->getPooledApiService($ip, $apiPort, $username, $password, 3)
+                $response = $this->getPooledApiService($ip, $apiPort, $username, $password, 3, $apiSsl)
                     ->executeCommand($apiCmd, $apiParams);
 
                 if (is_string($response) && str_starts_with($response, 'Error:')) {
@@ -215,7 +216,8 @@ class MikrotikController extends Controller
                     $apiCmd,
                     $sshCmd,
                     $apiParams,
-                    $showErrorFlash
+                    $showErrorFlash,
+                    (bool) $router->api_ssl
                 );
 
                 // Only cache if the connection attempt was successful
@@ -248,7 +250,7 @@ class MikrotikController extends Controller
             // Priority 1: High-Speed API (3s timeout — fail fast so SSH fallback is immediate)
             if ($router->api_port) {
                 try {
-                    $service = $this->getPooledApiService($router->ip_address, $router->api_port, $router->username, $router->password, 3);
+                    $service = $this->getPooledApiService($router->ip_address, $router->api_port, $router->username, $router->password, 3, (bool) $router->api_ssl);
                     $isPrint = str_contains($apiCmd, 'print');
                     $res = $service->executeCommand(
                         $apiCmd,
@@ -357,7 +359,7 @@ class MikrotikController extends Controller
         // Priority 2: API fallback for write commands (3s timeout)
         if ($router->api_port) {
             try {
-                $api = $this->getPooledApiService($router->ip_address, $router->api_port, $router->username, $router->password, 3);
+                $api = $this->getPooledApiService($router->ip_address, $router->api_port, $router->username, $router->password, 3, (bool) $router->api_ssl);
                 $lcmd = ltrim($command, '/');
 
                 // Atomic [find ...] mapping: resolve name-based selector to internal .id for API
@@ -1137,7 +1139,8 @@ class MikrotikController extends Controller
                         '/ppp/active/print',
                         '/ppp active print without-paging terse',
                         [],
-                        false
+                        false,
+                        (bool) $router->api_ssl
                     );
 
                     if (($result['status'] ?? false) === true) {
@@ -2094,7 +2097,8 @@ class MikrotikController extends Controller
                     $router->api_port,
                     $router->username,
                     $router->password,
-                    30  // extended timeout for backup operation
+                    30, // extended timeout for backup operation
+                    (bool) $router->api_ssl
                 );
 
                 $res = $api->executeCommand('/system/backup/save', [

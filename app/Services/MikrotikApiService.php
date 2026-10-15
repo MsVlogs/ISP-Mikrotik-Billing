@@ -11,14 +11,15 @@ class MikrotikApiService
 {
     protected $client;
 
-    public function __construct($host, $port, $username, $password, int $timeout = 5)
+    public function __construct($host, $port, $username, $password, int $timeout = 5, bool $ssl = false)
     {
         try {
             $config = new Config([
                 'host' => $host,
                 'user' => $username,
                 'pass' => $password,
-                'port' => $port ?? 8728,
+                'port' => $port ?? ($ssl ? 8729 : 8728),
+                'ssl' => $ssl,
                 'timeout' => $timeout,
                 'attempts' => 1,
             ]);
