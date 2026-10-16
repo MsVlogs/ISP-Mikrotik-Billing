@@ -147,6 +147,9 @@ class NewCustomer extends Component
         $this->connected_by = auth()->id();
 
         $mikrotikClientId = request()->integer('mikrotik_client');
+        if ($mikrotikClientId && auth()->user()->hasRole('Reseller')) {
+            abort(403, 'MikroTik user import is only available to authorized billing administrators.');
+        }
         if ($mikrotikClientId) {
             $secret = PPPSecrets::findOrFail($mikrotikClientId);
             abort_unless($secret->service === null || strtolower((string) $secret->service) === 'pppoe', 422, 'Only PPPoE users can be imported from MikroTik.');
@@ -277,7 +280,14 @@ class NewCustomer extends Component
                     ->where(function ($q) use ($reseller) {
                         $q->whereIn('id', $reseller->assignedPackages->pluck('id'))
                             ->orWhere('reseller_id', $reseller->id);
-                    })->first();
+                    })
+                    ->when(filled($this->router_name), function ($q) {
+                        $routerName = $this->router_name;
+                        $q->where(function ($routeQuery) use ($routerName) {
+                            $routeQuery->where('router_name', $routerName)->orWhereNull('router_name');
+                        });
+                    })
+                    ->first();
             } else {
                 $package = PackageList::where('package', $this->package_name)
                     ->when(! empty($this->router_name), fn ($q) => $q->where('router_name', $this->router_name))
@@ -592,9 +602,15 @@ class NewCustomer extends Component
             }
 
             $pppUser = null;
-            if (auth()->user()->can('mikrotik-user-create')) {
+            if (auth()->user()->can('mikrotik-user-create') || auth()->user()->hasRole('Reseller')) {
                 // create ppp_user table record
-                $pppUserCheck = PPPSecrets::where('username', $this->username)->orwhere('username', $this->queue_name)->first();
+                $pppUserCheck = PPPSecrets::query()
+                    ->when(filled($this->router_name), fn ($q) => $q->where('router_name', $this->router_name))
+                    ->where(function ($q) {
+                        $q->where('username', $this->username)
+                            ->orWhere('username', $this->queue_name);
+                    })
+                    ->first();
 
                 // Check if this PPP user is already linked to a customer
                 if ($pppUserCheck && CustomersInfo::where('ppp_user_id', $pppUserCheck->id)->exists()) {
@@ -662,7 +678,14 @@ class NewCustomer extends Component
                         ->where(function ($q) use ($reseller) {
                             $q->whereIn('id', $reseller->assignedPackages->pluck('id'))
                                 ->orWhere('reseller_id', $reseller->id);
-                        })->first();
+                        })
+                        ->when(filled($this->router_name), function ($q) {
+                            $routerName = $this->router_name;
+                            $q->where(function ($routeQuery) use ($routerName) {
+                                $routeQuery->where('router_name', $routerName)->orWhereNull('router_name');
+                            });
+                        })
+                        ->first();
                     $assignedPackageId = $pkg?->id;
                 } else {
                     $pkg = PackageList::where('package', $this->package_name)
@@ -745,7 +768,8 @@ class NewCustomer extends Component
 
             // Redirect to customers list
             if (auth()->user()->hasRole('Reseller')) {
-                return redirect()->route('reseller.customers.index');
+                $routePrefix = auth()->user()->reseller?->isMacPanel() ? 'mac-reseller' : 'reseller';
+                return redirect()->route($routePrefix.'.customers.index');
             }
 
             return redirect('/customers');
@@ -782,6 +806,12 @@ class NewCustomer extends Component
                 $q->whereIn('id', $reseller->assignedPackages->pluck('id'))
                     ->orWhere('reseller_id', $reseller->id);
             })
+                ->when(filled($this->router_name), function ($q) {
+                    $routerName = $this->router_name;
+                    $q->where(function ($routeQuery) use ($routerName) {
+                        $routeQuery->where('router_name', $routerName)->orWhereNull('router_name');
+                    });
+                })
                 ->select('price', 'package')
                 ->get();
         } else {
@@ -790,8 +820,10 @@ class NewCustomer extends Component
                 ->get();
         }
 
-        // $users = User::permission('create-user')->get();
-        $this->users = User::all();
+        // Keep internal user lists out of reseller Livewire state.
+        $this->users = auth()->user()->hasRole('Reseller')
+            ? User::query()->select('id', 'name')->whereKey(auth()->id())->get()
+            : User::select('id', 'name')->get();
 
         return view('livewire.new-customer')->layout('layouts.app');
     }

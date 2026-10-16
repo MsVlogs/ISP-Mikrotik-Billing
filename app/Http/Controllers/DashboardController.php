@@ -21,7 +21,10 @@ class DashboardController extends Controller
     public function index()
     {
         if (auth()->check() && auth()->user()->hasRole('Reseller')) {
-            return redirect()->route('reseller.dashboard');
+            $route = auth()->user()->reseller?->isMacPanel()
+                ? 'mac-reseller.dashboard'
+                : 'reseller.dashboard';
+            return redirect()->route($route);
         }
 
         $results = [];

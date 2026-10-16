@@ -21,6 +21,7 @@ use App\Http\Controllers\Payment\SslCommerzPaymentController;
 use App\Http\Controllers\Portal\PortalVoucherController;
 use App\Http\Controllers\SupportCenterController;
 use App\Http\Controllers\Reseller\ResellerDashboardController;
+use App\Http\Controllers\Reseller\MacResellerDashboardController;
 use App\Livewire\AddressSetup;
 use App\Livewire\Admin\ManageRole;
 use App\Livewire\Admin\ManageTickets;
@@ -1437,6 +1438,15 @@ Route::middleware([
         });
 
         // Reseller Portal Routes
+        // MAC Reseller: isolated customer-management panel.
+        Route::prefix('mac-reseller')->middleware(['mac-reseller'])->name('mac-reseller.')->group(function () {
+            Route::get('/dashboard', [MacResellerDashboardController::class, 'index'])->name('dashboard');
+            Route::get('customers/data', [ResellerCustomerList::class, 'getData'])->name('customers.data');
+            Route::get('customers', ResellerCustomerList::class)->name('customers.index');
+            Route::get('customers/create', NewCustomer::class)->name('customers.create');
+            Route::get('customers/{customerId}/edit', EditCustomer::class)->name('customers.edit');
+        });
+
         Route::prefix('reseller')->middleware(['reseller'])->name('reseller.')->group(function () {
             Route::get('/dashboard', [ResellerDashboardController::class, 'index'])->name('dashboard');
             Route::get('customers/data', [ResellerCustomerList::class, 'getData'])->name('customers.data');

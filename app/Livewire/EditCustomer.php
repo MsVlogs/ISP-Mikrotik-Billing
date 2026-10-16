@@ -103,9 +103,16 @@ class EditCustomer extends Component
         }
 
         $this->addressFields = AddressField::all();
-        $this->routers = RouterList::all();
-        $this->userLists = User::select('id', 'name', 'email')->get();
-        if (hasAccess(['Super Admin'], ['create-reseller'])) {
+        $isReseller = auth()->user()->hasRole('Reseller');
+        $this->routers = RouterList::query()
+            ->select('id', 'router_name', 'action')
+            ->where('action', 'connected')
+            ->orderBy('router_name')
+            ->get();
+        $this->userLists = $isReseller
+            ? User::query()->select('id', 'name', 'email')->whereKey(auth()->id())->get()
+            : User::select('id', 'name', 'email')->get();
+        if (! $isReseller && hasAccess(['Super Admin'], ['create-reseller'])) {
             $this->resellersList = Reseller::with('user')->get();
         }
         $this->customerId = $customerId;
@@ -123,10 +130,16 @@ class EditCustomer extends Component
         if ($customer && $customer->reseller_id) {
             $reseller = Reseller::find($customer->reseller_id);
             if ($reseller) {
+                $routerName = $this->fields['pppUser']['router_name'] ?? null;
                 $this->packageLists = PackageList::where(function ($q) use ($reseller) {
                     $q->whereIn('id', $reseller->assignedPackages->pluck('id'))
                         ->orWhere('reseller_id', $reseller->id);
                 })
+                    ->when(filled($routerName), function ($q) use ($routerName) {
+                        $q->where(function ($routeQuery) use ($routerName) {
+                            $routeQuery->where('router_name', $routerName)->orWhereNull('router_name');
+                        });
+                    })
                     ->pluck('package');
                 return;
             }
@@ -146,8 +159,18 @@ class EditCustomer extends Component
 
         $routerName = trim((string) ($this->fields['pppUser']['router_name'] ?? ''));
         $query = PackageList::where('package', $packageName);
+        if (auth()->user()->hasRole('Reseller')) {
+            $reseller = auth()->user()->reseller;
+            abort_unless($reseller, 403);
+            $query->where(function ($q) use ($reseller) {
+                $q->whereIn('id', $reseller->assignedPackages()->select('package_lists.id'))
+                    ->orWhere('reseller_id', $reseller->id);
+            });
+        }
         if ($routerName !== '') {
-            $query->where('router_name', $routerName);
+            $query->where(function ($routeQuery) use ($routerName) {
+                $routeQuery->where('router_name', $routerName)->orWhereNull('router_name');
+            });
         }
 
         $package = $query->first();
@@ -185,17 +208,16 @@ class EditCustomer extends Component
 
     public function loadCustomerData($customerId)
     {
-        $customer = CustomersInfo::where('customer_unique_id', decrypt($customerId))
-            ->with('customerAddress', 'billing', 'official', 'pppUser', 'package')
-            ->first();
+        $query = CustomersInfo::where('customer_unique_id', decrypt($customerId))
+            ->with('customerAddress', 'billing', 'official', 'pppUser', 'package');
+        if (auth()->user()->hasRole('Reseller')) {
+            $reseller = auth()->user()->reseller;
+            abort_unless($reseller && $reseller->isActive(), 403, 'Reseller account is not active.');
+            $query->where('reseller_id', $reseller->id);
+        }
+        $customer = $query->firstOrFail();
 
         if ($customer) {
-            if (auth()->user()->hasRole('Reseller')) {
-                $reseller = auth()->user()->reseller;
-                if (! $reseller || $customer->reseller_id !== $reseller->id) {
-                    abort(403, 'Unauthorized action.');
-                }
-            }
             $addressFields = $this->addressFields; // Retrieve all AddressField entries
 
             $customerAddresses = $addressFields->mapWithKeys(function ($field) use ($customer) {
@@ -324,6 +346,10 @@ class EditCustomer extends Component
 
         $uid = decrypt($this->customerId);
         $customer = CustomersInfo::where('customer_unique_id', $uid)->with(['pppUser', 'billing', 'official'])->firstOrFail();
+        if (auth()->user()->hasRole('Reseller')) {
+            $reseller = auth()->user()->reseller;
+            abort_unless($reseller && $customer->reseller_id === $reseller->id, 403, 'You can only edit your own clients.');
+        }
 
         $this->validate([
             'fields.customer.customer_name' => 'required|min:3|max:255',
@@ -381,9 +407,21 @@ class EditCustomer extends Component
 
             $packageName = $this->fields['pppUser']['package_name'] ?? null;
             if ($packageName) {
-                $package = PackageList::where('package', $packageName)
-                    ->when($customer->pppUser?->router_name, fn ($q, $router) => $q->where('router_name', $router))
-                    ->first();
+                $packageQuery = PackageList::where('package', $packageName)
+                    ->when($customer->pppUser?->router_name, function ($q, $router) {
+                        $q->where(function ($routeQuery) use ($router) {
+                            $routeQuery->where('router_name', $router)->orWhereNull('router_name');
+                        });
+                    });
+                if (auth()->user()->hasRole('Reseller')) {
+                    $reseller = auth()->user()->reseller;
+                    abort_unless($reseller, 403);
+                    $packageQuery->where(function ($q) use ($reseller) {
+                        $q->whereIn('id', $reseller->assignedPackages()->select('package_lists.id'))
+                            ->orWhere('reseller_id', $reseller->id);
+                    });
+                }
+                $package = $packageQuery->first();
                 if ($package) {
                     $customer->package_id = $package->id;
                     $customer->save();
@@ -451,7 +489,12 @@ class EditCustomer extends Component
 
         flash()->addSuccess('Customer updated successfully.');
 
-        // After a successful save, return directly to the Customer List.
+        // Return the reseller to its own isolated client list after a successful save.
+        if (auth()->user()->hasRole('Reseller')) {
+            $routePrefix = auth()->user()->reseller?->isMacPanel() ? 'mac-reseller' : 'reseller';
+            $this->redirectRoute($routePrefix.'.customers.index', navigate: true);
+            return;
+        }
         $this->redirectRoute('customers.index', navigate: true);
     }
 
@@ -782,7 +825,11 @@ class EditCustomer extends Component
 
     public function deletePhoto()
     {
-        $photoUrl = CustomersInfo::where('customer_unique_id', decrypt($this->customerId))->first();
+        $photoUrl = CustomersInfo::where('customer_unique_id', decrypt($this->customerId))->firstOrFail();
+        if (auth()->user()->hasRole('Reseller')) {
+            $reseller = auth()->user()->reseller;
+            abort_unless($reseller && $photoUrl->reseller_id === $reseller->id, 403, 'You can only edit your own clients.');
+        }
         if ($photoUrl->photo_url && file_exists(public_path($photoUrl->photo_url))) {
             unlink(public_path($photoUrl->photo_url));
         }
@@ -795,6 +842,12 @@ class EditCustomer extends Component
 
     public function savePhoto()
     {
+        $customer = CustomersInfo::where('customer_unique_id', decrypt($this->customerId))->firstOrFail();
+        if (auth()->user()->hasRole('Reseller')) {
+            $reseller = auth()->user()->reseller;
+            abort_unless($reseller && $customer->reseller_id === $reseller->id, 403, 'You can only edit your own clients.');
+        }
+
         // Generate a unique filename and define the path
         $filename = uniqid().'.jpg';
         $path = 'customer-images/'.$filename;
@@ -834,21 +887,34 @@ class EditCustomer extends Component
 
     public function checkboxUpdated($propertyName)
     {
-        if (str_contains($propertyName, '.')) {
-            // Save the updated checkbox state to the database
-            $segments = explode('.', $propertyName);
-            if (count($segments) === 3 && $segments[0] === 'fields') {
-                $group = $segments[1];
-                $field = $segments[2];
-                if ($group === 'pppUser') {
-                    $dataUpdate = BillingInfo::where('customer_bill_unique_id', decrypt($this->customerId))->update([$field => $this->fields[$group][$field]]);
-                } elseif ($group === 'official') {
-                    $dataUpdate = OfficialInfo::where('customer_office_unique_id', decrypt($this->customerId))->update([$field => $this->fields[$group][$field]]);
-                }
-                if ($dataUpdate) {
-                    flash()->success('Data updated successfully!');
-                }
-            }
+        $uid = decrypt($this->customerId);
+        $customerQuery = CustomersInfo::where('customer_unique_id', $uid);
+        if (auth()->user()->hasRole('Reseller')) {
+            $reseller = auth()->user()->reseller;
+            abort_unless($reseller, 403);
+            $customerQuery->where('reseller_id', $reseller->id);
+        }
+        $customer = $customerQuery->firstOrFail();
+
+        $segments = explode('.', (string) $propertyName);
+        abort_unless(count($segments) === 3 && $segments[0] === 'fields', 403);
+        [, $group, $field] = $segments;
+        $allowed = [
+            'pppUser' => ['auto_disable'],
+            'official' => ['billing_type', 'connection_type', 'connectivity_type', 'client_type'],
+        ];
+        abort_unless(in_array($field, $allowed[$group] ?? [], true), 403, 'Unsupported checkbox field.');
+
+        if ($group === 'pppUser') {
+            $updated = BillingInfo::where('customer_bill_unique_id', $customer->customer_unique_id)
+                ->update([$field => data_get($this->fields, $propertyName)]);
+        } else {
+            $updated = OfficialInfo::where('customer_office_unique_id', $customer->customer_unique_id)
+                ->update([$field => data_get($this->fields, $propertyName)]);
+        }
+
+        if ($updated) {
+            flash()->success('Data updated successfully!');
         }
     }
 
@@ -864,10 +930,20 @@ class EditCustomer extends Component
             abort(403, 'Unauthorized action.');
         }
 
-        if (auth()->user()->hasRole('Reseller') && ($field === 'status' || str_ends_with($field, '.status')) && $value === 'free') {
-            flash()->error('Unauthorized to set status to free.');
+        $customer = CustomersInfo::where('customer_unique_id', decrypt($this->customerId))->firstOrFail();
+        if (auth()->user()->hasRole('Reseller')) {
+            $reseller = auth()->user()->reseller;
+            abort_unless($reseller && $customer->reseller_id === $reseller->id, 403, 'You can only edit your own clients.');
+        }
 
-            return;
+        if (auth()->user()->hasRole('Reseller')) {
+            if (! str_contains((string) $field, '.')
+                && ! in_array($field, ['customer_unique_id', 'customer_name', 'email', 'mobile', 'alternative_mobile', 'identification_no', 'profession', 'connection_date'], true)) {
+                abort(403, 'This field cannot be edited by a reseller.');
+            }
+            if ($field === 'status' || str_ends_with((string) $field, '.status')) {
+                abort(403, 'Use the client status controls to activate or disable a client.');
+            }
         }
 
         // Define validation rules directly if there's an issue with accessing the rules method
@@ -931,9 +1007,7 @@ class EditCustomer extends Component
             }
         }
         // Proceed with updating customer data if validation passes
-        $customer = CustomersInfo::where('customer_unique_id', decrypt($this->customerId))
-            ->with('billing', 'customerAddress', 'official', 'pppUser')
-            ->first();
+        $customer->load('billing', 'customerAddress', 'official', 'pppUser');
 
         // Customer Unique Id is manual-only: keep it unique while allowing the current customer to retain its own ID.
         $rules['customer_unique_id'] = [
@@ -1010,10 +1084,16 @@ class EditCustomer extends Component
                     if ($attribute == 'package_name') {
                         if ($customer->reseller_id) {
                             $reseller = Reseller::find($customer->reseller_id);
+                            $routerName = $customer->pppUser->router_name ?? null;
                             $pkg = PackageList::where('package', $value)
                                 ->where(function ($q) use ($reseller) {
                                     $q->whereIn('id', $reseller->assignedPackages->pluck('id'))
                                         ->orWhere('reseller_id', $reseller->id);
+                                })
+                                ->when(filled($routerName), function ($q) use ($routerName) {
+                                    $q->where(function ($routeQuery) use ($routerName) {
+                                        $routeQuery->where('router_name', $routerName)->orWhereNull('router_name');
+                                    });
                                 })
                                 ->first();
                         } else {

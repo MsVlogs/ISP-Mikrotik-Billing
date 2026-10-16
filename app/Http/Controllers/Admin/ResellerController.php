@@ -103,6 +103,7 @@ class ResellerController extends Controller
             'company' => 'nullable|string|max:255',
             'commission_percentage' => 'required|numeric|min:0|max:100',
             'status' => 'required|in:active,suspended',
+            'panel_type' => 'required|in:standard,mac',
             'packages' => 'nullable|array',
             'packages.*' => 'exists:package_lists,id',
             'permissions' => 'nullable|array',
@@ -134,6 +135,7 @@ class ResellerController extends Controller
                 'commission_percentage' => $request->commission_percentage,
                 'balance' => 0.00,
                 'status' => $request->status,
+                'panel_type' => $request->panel_type,
                 'phone' => $request->mobile,
                 'settings' => [
                     'allow_fixed_voucher' => (bool) $request->allow_fixed_voucher,
@@ -149,7 +151,7 @@ class ResellerController extends Controller
             }
 
             // 4. Sync permissions
-            $selectedPermissions = $request->input('permissions', []);
+            $selectedPermissions = $request->panel_type === 'mac' ? [] : $request->input('permissions', []);
             $user->syncPermissions($selectedPermissions);
 
             // Log activity
@@ -228,6 +230,7 @@ class ResellerController extends Controller
             'company' => 'nullable|string|max:255',
             'commission_percentage' => 'required|numeric|min:0|max:100',
             'status' => 'required|in:active,suspended',
+            'panel_type' => 'required|in:standard,mac',
             'packages' => 'nullable|array',
             'packages.*' => 'exists:package_lists,id',
             'permissions' => 'nullable|array',
@@ -276,6 +279,7 @@ class ResellerController extends Controller
                 'company' => $request->company,
                 'commission_percentage' => $request->commission_percentage,
                 'status' => $request->status,
+                'panel_type' => $request->panel_type,
                 'phone' => $request->mobile,
                 'settings' => [
                     'allow_fixed_voucher' => (bool) $request->allow_fixed_voucher,
@@ -289,7 +293,7 @@ class ResellerController extends Controller
             $reseller->assignedPackages()->sync($request->packages ?? []);
 
             // Sync permissions
-            $selectedPermissions = $request->input('permissions', []);
+            $selectedPermissions = $request->panel_type === 'mac' ? [] : $request->input('permissions', []);
             $reseller->user->syncPermissions($selectedPermissions);
 
             // Log activity

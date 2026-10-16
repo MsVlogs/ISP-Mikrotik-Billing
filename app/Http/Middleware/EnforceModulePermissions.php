@@ -16,6 +16,27 @@ class EnforceModulePermissions
             return $next($request);
         }
 
+        // MAC Reseller accounts use a tenant-isolated panel, not the global billing UI.
+        // Keep the default dashboard redirect and account profile/logout reachable.
+        if ($user->hasRole('Reseller') && $user->reseller?->isMacPanel()) {
+            $macPath = trim($request->path(), '/');
+            $allowed = $macPath === ''
+                || $macPath === 'dashboard'
+                || $macPath === 'dashboard-index'
+                || $macPath === 'mac-reseller'
+                || str_starts_with($macPath, 'mac-reseller/')
+                || $macPath === 'logout'
+                || $macPath === 'user/profile'
+                || str_starts_with($macPath, 'user/');
+
+            if (! $allowed) {
+                if (in_array(strtoupper($request->method()), ['GET', 'HEAD'], true)) {
+                    return redirect()->route('mac-reseller.dashboard');
+                }
+                abort(403, 'This account is restricted to the MAC Reseller panel.');
+            }
+        }
+
         // The platform owner remains the explicit full-access role.
         if ($user->hasRole('Super Admin')) {
             return $next($request);
