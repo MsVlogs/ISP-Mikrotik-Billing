@@ -203,6 +203,11 @@ class SyncOltOnuMappings extends Command
                     continue;
                 }
 
+                // Timestamp an OPM sample only when both optical values are present.
+                // last_seen_at alone proves ONU status/identity was polled, not OPM.
+                $hasFreshOpm = is_numeric($row['rx_power'] ?? $row['opticalRx'] ?? null)
+                    && is_numeric($row['tx_power'] ?? $row['opticalTx'] ?? null);
+
                 $mappingData = [
                     'customer_id' => $customerId ?? $existingMapping?->customer_id,
                     'ppp_user_id' => $pppId ?? $existingMapping?->ppp_user_id,
@@ -220,6 +225,7 @@ class SyncOltOnuMappings extends Command
                     'rx_power' => $row['rx_power'] ?? $row['opticalRx'] ?? $existingMapping?->rx_power,
                     'tx_power' => $row['tx_power'] ?? $row['opticalTx'] ?? $existingMapping?->tx_power,
                     'opm_source' => $row['opm_source'] ?? $existingMapping?->opm_source,
+                    'opm_last_seen_at' => $hasFreshOpm ? now() : $existingMapping?->opm_last_seen_at,
                     'onu_ip' => $row['onu_ip'] ?? $row['ip'] ?? $row['onuIp'] ?? null,
                     'last_seen_at' => $lastSeen,
                     'notes' => $existingMapping ? $existingMapping->notes : ($row['detail'] ?? 'Discovered by read-only ONU synchronisation; customer mapping requires explicit review.'),

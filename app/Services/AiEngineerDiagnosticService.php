@@ -80,7 +80,7 @@ class AiEngineerDiagnosticService
                 'live_session'=>$livePpp,
             ] : ['state'=>'missing'],
             'router' => $router ? ['name'=>$router->router_name,'ip'=>$router->ip_address,'state'=>$router->action ?: 'অজানা','latency_ms'=>$router->last_latency_ms,'last_checked_at'=>$router->last_checked_at,'check_age_seconds'=>$routerAge,'check_freshness'=>$routerAge === null ? 'unknown' : ($routerAge <= 900 ? 'recent' : 'stale')] : ['state'=>$ppp?->router_name ? 'missing' : 'not_assigned'],
-            'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'olt_name'=>$olt?->name,'olt_ip'=>$olt?->ip_address,'olt_state'=>$olt?->health_status ?: $olt?->status ?: 'অজানা','olt_latency_ms'=>$olt?->last_latency_ms,'olt_last_checked_at'=>$olt?->last_checked_at,'health_check'=>$oltHealth ? ['status'=>$oltHealth->status,'latency_ms'=>$oltHealth->latency_ms,'checked_at'=>$oltHealth->checked_at] : null,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'অজানা','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at,'last_seen_age_seconds'=>$mapping->last_seen_at ? max(0, now()->diffInSeconds($mapping->last_seen_at, false) * -1) : null] : ['state'=>'not_mapped'],
+            'onu' => $mapping ? ['olt_device_id'=>$mapping->olt_device_id,'olt_name'=>$olt?->name,'olt_ip'=>$olt?->ip_address,'olt_state'=>$olt?->health_status ?: $olt?->status ?: 'অজানা','olt_latency_ms'=>$olt?->last_latency_ms,'olt_last_checked_at'=>$olt?->last_checked_at,'health_check'=>$oltHealth ? ['status'=>$oltHealth->status,'latency_ms'=>$oltHealth->latency_ms,'checked_at'=>$oltHealth->checked_at] : null,'pon'=>$mapping->pon_port,'onu_id'=>$mapping->onu_id,'serial'=>$mapping->onu_serial,'mac'=>$mapping->onu_mac,'state'=>$mapping->status ?: 'অজানা','rx_power'=>$mapping->rx_power,'tx_power'=>$mapping->tx_power,'opm_source'=>$mapping->opm_source,'opm_last_seen_at'=>$mapping->opm_last_seen_at?->toIso8601String(),'ip'=>$mapping->onu_ip,'last_seen_at'=>$mapping->last_seen_at,'last_seen_age_seconds'=>$mapping->last_seen_at ? max(0, now()->diffInSeconds($mapping->last_seen_at, false) * -1) : null] : ['state'=>'not_mapped'],
             'billing' => $billing ? ['state'=>$this->billingState($billing),'due'=>$this->billingDue($billing)] : ['state'=>'not_found'],
         ];
         $findings=[]; $causes=[]; $checks=[]; $severity='info';
@@ -365,8 +365,15 @@ class AiEngineerDiagnosticService
             if (str_contains($q,'optical') || str_contains($q,'power') || str_contains($q,'rx') || str_contains($q,'tx') || str_contains($q,'অপ্টিকাল') || str_contains($q,'পাওয়ার')) {
                 $rows=$this->opticalPowerList(50);
                 if (!$rows) return 'No ONU optical-power readings are available in the current mapping data.';
-                $parts=array_map(fn($r)=>($r['olt']?:'OLT').' | ONU '.($r['onu_id']??'—').' | MAC '.($r['mac']??'—').' | PON '.($r['pon']??'—').' | RX '.($r['rx']??'—').' dBm | TX '.($r['tx']??'—').' dBm | '.($r['status']??'অজানা'),$rows);
-                return 'বর্তমান ONU optical power তালিকা:\n'.implode("\n",$parts);
+                $parts=array_map(function($r){
+                    $measuredAt=!empty($r['opm_measured_at'])
+                        ? 'measurement '.\Illuminate\Support\Carbon::parse($r['opm_measured_at'])->format('d M Y H:i:s')
+                        : 'measurement time unknown; saved reading is not confirmed live';
+                    $rx=is_numeric($r['rx']??null)?$r['rx'].' dBm':'—';
+                    $tx=is_numeric($r['tx']??null)?$r['tx'].' dBm':'—';
+                    return ($r['olt']?:'OLT').' | ONU '.($r['onu_id']??'—').' | MAC '.($r['mac']??'—').' | PON '.($r['pon']??'—').' | RX '.$rx.' | TX '.$tx.' | '.$measuredAt.' | '.($r['status']??'অজানা');
+                },$rows);
+                return 'সর্বশেষ সংরক্ষিত ONU optical power তালিকা (পৃথক measurement timestamp না থাকলে live reading হিসেবে নিশ্চিত নয়):'."\n".implode("\n",$parts);
             }
             if (str_contains($q,'billing') || str_contains($q,'bill') || str_contains($q,'due')) return 'For billing, চেক the customer\'s outstanding amount, auto-disable setting, account status, and any open support ticket. Select a customer to get customer-specific evidence.';
             if (str_contains($q,'device') || str_contains($q,'router') || str_contains($q,'mikrotik')) return 'For a device issue, চেক the assigned router inventory state, last-seen/session information, and any linked ONU mapping. Select a customer for a service-path diagnosis.';
@@ -498,7 +505,7 @@ class AiEngineerDiagnosticService
         if(!Schema::hasTable('olt_onu_customer_mappings')) return [];
         return OltOnuCustomerMapping::with('olt')->whereNull('customer_id')->latest('id')->limit($limit)->get()->map(fn($m)=>[
             'id'=>$m->id,'olt'=>$m->olt?->name,'onu_id'=>$m->onu_id,'mac'=>$m->onu_mac,'serial'=>$m->onu_serial,'pon'=>$m->pon_port,
-            'status'=>$m->status,'rx'=>$m->rx_power,'tx'=>$m->tx_power,'last_seen'=>$m->last_seen_at,'reason'=>$m->notes?:'No exact customer/PPPoE match found.'
+            'status'=>$m->status,'rx'=>$m->rx_power,'tx'=>$m->tx_power,'opm_source'=>$m->opm_source,'opm_measured_at'=>$m->opm_last_seen_at?->toIso8601String(),'last_seen'=>$m->last_seen_at,'reason'=>$m->notes?:'No exact customer/PPPoE match found.'
         ])->values()->all();
     }
 
@@ -507,7 +514,7 @@ class AiEngineerDiagnosticService
         if(!Schema::hasTable('olt_onu_customer_mappings')) return [];
         return OltOnuCustomerMapping::with('olt')->latest('id')->limit($limit)->get()->map(fn($m)=>[
             'id'=>$m->id,'olt'=>$m->olt?->name,'onu_id'=>$m->onu_id,'mac'=>$m->onu_mac,'serial'=>$m->onu_serial,
-            'pon'=>$m->pon_port,'status'=>$m->status,'rx'=>$m->rx_power,'tx'=>$m->tx_power,'last_seen'=>$m->last_seen_at,
+            'pon'=>$m->pon_port,'status'=>$m->status,'rx'=>$m->rx_power,'tx'=>$m->tx_power,'opm_source'=>$m->opm_source,'opm_measured_at'=>$m->opm_last_seen_at?->toIso8601String(),'last_seen'=>$m->last_seen_at,
         ])->values()->all();
     }
 

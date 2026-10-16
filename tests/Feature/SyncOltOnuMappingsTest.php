@@ -49,18 +49,18 @@ class SyncOltOnuMappingsTest extends TestCase
         return [$customer, $ppp];
     }
 
-    private function fakeAdapter(NetworkInventoryDevice $olt, string $mac, array $clientMacs = []): void
+    private function fakeAdapter(NetworkInventoryDevice $olt, string $mac, array $clientMacs = [], array $extraOnuFields = []): void
     {
         $manager = \Mockery::mock(OltReadOnlyAdapterManager::class);
         $manager->shouldReceive('read')->once()->with(\Mockery::on(
             fn ($device) => $device instanceof NetworkInventoryDevice && $device->id === $olt->id
         ))->andReturn([
             'ok' => true, 'status' => 'ok', 'message' => 'test response',
-            'onus' => [[
+            'onus' => [array_merge([
                 'onu_id' => '25', 'pon_port' => '1', 'onu_mac' => $mac,
                 'client_macs' => $clientMacs,
                 'status' => 'online', 'snmp_index' => '1.25',
-            ]],
+            ], $extraOnuFields)],
         ]);
         $this->app->instance(OltReadOnlyAdapterManager::class, $manager);
     }
@@ -143,4 +143,89 @@ class SyncOltOnuMappingsTest extends TestCase
         $this->assertNull($mapping->customer_id);
         $this->assertNull($mapping->ppp_user_id);
     }
+
+    public function test_opm_timestamp_advances_only_when_fresh_optical_values_are_returned(): void
+    {
+        $olt = $this->olt();
+        $mac = '00:11:46:95:1c:c5';
+        $measuredAt = now()->subHours(2);
+
+        OltOnuCustomerMapping::create([
+            'olt_device_id' => $olt->id,
+            'onu_id' => '25',
+            'pon_port' => '1',
+            'onu_mac' => $mac,
+            'status' => 'online',
+            'rx_power' => -26.4,
+            'tx_power' => 1.7,
+            'opm_source' => 'vsol-snmp-opm',
+            'opm_last_seen_at' => $measuredAt,
+        ]);
+        $this->fakeAdapter($olt, $mac, [], [
+            'rx_power' => -18.25,
+            'tx_power' => 2.15,
+            'opm_source' => 'vsol-snmp-opm',
+        ]);
+
+        $this->artisan('olt:sync-onu-mappings', ['--device' => $olt->id])->assertExitCode(0);
+
+        $mapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)->where('onu_id', '25')->firstOrFail();
+        $this->assertEquals(-18.25, (float) $mapping->rx_power);
+        $this->assertEquals(2.15, (float) $mapping->tx_power);
+        $this->assertTrue($mapping->opm_last_seen_at->greaterThan($measuredAt));
+    }
+
+
+    public function test_ai_optical_power_list_exposes_the_opm_measurement_timestamp(): void
+    {
+        $olt = $this->olt();
+        $measuredAt = now()->subMinutes(20);
+
+        OltOnuCustomerMapping::create([
+            'olt_device_id' => $olt->id,
+            'onu_id' => '25',
+            'pon_port' => '1',
+            'onu_mac' => '00:11:46:95:1c:c5',
+            'status' => 'online',
+            'rx_power' => -21.2,
+            'tx_power' => 1.95,
+            'opm_source' => 'test-opm',
+            'opm_last_seen_at' => $measuredAt,
+        ]);
+
+        $row = app(\App\Services\AiEngineerDiagnosticService::class)->opticalPowerList(10)[0];
+
+        $this->assertSame('test-opm', $row['opm_source']);
+        $this->assertSame($measuredAt->toIso8601String(), $row['opm_measured_at']);
+        $this->assertSame(-21.2, (float) $row['rx']);
+        $this->assertSame(1.95, (float) $row['tx']);
+    }
+
+    public function test_status_only_poll_does_not_refresh_old_opm_timestamp_or_values(): void
+    {
+        $olt = $this->olt();
+        $mac = '00:11:46:95:1c:c5';
+        $measuredAt = now()->subHours(12);
+
+        OltOnuCustomerMapping::create([
+            'olt_device_id' => $olt->id,
+            'onu_id' => '25',
+            'pon_port' => '1',
+            'onu_mac' => $mac,
+            'status' => 'online',
+            'rx_power' => -26.4,
+            'tx_power' => 1.7,
+            'opm_source' => 'vsol-snmp-opm',
+            'opm_last_seen_at' => $measuredAt,
+        ]);
+        $this->fakeAdapter($olt, $mac);
+
+        $this->artisan('olt:sync-onu-mappings', ['--device' => $olt->id])->assertExitCode(0);
+
+        $mapping = OltOnuCustomerMapping::where('olt_device_id', $olt->id)->where('onu_id', '25')->firstOrFail();
+        $this->assertEquals(-26.4, (float) $mapping->rx_power);
+        $this->assertEquals(1.7, (float) $mapping->tx_power);
+        $this->assertEquals($measuredAt->toDateTimeString(), $mapping->opm_last_seen_at->toDateTimeString());
+    }
+
 }
