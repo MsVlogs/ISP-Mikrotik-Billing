@@ -58,7 +58,7 @@ class ManageUser extends Component
     protected $listeners = ['userEdit' => 'editUser', 'userDelete' => 'deleteUser'];
 
     protected $messages = [
-        'mobile.regex' => 'Mobile number must start with "880" and be 11 digits long',
+        'mobile.regex' => 'Enter an 11-digit Bangladesh mobile number starting with 01.',
     ];
 
     public function mount()
@@ -225,7 +225,7 @@ class ManageUser extends Component
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email:rfc,dns|max:255|unique:users,email,'.$this->userId,
-            'mobile' => ['nullable', 'string', new ValidPhoneDigits],
+            'mobile' => ['nullable', 'string', 'regex:/^01[3-9][0-9]{8}$/'],
             'address' => 'nullable|string|max:255',
             'roles' => 'required|array|min:1',
             'roles.*' => 'required|string|distinct|exists:roles,name',

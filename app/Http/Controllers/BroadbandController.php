@@ -62,8 +62,48 @@ class BroadbandController extends Controller
         $query = $this->baseQuery($request);
         $leftStats = null;
 
+        $onlineSessionStatus = null;
         if ($status === 'online') {
-            $query->where('status', 'active')->whereHas('pppUser', fn ($q) => $q->where('status', 'active'));
+            // Online Customers means a real MikroTik /ppp/active session, not an enabled account.
+            // Always poll the live router sessions for this request. Do not reuse a cached
+            // username list, because stale sessions can make disconnected customers appear online.
+            $usersByRouter = [];
+            $successCount = 0;
+            $routerCount = RouterList::query()->count();
+            $controller = app(\App\Http\Controllers\MikrotikController::class);
+            foreach (RouterList::query()->get() as $router) {
+                try {
+                    $sessions = $controller->getActivePppSessions((string) $router->router_name);
+                    // An empty response is a valid zero-session result; exceptions are not.
+                    $successCount++;
+                    foreach ($sessions as $session) {
+                        $username = trim((string) ($session['name'] ?? ''));
+                        if ($username !== '') $usersByRouter[(string) $router->router_name][mb_strtolower($username)] = true;
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning('Online Customers live session read failed for '.$router->router_name.': '.$e->getMessage());
+                }
+            }
+            $liveSessions = ['users' => $usersByRouter, 'successful_routers' => $successCount, 'router_count' => $routerCount];
+            $onlineSessionStatus = ($liveSessions['successful_routers'] ?? 0) > 0 ? 'ok' : 'unavailable';
+            $onlineNames = [];
+            foreach (($liveSessions['users'] ?? []) as $routerName => $names) {
+                foreach (array_keys($names) as $username) $onlineNames[] = ['router' => $routerName, 'username' => $username];
+            }
+            if ($onlineSessionStatus === 'ok' && count($onlineNames) > 0) {
+                $query->where('status', 'active')->whereHas('pppUser', function ($q) use ($onlineNames) {
+                    $q->where('status', 'active')->where(function ($match) use ($onlineNames) {
+                        foreach ($onlineNames as $session) {
+                            $match->orWhere(function ($pair) use ($session) {
+                                $pair->where('router_name', $session['router'])->whereRaw('LOWER(username) = ?', [$session['username']]);
+                            });
+                        }
+                    });
+                });
+            } else {
+                // A confirmed zero-session read is a real empty list; unavailable telemetry must not fake online users.
+                $query->whereRaw('1 = 0');
+            }
         }
 
         if ($status === 'inactive') {
@@ -119,6 +159,7 @@ class BroadbandController extends Controller
             'resellers' => Reseller::with('user')->get(),
             'packages' => PackageList::orderBy('package')->get(),
             'leftStats' => $leftStats,
+            'onlineSessionStatus' => $onlineSessionStatus,
         ]);
     }
 

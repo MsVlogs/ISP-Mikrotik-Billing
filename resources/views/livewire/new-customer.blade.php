@@ -373,6 +373,7 @@
                             name="package_name"
                             placeholder="{{ __('Select Package Plan') }}"
                             required="true"
+                            live="true"
                             :options="$packages->pluck('package')->unique()->values()->toArray()"
                         />
                         <x-mikrotik.form-group

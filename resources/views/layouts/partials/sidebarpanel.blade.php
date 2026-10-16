@@ -1,3 +1,11 @@
+@if (auth()->check() && auth()->user()->hasRole('Reseller') && auth()->user()->reseller?->isMacPanel())
+    <ul class="navbar-nav flex-column mb-3">
+        <li class="nav-item"><div class="row navbar-vertical-label-wrapper mt-3 mb-2"><div class="col-auto navbar-vertical-label">{{ __('MAC Reseller Panel') }}</div><div class="col ps-0"><hr class="mb-0 navbar-vertical-divider" /></div></div></li>
+        <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mac-reseller.dashboard') }}"><span class="nav-link-icon"><i class="bi bi-speedometer2"></i></span><span class="nav-link-text ps-1">{{ __('Dashboard') }}</span></a></li>
+        <li class="nav-item"><a wire:navigate.hover wire:current.exact="active" class="nav-link" href="{{ route('mac-reseller.customers.index') }}"><span class="nav-link-icon"><i class="bi bi-people-fill"></i></span><span class="nav-link-text ps-1">{{ __('My Clients') }}</span></a></li>
+        <li class="nav-item"><a wire:navigate.hover wire:current="active" class="nav-link" href="{{ route('mac-reseller.customers.create') }}"><span class="nav-link-icon"><i class="bi bi-person-plus-fill"></i></span><span class="nav-link-text ps-1">{{ __('Add Client') }}</span></a></li>
+    </ul>
+@else
 @if (auth()->user()->roles()->exists() || auth()->user()->permissions()->exists())
     @if (auth()->user()->hasRole('Reseller'))
         <ul class="navbar-nav flex-column mb-3" id="navbarVerticalNav">
@@ -638,4 +646,6 @@
             </a>
         </li>
     </ul>
+@endif
+
 @endif
