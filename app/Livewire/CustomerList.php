@@ -181,6 +181,25 @@ class CustomerList extends Component
                 $data->whereNotIn('status', $statusFilter);
         }
 
+        // Read-only live PPPoE status, cached briefly to avoid polling MikroTik per row.
+        $livePppUsers = \Cache::remember('customer-list:live-ppp-usernames-v2', now()->addSeconds(20), function () {
+            $online = [];
+            $controller = app(MikrotikController::class);
+            foreach (RouterList::query()->where('action', 'connected')->get() as $router) {
+                try {
+                    foreach ($controller->getActivePppSessions((string) $router->router_name) as $session) {
+                        $username = trim((string) ($session['name'] ?? ''));
+                        if ($username !== '') {
+                            $online[(string) $router->router_name][mb_strtolower($username)] = true;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Log::debug('Customer list live PPP status unavailable for router '.$router->router_name.': '.$e->getMessage());
+                }
+            }
+            return $online;
+        });
+
         return DataTables::eloquent($data)
             ->addIndexColumn()
             ->addColumn('customer_identity', function ($row) {
@@ -272,15 +291,18 @@ class CustomerList extends Component
                        '<div class="text-primary fw-bold" style="font-size: 0.75rem"><i class="bi bi-calendar-x me-1"></i>'.$disableDate.'</div>'.
                        '<div class="text-muted" style="font-size: 0.7rem">Ext: '.($row->billing?->auto_disable_month ?? 0).' Mon</div>';
             })
-            ->addColumn('cid', function ($row) {
+            ->addColumn('cid', function ($row) use ($livePppUsers) {
                 $url = route('customer.details', ['id' => encrypt($row->customer_unique_id)]);
-                $isActive = strtolower((string) ($row->status ?? '')) === 'active';
-                $dotClass = $isActive ? 'customer-live-dot customer-live-dot--active' : 'customer-live-dot customer-live-dot--inactive';
-                $label = $isActive ? 'Active customer status' : 'Inactive customer status';
+                $username = trim((string) ($row->pppUser?->username ?? ''));
+                $router = (string) ($row->pppUser?->router_name ?? '');
+                $isOnline = $username !== '' && ! empty($livePppUsers[$router][mb_strtolower($username)]);
+                $dotClass = $isOnline ? 'customer-live-dot customer-live-dot--active' : 'customer-live-dot customer-live-dot--inactive';
+                $label = $isOnline ? 'Online now (live MikroTik PPP session)' : 'Offline (not found in live MikroTik PPP sessions)';
+                $liveText = '<small class="d-block '.($isOnline ? 'text-success' : 'text-muted').'">'.($isOnline ? 'Online' : 'Offline').'</small>';
                 return '<span class="customer-cid-live" title="'.e($label).'"><span class="'.e($dotClass).'" aria-label="'.e($label).'"></span>'
                     .'<a href="'.e($url).'" class="fw-bold text-primary text-decoration-none" title="Open Customer Details">'
                     .e($row->customer_unique_id)
-                    .'</a></span>';
+                    .'</a>'.$liveText.'</span>';
             })
             ->addColumn('customer_name_display', function ($row) {
                 return '<div class="fw-semibold text-dark">'.e($row->customer_name ?? 'N/A').'</div>';
