@@ -1111,7 +1111,15 @@ class MikrotikController extends Controller
 
     public function getActivePppSessions(string $routerName): array
     {
-        return $this->getItems($routerName, '/ppp/active');
+        // Active PPP sessions are real-time state, so bypass the generic read cache.
+        return $this->singleRead(
+            $routerName,
+            '/ppp/active/print',
+            'ppp active print without-paging terse',
+            [],
+            false,
+            true
+        );
     }
 
     /**

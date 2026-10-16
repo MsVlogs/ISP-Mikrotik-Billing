@@ -324,8 +324,16 @@ class EditCustomer extends Component
 
         $uid = decrypt($this->customerId);
         $customer = CustomersInfo::where('customer_unique_id', $uid)->with(['pppUser', 'billing', 'official'])->firstOrFail();
+        $newUid = trim((string) ($this->fields['customer']['customer_unique_id'] ?? ''));
+        $this->fields['customer']['customer_unique_id'] = $newUid;
 
         $this->validate([
+            'fields.customer.customer_unique_id' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('customers_infos', 'customer_unique_id')->ignore($uid, 'customer_unique_id'),
+            ],
             'fields.customer.customer_name' => 'required|min:3|max:255',
             'fields.customer.email' => 'nullable|email',
             'fields.customer.mobile' => ['nullable', 'string', new ValidPhoneDigits],
@@ -340,9 +348,10 @@ class EditCustomer extends Component
             'fields.billing.monthly_rent' => 'required|numeric',
         ]);
 
-        DB::transaction(function () use ($customer, $uid) {
+        DB::transaction(function () use ($customer, $uid, $newUid) {
             $c = $this->fields['customer'];
             $customer->update([
+                'customer_unique_id' => $newUid,
                 'customer_name' => $c['customer_name'] ?? '',
                 'email' => $c['email'] ?? null,
                 'mobile' => CustomersInfo::normalizeBangladeshMobile($c['mobile'] ?? null),
@@ -351,6 +360,23 @@ class EditCustomer extends Component
                 'profession' => $c['profession'] ?? null,
                 'connection_date' => $this->fields['pppUser']['connection_date'] ?? $customer->connection_date,
             ]);
+
+            if ($uid !== $newUid) {
+                foreach ([
+                    ['billing_infos', 'customer_bill_unique_id'],
+                    ['customers_addresses', 'customer_address_unique_id'],
+                    ['official_infos', 'customer_office_unique_id'],
+                    ['payment_summaries', 'customer_payment_unique_id'],
+                    ['collection_summaries', 'customer_collection_unique_id'],
+                    ['support_tickets', 'customer_unique_id'],
+                    ['customer_wifi_router_logins', 'customer_unique_id'],
+                    ['mikrotik_pending_actions', 'customer_unique_id'],
+                ] as [$table, $column]) {
+                    if (\Illuminate\Support\Facades\Schema::hasTable($table) && \Illuminate\Support\Facades\Schema::hasColumn($table, $column)) {
+                        DB::table($table)->where($column, $uid)->update([$column => $newUid]);
+                    }
+                }
+            }
 
             $ppp = $customer->pppUser;
             if ($ppp) {
@@ -391,7 +417,8 @@ class EditCustomer extends Component
             }
 
             $b = $this->fields['billing'];
-            $billing = $customer->billing ?: new BillingInfo(['customer_bill_unique_id' => $uid]);
+            $billing = $customer->billing ?: new BillingInfo(['customer_bill_unique_id' => $newUid]);
+            $billing->customer_bill_unique_id = $newUid;
             $billing->monthly_rent = $b['monthly_rent'] ?? 0;
             $billing->additional_charge = $b['additional_charge'] ?? 0;
             $billing->discount = $b['discount'] ?? 0;
@@ -433,7 +460,7 @@ class EditCustomer extends Component
                 if (!$field) continue;
                 $column = 'input_type_'.$field->input_type;
                 $address = CustomersAddress::firstOrNew([
-                    'customer_address_unique_id' => $uid,
+                    'customer_address_unique_id' => $newUid,
                     'label_name' => $label,
                 ]);
                 $address->$column = $value;
@@ -441,7 +468,7 @@ class EditCustomer extends Component
             }
 
             $location = CustomersAddress::firstOrNew([
-                'customer_address_unique_id' => $uid,
+                'customer_address_unique_id' => $newUid,
                 'label_name' => 'Network Location',
             ]);
             $location->latitude = $this->fields['customer']['latitude'] ?? null;
