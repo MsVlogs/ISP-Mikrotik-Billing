@@ -214,8 +214,12 @@ class EditCustomer extends Component
             $reseller = auth()->user()->reseller;
             abort_unless($reseller && $reseller->isActive(), 403, 'Reseller account is not active.');
             $query->where('reseller_id', $reseller->id);
+            // Hide cross-tenant IDs behind an explicit authorization response.
+            $customer = $query->first();
+            abort_unless($customer, 403, 'You can only edit your own clients.');
+        } else {
+            $customer = $query->firstOrFail();
         }
-        $customer = $query->firstOrFail();
 
         if ($customer) {
             $addressFields = $this->addressFields; // Retrieve all AddressField entries
