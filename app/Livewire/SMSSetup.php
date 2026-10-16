@@ -4,7 +4,7 @@ namespace App\Livewire;
 
 use App\Models\SmsTemplate;
 use App\Models\CustomersInfo;
-use Codepagol\SmsBridge\Facades\SmsBridge;
+use XLink\SmsBridge\Facades\SmsBridge;
 use Livewire\Component;
 
 class SMSSetup extends Component

@@ -12,7 +12,7 @@ use App\Models\RouterList;
 use App\Models\SmsTemplate;
 use App\Services\MikrotikSSHService;
 use Carbon\Carbon;
-use Codepagol\SmsBridge\Facades\SmsBridge;
+use XLink\SmsBridge\Facades\SmsBridge;
 
 class ScheduledTasksController extends Controller
 {

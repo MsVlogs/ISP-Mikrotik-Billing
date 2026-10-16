@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Codepagol\SmsBridge\Facades\SmsBridge;
+use XLink\SmsBridge\Facades\SmsBridge;
 
 class CustomerActionsController extends Controller
 {

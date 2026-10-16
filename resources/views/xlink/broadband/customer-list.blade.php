@@ -184,7 +184,7 @@
                                 <div>{{ $address ?: ($c->address ?: '—') }}</div>
                                 @if($c->pppUser?->router_name)<div class="customer-meta text-muted">{{ $c->pppUser->router_name }}</div>@endif
                             </td>
-                            <td>@if($status === 'active' && strtolower((string) ($c->pppUser?->status ?? '')) === 'active')<span class="customer-live-pulse" title="Online status from PPP record" aria-label="Online"></span>@endif<span class="badge text-bg-{{ $statusClass }}">{{ ucfirst($status) }}</span></td>
+                            <td>@if($mode === 'online' && $status === 'active' && strtolower((string) ($c->pppUser?->status ?? '')) === 'active')<span class="customer-live-pulse" title="Confirmed by live MikroTik PPP session" aria-label="Live session confirmed"></span>@endif<span class="badge text-bg-{{ $statusClass }}">{{ ucfirst($status) }}</span></td>
                         @endif
                         <td class="customer-actions">
                             <div class="customer-diagnostics">

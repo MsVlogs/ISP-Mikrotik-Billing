@@ -6,7 +6,7 @@ use App\Models\CustomersInfo;
 use App\Models\NotificationLogs;
 use App\Models\SmsDispatchLog;
 use App\Models\User;
-use Codepagol\SmsBridge\Facades\SmsBridge;
+use XLink\SmsBridge\Facades\SmsBridge;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

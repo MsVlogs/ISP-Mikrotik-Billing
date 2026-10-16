@@ -1068,7 +1068,7 @@ Route::middleware([
             );
             $status='failed'; $responseText='SMS gateway exception.';
             try {
-                $response = \Codepagol\SmsBridge\Facades\SmsBridge::to($recipient)->message($message)->send();
+                $response = \XLink\SmsBridge\Facades\SmsBridge::to($recipient)->message($message)->send();
                 if ($response && $response->isSuccessful()) { $status='sent'; $responseText=(string)($response->getMessage() ?: 'Gateway accepted the message.'); }
                 else { $responseText=(string)($response ? $response->getMessage() : 'No response from SMS gateway.'); }
             } catch (\Throwable $e) {

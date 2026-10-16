@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8f6d6740e9252e310b5f3f99ad4183db",
+    "content-hash": "38063fd756691eb2e534b5021294e4bb",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -557,65 +557,6 @@
                 }
             ],
             "time": "2026-03-20T21:10:52+00:00"
-        },
-        {
-            "name": "codepagol/sms-bridge",
-            "version": "v1.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/CodePagol/sms-bridge.git",
-                "reference": "d00154bc00d0b5d41337a0240192ede656e38423"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/CodePagol/sms-bridge/zipball/d00154bc00d0b5d41337a0240192ede656e38423",
-                "reference": "d00154bc00d0b5d41337a0240192ede656e38423",
-                "shasum": ""
-            },
-            "require": {
-                "guzzlehttp/guzzle": "^7.2",
-                "illuminate/database": ">=8.0",
-                "illuminate/routing": ">=8.0",
-                "illuminate/support": ">=8.0",
-                "php": ">=8.0"
-            },
-            "require-dev": {
-                "orchestra/testbench": "^7.0|^8.0|^9.0",
-                "phpunit/phpunit": "^9.5|^10.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "aliases": {
-                        "SmsBridge": "Codepagol\\SmsBridge\\Facades\\SmsBridge"
-                    },
-                    "providers": [
-                        "Codepagol\\SmsBridge\\Providers\\SmsBridgeServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Codepagol\\SmsBridge\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "rohan",
-                    "email": "rohan9222@gmail.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "A simple and extensible SMS gateway bridge for Laravel supporting multiple providers.",
-            "support": {
-                "issues": "https://github.com/CodePagol/sms-bridge/issues",
-                "source": "https://github.com/CodePagol/sms-bridge/tree/v1.0.0"
-            },
-            "time": "2026-04-21T18:02:31+00:00"
         },
         {
             "name": "composer/pcre",
@@ -12640,6 +12581,56 @@
                 "source": "https://github.com/webmozarts/assert/tree/2.4.1"
             },
             "time": "2026-06-15T15:31:57+00:00"
+        },
+        {
+            "name": "xlink/sms-bridge",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/xlink/sms-bridge",
+                "reference": "dfe65e894f5243d4d305429f6e1ccc976a011ed7"
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.2",
+                "illuminate/database": ">=8.0",
+                "illuminate/routing": ">=8.0",
+                "illuminate/support": ">=8.0",
+                "php": ">=8.0"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^7.0|^8.0|^9.0",
+                "phpunit/phpunit": "^9.5|^10.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "XLink\\SmsBridge\\Providers\\SmsBridgeServiceProvider"
+                    ],
+                    "aliases": {
+                        "SmsBridge": "XLink\\SmsBridge\\Facades\\SmsBridge"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "XLink\\SmsBridge\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "X-Link LTD",
+                    "role": "Maintainer of X-Link internal fork"
+                }
+            ],
+            "description": "A simple and extensible SMS gateway bridge for Laravel supporting multiple providers.",
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
         },
         {
             "name": "yajra/laravel-datatables",
