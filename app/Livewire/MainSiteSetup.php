@@ -218,30 +218,35 @@ class MainSiteSetup extends Component implements HasActions, HasForms
                 ->label('Main Site Logo')
                 ->image()
                 ->maxFiles(1)
+                ->disk('public')
                 ->directory('brand')
                 ->helperText('Recommended: 190x53px transparent PNG'),
             FileUpload::make('site_icon')
                 ->label('Square App Icon')
                 ->image()
                 ->maxFiles(1)
+                ->disk('public')
                 ->directory('brand')
                 ->helperText('Used for smaller UI elements (1:1 ratio)'),
             FileUpload::make('site_favicon')
                 ->label('Browser Favicon')
                 ->image()
                 ->maxFiles(1)
+                ->disk('public')
                 ->directory('brand')
                 ->helperText('Standard browser tab icon (16x16 or 32x32)'),
             FileUpload::make('site_invoice_logo')
                 ->label('Invoice Logo')
                 ->image()
                 ->maxFiles(1)
+                ->disk('public')
                 ->directory('invoices')
                 ->helperText('Logo displayed specifically on invoices.'),
             FileUpload::make('site_invoice_signature')
                 ->label('Authorized Signature')
                 ->image()
                 ->maxFiles(1)
+                ->disk('public')
                 ->directory('invoices'),
             RichEditor::make('site_invoice_terms')
                 ->label('Terms & Conditions')
@@ -261,6 +266,7 @@ class MainSiteSetup extends Component implements HasActions, HasForms
                 ->label('BTCL Tariff PDF')
                 ->maxFiles(1)
                 ->acceptedFileTypes(['application/pdf'])
+                ->disk('public')
                 ->directory('documents')
                 ->helperText('Upload the BTCL Tariff PDF document.'),
             Repeater::make('hero_slides')
@@ -276,6 +282,7 @@ class MainSiteSetup extends Component implements HasActions, HasForms
                         ->automaticallyResizeImagesToHeight('720')
                         ->rules(['image', 'max:20480'])
                         ->required()
+                        ->disk('public')
                         ->directory('hero'),
                     TextInput::make('caption')->placeholder('Slide caption...'),
                 ])->grid(3),
@@ -298,6 +305,7 @@ class MainSiteSetup extends Component implements HasActions, HasForms
                     FileUpload::make('logo')
                         ->label('Client Logo')
                         ->image()
+                        ->disk('public')
                         ->directory('clients')
                         ->helperText('If uploaded, the logo will be shown. If not, the name will be used.'),
                     TextInput::make('link')
@@ -330,6 +338,7 @@ class MainSiteSetup extends Component implements HasActions, HasForms
                     FileUpload::make('image')
                         ->label('Image')
                         ->image()
+                        ->disk('public')
                         ->directory('gallery')
                         ->required(),
                     TextInput::make('caption')
