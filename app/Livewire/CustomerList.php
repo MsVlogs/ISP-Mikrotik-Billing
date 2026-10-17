@@ -329,7 +329,12 @@ class CustomerList extends Component
                 if (str_starts_with($mobile, '8801') && strlen($mobile) >= 13) {
                     $mobile = '0'.substr($mobile, 3);
                 }
-                return '<span class="text-nowrap">'.e($mobile ?: $row->mobile).'</span>';
+                $display = $mobile ?: (string) $row->mobile;
+                $dial = preg_replace('/[^0-9+]/', '', (string) $row->mobile);
+                return '<span class="d-inline-flex align-items-center gap-2 text-nowrap">'
+                    .'<span>'.e($display).'</span>'
+                    .'<a class="btn btn-sm btn-outline-success py-1 px-2" href="tel:'.e($dial).'" aria-label="Call '.e($display).'" title="Call customer">'
+                    .'<i class="bi bi-telephone-fill" aria-hidden="true"></i> <span>Call</span></a></span>';
             })
             ->addColumn('package_display', function ($row) {
                 $name = $row->package?->package ?: $row->package_name;

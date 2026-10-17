@@ -153,7 +153,17 @@
                             <td>{{ $customers->firstItem() + $loop->index }}</td>
                             <td><a class="fw-semibold text-decoration-none" href="{{ route('customers.show', $customerId) }}">{{ $c->customer_unique_id }}</a></td>
                             <td><strong>{{ $c->customer_name ?: 'Unnamed' }}</strong><div class="customer-meta text-muted">{{ $c->email ?: 'No email' }}</div></td>
-                            <td>{{ $c->mobile ?: '—' }}</td>
+                            <td>
+                                @if($c->mobile)
+                                    @php($dialNumber = preg_replace('/[^0-9+]/', '', (string) $c->mobile))
+                                    <span class="d-inline-flex align-items-center gap-2 text-nowrap">
+                                        <span>{{ $c->mobile }}</span>
+                                        <a class="btn btn-sm btn-outline-success py-1 px-2" href="tel:{{ $dialNumber }}" aria-label="Call {{ $c->mobile }}" title="Call customer"><i class="bi bi-telephone-fill" aria-hidden="true"></i> Call</a>
+                                    </span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>{{ $c->zone_name ?: '—' }}</td>
                             <td>{{ $address ?: ($c->address ?: '—') }}</td>
                             <td>{{ $c->package->package ?? $c->pppUser->package_name ?? $c->package_name ?? '—' }}</td>
@@ -173,7 +183,17 @@
                                 <span class="badge text-bg-{{ $c->pppUser?->service === 'static' ? 'info' : 'secondary' }}">{{ strtoupper($c->pppUser?->service ?: 'N/A') }}</span>
                                 <div class="customer-meta">{{ $connection }}</div>
                             </td>
-                            <td>{{ $c->mobile ?: '—' }}</td>
+                            <td>
+                                @if($c->mobile)
+                                    @php($dialNumber = preg_replace('/[^0-9+]/', '', (string) $c->mobile))
+                                    <span class="d-inline-flex align-items-center gap-2 text-nowrap">
+                                        <span>{{ $c->mobile }}</span>
+                                        <a class="btn btn-sm btn-outline-success py-1 px-2" href="tel:{{ $dialNumber }}" aria-label="Call {{ $c->mobile }}" title="Call customer"><i class="bi bi-telephone-fill" aria-hidden="true"></i> Call</a>
+                                    </span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>{{ $c->package->package ?? $c->pppUser->package_name ?? '—' }}</td>
                             <td>{{ $c->pppUser->router_name ?? '—' }}</td>
                             <td>
