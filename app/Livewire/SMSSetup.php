@@ -46,9 +46,40 @@ class SMSSetup extends Component
         }
 
         try {
-            $this->profile = SmsBridge::profile();
-            $this->balance = SmsBridge::balance();
-        } catch (\Exception $e) {
+            // The LSMS driver currently supports sending only; fetch account details
+            // directly from its documented configured endpoints instead of returning null.
+            $credentials = config('sms-bridge.credentials', []);
+            if (strtolower((string) config('sms-bridge.default', 'log')) === 'lsms'
+                && ! empty($credentials['url'])
+                && ! empty($credentials['api_key'])) {
+                $baseUrl = rtrim((string) $credentials['url'], '/');
+                $apiKey = (string) $credentials['api_key'];
+                $balancePath = trim((string) ($credentials['api_balance_url'] ?? 'balance'), '/');
+                $profilePath = trim((string) ($credentials['api_profile_url'] ?? 'user-info'), '/');
+
+                $balanceResponse = \Illuminate\Support\Facades\Http::timeout(10)
+                    ->acceptJson()->get($baseUrl.'/'.$balancePath, ['api_key' => $apiKey]);
+                $profileResponse = \Illuminate\Support\Facades\Http::timeout(10)
+                    ->acceptJson()->get($baseUrl.'/'.$profilePath, ['api_key' => $apiKey]);
+
+                $balanceData = $balanceResponse->json();
+                $profileData = $profileResponse->json();
+                $this->balance = $balanceResponse->successful() && is_array($balanceData)
+                    && ! filter_var($balanceData['error'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                    ? $balanceData : ['status' => 'error'];
+                if (is_array($this->balance['data'] ?? null)
+                    && ! isset($this->balance['data']['remaining_balance'])
+                    && isset($this->balance['data']['balance'])) {
+                    $this->balance['data']['remaining_balance'] = $this->balance['data']['balance'];
+                }
+                $this->profile = $profileResponse->successful() && is_array($profileData)
+                    && ! filter_var($profileData['error'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                    ? $profileData : ['status' => 'error'];
+            } else {
+                $this->profile = SmsBridge::profile();
+                $this->balance = SmsBridge::balance();
+            }
+        } catch (\Throwable $e) {
             $this->profile = null;
             $this->balance = null;
             report($e);
