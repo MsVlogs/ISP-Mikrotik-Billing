@@ -53,6 +53,8 @@ class SMSSetup extends Component
                 && ! empty($credentials['url'])
                 && ! empty($credentials['api_key'])) {
                 $baseUrl = rtrim((string) $credentials['url'], '/');
+                // The UI may store the send endpoint itself; balance/profile share the API v1 base.
+                $baseUrl = preg_replace('#/api/v1/smsapi$#i', '', $baseUrl);
                 $apiKey = (string) $credentials['api_key'];
                 $balancePath = trim((string) ($credentials['api_balance_url'] ?? 'balance'), '/');
                 $profilePath = trim((string) ($credentials['api_profile_url'] ?? 'user-info'), '/');
