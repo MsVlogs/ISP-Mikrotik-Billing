@@ -374,7 +374,7 @@
                             placeholder="{{ __('Select Package Plan') }}"
                             required="true"
                             live="true"
-                            :options="$packages->pluck('package')->unique()->values()->toArray()"
+                            :options="array_merge(['Free Customer'], $packages->pluck('package')->unique()->values()->toArray())"
                         />
                         <x-mikrotik.form-group
                             label="{{ __('Monthly Charge') }}"

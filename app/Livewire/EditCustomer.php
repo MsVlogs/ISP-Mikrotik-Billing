@@ -153,6 +153,10 @@ class EditCustomer extends Component
     public function loadPackagePrice(): void
     {
         $packageName = trim((string) ($this->fields['pppUser']['package_name'] ?? ''));
+        if (strcasecmp($packageName, 'Free Customer') === 0) {
+            $this->fields['billing']['monthly_rent'] = 0;
+            return;
+        }
         if ($packageName === '') {
             return;
         }
@@ -436,7 +440,10 @@ class EditCustomer extends Component
             }
 
             $packageName = $this->fields['pppUser']['package_name'] ?? null;
-            if ($packageName) {
+            if (strcasecmp(trim((string) $packageName), 'Free Customer') === 0) {
+                $customer->package_id = null;
+                $customer->save();
+            } elseif ($packageName) {
                 $packageQuery = PackageList::where('package', $packageName)
                     ->when($customer->pppUser?->router_name, function ($q, $router) {
                         $q->where(function ($routeQuery) use ($router) {

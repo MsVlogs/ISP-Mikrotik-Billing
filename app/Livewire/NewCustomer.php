@@ -272,8 +272,10 @@ class NewCustomer extends Component
 
     public function calculateTotal($value)
     {
-        // If package name is set, get the package price
-        if ($this->package_name) {
+        // Free Customer is a deliberate zero-charge option, not a real package row.
+        if (strcasecmp(trim((string) $this->package_name), 'Free Customer') === 0) {
+            $this->monthly_rent = 0;
+        } elseif ($this->package_name) {
             if (auth()->user()->hasRole('Reseller')) {
                 $reseller = auth()->user()->reseller;
                 $package = PackageList::where('package', $this->package_name)
@@ -461,7 +463,7 @@ class NewCustomer extends Component
 
             } elseif ($this->step === (!auth()->user()->hasRole('Reseller') ? 4 : 3)) {
                 // Collect rules for Step 4 (Billing Info)
-                $stepRules['package_name'] = 'required';
+                $stepRules['package_name'] = 'required|string|max:255';
                 $stepRules['monthly_rent'] = 'required|numeric';
                 
                 $this->validate($stepRules);
@@ -494,7 +496,7 @@ class NewCustomer extends Component
                             }
                         }
                     } elseif ($s === (!auth()->user()->hasRole('Reseller') ? 4 : 3)) {
-                        $targetRules['package_name'] = 'required';
+                        $targetRules['package_name'] = 'required|string|max:255';
                         $targetRules['monthly_rent'] = 'required|numeric';
                     }
                 }
@@ -671,7 +673,7 @@ class NewCustomer extends Component
 
             // Get package_id based on selected package name and router
             $assignedPackageId = null;
-            if ($this->package_name) {
+            if ($this->package_name && strcasecmp(trim((string) $this->package_name), 'Free Customer') !== 0) {
                 if (auth()->user()->hasRole('Reseller')) {
                     $reseller = auth()->user()->reseller;
                     $pkg = PackageList::where('package', $this->package_name)
